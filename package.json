@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
+    "dev:watch": "nodemon --watch src --watch messages --watch public --watch next.config.mjs --watch package.json --ext js,json,mjs,css,jpg,jpeg,png,webp,mp4 --ignore .next --delay 500ms --exec \"next dev --webpack\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
     "next": "16.2.4",
+    "next-intl": "^4.11.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -17,6 +20,7 @@
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "nodemon": "^3.1.14",
     "tailwindcss": "^4"
   }
 }

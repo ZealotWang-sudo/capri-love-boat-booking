@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import SectionLink from "@/components/SectionLink";
 import SiteHeader from "@/components/SiteHeader";
 
 export default async function HomePage({ params }) {
@@ -45,6 +46,12 @@ export default async function HomePage({ params }) {
     ["faqThreeQuestion", "faqThreeAnswer"],
   ];
 
+  const sectionNavLinks = [
+    { href: "#highlights", label: t("highlightsEyebrow") },
+    { href: "#booking-steps", label: t("howEyebrow") },
+    { href: "#faq", label: t("faqEyebrow") },
+  ];
+
   return (
     <main className="min-h-screen bg-[#f3eee7] text-stone-950">
       <section className="relative min-h-screen overflow-hidden text-white">
@@ -86,58 +93,73 @@ export default async function HomePage({ params }) {
               >
                 {t("cta")}
               </Link>
-              <Link
+              <SectionLink
                 href="#tour"
                 className="w-full border border-white/45 px-5 py-4 text-center text-xs font-medium uppercase tracking-[0.16em] text-white transition hover:border-white sm:w-auto sm:px-8 sm:tracking-[0.22em]"
               >
                 {t("secondaryCta")}
-              </Link>
+              </SectionLink>
             </div>
           </div>
         </div>
       </section>
 
       <section className="border-b border-stone-300/70 py-24 sm:py-32" id="tour">
-        <div className="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
-              {t("whyEyebrow")}
-            </p>
-            <div className="mt-14 max-w-sm border-y border-stone-300 py-8">
-              <Image
-                src="/assets/images/island-iternary.png"
-                alt="Capri Love Boat"
-                width={1200}
-                height={700}
-                className="h-auto w-full mix-blend-multiply"
-              />
+        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+          <div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr]">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
+                {t("whyEyebrow")}
+              </p>
+              <div className="mt-14 w-128 border p-2 border-stone-300 ">
+                <Image
+                  src="/assets/images/capri-map-3.png"
+                  alt="Capri Love Boat"
+                    width={2400}
+                    height={1400}
+                />
+              </div>
+            </div>
+            <div>
+              <h2 className="max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
+                {t("whyTitle")}
+              </h2>
+              <p className="mt-8 max-w-2xl text-lg font-light leading-8 text-stone-600">
+                {t("whySubtitle")}
+              </p>
+              <div className="mt-16 grid gap-10 md:grid-cols-3">
+                {whyCards.map(([titleKey, textKey]) => (
+                  <article
+                    key={titleKey}
+                    className="border-t border-stone-300 pt-6"
+                  >
+                    <h3 className="text-xl font-normal">{t(titleKey)}</h3>
+                    <p className="mt-4 text-sm leading-7 text-stone-600">
+                      {t(textKey)}
+                    </p>
+                  </article>
+                ))}
+              </div>
             </div>
           </div>
-          <div>
-            <h2 className="max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
-              {t("whyTitle")}
-            </h2>
-            <p className="mt-8 max-w-2xl text-lg font-light leading-8 text-stone-600">
-              {t("whySubtitle")}
-            </p>
-            <div className="mt-16 grid gap-10 md:grid-cols-3">
-              {whyCards.map(([titleKey, textKey]) => (
-                <article
-                  key={titleKey}
-                  className="border-t border-stone-300 pt-6"
-                >
-                  <h3 className="text-xl font-normal">{t(titleKey)}</h3>
-                  <p className="mt-4 text-sm leading-7 text-stone-600">
-                    {t(textKey)}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
+          <nav
+            aria-label="Page sections"
+            className="mx-auto mt-20 grid max-w-4xl gap-3 sm:grid-cols-3 sm:gap-8"
+          >
+            {sectionNavLinks.map(({ href, label }) => (
+              <SectionLink
+                key={href}
+                href={href}
+                className="border border-stone-950/25 px-5 py-3 text-center text-xs font-medium uppercase tracking-[0.18em] text-stone-950 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
+              >
+                {label}
+              </SectionLink>
+            ))}
+          </nav>
         </div>
       </section>
 
-      <section className="py-24 sm:py-32">
+      <section className="py-24 sm:py-32" id="highlights">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
           <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
             {t("highlightsEyebrow")}
@@ -171,7 +193,10 @@ export default async function HomePage({ params }) {
         </div>
       </section>
 
-      <section className="bg-[#1f1b17] py-24 text-[#f3eee7] sm:py-32">
+      <section
+        className="bg-[#1f1b17] py-24 text-[#f3eee7] sm:py-32"
+        id="booking-steps"
+      >
         <div className="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-white/45">
@@ -200,7 +225,10 @@ export default async function HomePage({ params }) {
         </div>
       </section>
 
-      <section className="border-b border-stone-300/70 py-24 sm:py-32">
+      <section
+        className="border-b border-stone-300/70 py-24 sm:py-32"
+        id="faq"
+      >
         <div className="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
@@ -224,7 +252,7 @@ export default async function HomePage({ params }) {
         </div>
       </section>
 
-      <section className="px-5 py-24 sm:px-8 sm:py-32">
+      <section className="px-5 py-24 sm:px-8 sm:py-32" id="request">
         <div className="mx-auto max-w-4xl text-center">
           <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
             {t("finalEyebrow")}

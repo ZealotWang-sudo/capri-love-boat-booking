@@ -111,7 +111,7 @@ export default async function HomePage({ params }) {
               <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
                 {t("whyEyebrow")}
               </p>
-              <div className="mt-14 w-128 border p-2 border-stone-300 ">
+              <div className="mt-14 w-full border p-2 border-stone-300 ">
                 <Image
                   src="/assets/images/capri-map-3.png"
                   alt="Capri Love Boat"

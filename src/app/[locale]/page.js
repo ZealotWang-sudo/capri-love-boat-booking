@@ -57,7 +57,7 @@ export default async function HomePage({ params }) {
             playsInline
             aria-hidden="true"
           >
-            <source src="/assets/videos/capri-hero-video.mp4" type="video/mp4" />
+            <source src="/assets/Videos/capri-hero-video.mp4" type="video/mp4" />
           </video>
           <div className="absolute inset-6 border border-white/20" />
           <div className="absolute right-8 top-24 hidden text-right text-xs uppercase tracking-[0.3em] text-white/55 sm:block">

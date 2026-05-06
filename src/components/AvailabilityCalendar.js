@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -8,6 +8,13 @@ function formatDateKey(date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function formatMonthKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
 }
 
 function getMonthDays(displayDate) {
@@ -28,21 +35,13 @@ function getMonthDays(displayDate) {
   return days;
 }
 
-function isBooked(date) {
-  const day = date.getDate();
-
-  return date.getDay() === 0 || day % 9 === 0;
-}
-
-function isCaptainUnavailable(date) {
-  return date.getDate() % 14 === 0;
-}
-
 export default function AvailabilityCalendar({
+  fullyBookedDates = [],
   name = "date",
   label,
   labels,
   error,
+  onMonthChange,
   onSelect,
 }) {
   const today = useMemo(() => {
@@ -54,11 +53,19 @@ export default function AvailabilityCalendar({
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
   const [selectedDate, setSelectedDate] = useState("");
+  const fullyBookedDateSet = useMemo(
+    () => new Set(fullyBookedDates),
+    [fullyBookedDates],
+  );
   const monthDays = getMonthDays(displayDate);
   const monthLabel = new Intl.DateTimeFormat(labels.locale, {
     month: "long",
     year: "numeric",
   }).format(displayDate);
+
+  useEffect(() => {
+    onMonthChange?.(formatMonthKey(displayDate));
+  }, [displayDate, onMonthChange]);
 
   function moveMonth(direction) {
     setDisplayDate(
@@ -152,8 +159,10 @@ export default function AvailabilityCalendar({
             }
 
             const dateKey = formatDateKey(date);
-            const unavailable = date < today || isCaptainUnavailable(date);
-            const booked = !unavailable && isBooked(date);
+            const todayDateKey = formatDateKey(today);
+            const isToday = dateKey === todayDateKey;
+            const unavailable = date <= today;
+            const booked = !unavailable && fullyBookedDateSet.has(dateKey);
             const disabled = booked || unavailable;
             const selected = dateKey === selectedDate;
             const statusLabel = unavailable
@@ -179,10 +188,18 @@ export default function AvailabilityCalendar({
                   unavailable
                     ? "cursor-not-allowed border-y-stone-200 border-r-stone-200 border-l-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none hover:border-y-stone-200 hover:border-r-stone-200 hover:border-l-stone-400"
                     : "",
+                  isToday ? "ring-2 ring-stone-950 ring-offset-2" : "",
                 ].join(" ")}
-                aria-label={`${dateKey} ${statusLabel}`}
+                aria-label={`${dateKey} ${statusLabel}${
+                  isToday ? ` ${labels.today}` : ""
+                }`}
               >
                 <span className="block text-sm">{date.getDate()}</span>
+                {isToday ? (
+                  <span className="mt-2 inline-block  px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em]">
+                    {labels.today}
+                  </span>
+                ) : null}
               </button>
             );
           })}

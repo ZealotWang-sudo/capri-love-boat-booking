@@ -57,9 +57,8 @@ export default async function HomePage({ params }) {
             playsInline
             aria-hidden="true"
           >
-            <source src="/capri-hero.mp4" type="video/mp4" />
+            <source src="/assets/videos/capri-hero-video.mov" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.16),transparent_28%),linear-gradient(180deg,rgba(28,25,23,0.18),rgba(28,25,23,0.68)),linear-gradient(120deg,rgba(28,25,23,0.32),rgba(15,23,42,0.16)_52%,rgba(15,23,42,0.42))]" />
           <div className="absolute inset-6 border border-white/20" />
           <div className="absolute right-8 top-24 hidden text-right text-xs uppercase tracking-[0.3em] text-white/55 sm:block">
     

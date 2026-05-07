@@ -178,15 +178,15 @@ export default function AvailabilityCalendar({
                 onClick={() => handleSelect(date)}
                 disabled={disabled}
                 className={[
-                  "min-h-16 border-l-4 p-2 text-left transition",
+                  "flex min-h-16 flex-col items-start justify-start border-b-4 p-2 text-left transition",
                   selected
                     ? "border-stone-950 bg-stone-950 text-[#f3eee7]"
-                    : "border-y-stone-300 border-r-stone-300 border-l-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm hover:border-stone-950",
+                    : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm hover:border-stone-950",
                   booked
-                    ? "cursor-not-allowed border-y-red-200 border-r-red-200 border-l-red-700 bg-red-50/70 text-stone-400 opacity-70 shadow-none hover:border-y-red-200 hover:border-r-red-200 hover:border-l-red-700"
+                    ? "cursor-not-allowed border-x-red-200 border-t-red-200 border-b-red-700 bg-red-50/70 text-stone-400 opacity-70 shadow-none hover:border-x-red-200 hover:border-t-red-200 hover:border-b-red-700"
                     : "",
                   unavailable
-                    ? "cursor-not-allowed border-y-stone-200 border-r-stone-200 border-l-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none hover:border-y-stone-200 hover:border-r-stone-200 hover:border-l-stone-400"
+                    ? "cursor-not-allowed border-x-stone-200 border-t-stone-200 border-b-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none hover:border-x-stone-200 hover:border-t-stone-200 hover:border-b-stone-400"
                     : "",
                   isToday ? "ring-2 ring-stone-950 ring-offset-2" : "",
                 ].join(" ")}
@@ -196,7 +196,7 @@ export default function AvailabilityCalendar({
               >
                 <span className="block text-sm">{date.getDate()}</span>
                 {isToday ? (
-                  <span className="mt-2 inline-block  px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em]">
+                  <span className="mt-2 hidden px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] sm:inline-block">
                     {labels.today}
                   </span>
                 ) : null}

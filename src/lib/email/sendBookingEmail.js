@@ -42,9 +42,9 @@ const CANCELLATION_REASON_LABELS = {
   zh: "取消原因",
 };
 const MANAGE_LINK_COPY = {
-  en: "Manage or cancel your request:",
-  it: "Gestisci o cancella la tua richiesta:",
-  zh: "查看或取消你的预约请求：",
+  en: "Manage your request",
+  it: "Gestisci la tua richiesta",
+  zh: "管理你的预约请求",
 };
 const EMAIL_COPY = {
   booking_received: {
@@ -66,18 +66,18 @@ const EMAIL_COPY = {
   payment_pending: {
     en: {
       intro:
-        "The captain is available for your selected time. Payment link will be added once Stripe is connected.",
-      subject: "Captain available — reserve your boat",
+        "Your selected time slot is available. Please use the link below to pay the deposit and lock the time slot reservation. Otherwise, the reservation hold will expire within 24 hours.",
+      subject: "Time slot available — reserve your boat",
     },
     it: {
       intro:
-        "Il capitano e disponibile per l'orario scelto. Payment link will be added once Stripe is connected.",
-      subject: "Capitano disponibile — blocca la tua barca",
+        "L'orario scelto e disponibile. Usa il link qui sotto per pagare il deposito e bloccare la prenotazione dell'orario. In caso contrario, il blocco della prenotazione scadra entro 24 ore.",
+      subject: "Orario disponibile — blocca la tua barca",
     },
     zh: {
       intro:
-        "船长在你选择的时间有空档。Payment link will be added once Stripe is connected.",
-      subject: "船长已有空档，请支付预约订金锁定船只",
+        "你选择的时间可预约。请使用下方链接支付订金并锁定该时间段预约，否则预约保留将在 24 小时内过期。",
+      subject: "时间可预约，请支付预约订金锁定船只",
     },
   },
   booking_confirmed: {
@@ -166,7 +166,7 @@ function formatTourType(tourType, locale) {
 }
 
 function getBookingDetails(booking, locale) {
-  const details = [
+  return [
     ["Name", formatValue(booking.customer_name)],
     ["Date", formatValue(booking.requested_date)],
     ["Time", formatValue(booking.time_window || booking.time_slot)],
@@ -176,18 +176,22 @@ function getBookingDetails(booking, locale) {
     ["Reservation fee", formatEuro(booking.reservation_fee_eur)],
     ["Pay on board", formatEuro(booking.pay_on_board_eur)],
   ];
+}
 
-  const cancellationReason =
-    booking.cancellation_reason || booking.customer_cancel_reason;
+function getCancellationReason(booking) {
+  return booking.cancellation_reason || booking.customer_cancel_reason || "";
+}
 
-  if (cancellationReason) {
-    details.push([
-      CANCELLATION_REASON_LABELS[locale] ?? CANCELLATION_REASON_LABELS.en,
-      cancellationReason,
-    ]);
+function getCancellationReasonText(booking, locale) {
+  const cancellationReason = getCancellationReason(booking);
+
+  if (!cancellationReason) {
+    return "";
   }
 
-  return details;
+  const label = CANCELLATION_REASON_LABELS[locale] ?? CANCELLATION_REASON_LABELS.en;
+
+  return `\n\n${label}: ${cancellationReason}`;
 }
 
 function getManageLinkText(booking, locale) {
@@ -197,49 +201,74 @@ function getManageLinkText(booking, locale) {
 
   const label = MANAGE_LINK_COPY[locale] ?? MANAGE_LINK_COPY.en;
 
-  return `\n\n${label} ${booking.manage_url}`;
+  return `\n\n${label}: ${booking.manage_url}`;
 }
 
 function buildTextEmail({ booking, copy, locale }) {
   const details = getBookingDetails(booking, locale)
     .map(([label, value]) => `${label}: ${value}`)
     .join("\n");
+  const cancellationReasonText = getCancellationReasonText(booking, locale);
   const manageLinkText = getManageLinkText(booking, locale);
 
-  return `Hello ${formatValue(booking.customer_name)},\n\n${copy.intro}${manageLinkText}\n\n${details}\n\nCapri Love Boat`;
+  return `Hello ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}\n\n${details}\n\nCapri Love Boat`;
 }
 
 function buildHtmlEmail({ booking, copy, locale }) {
   const detailRows = getBookingDetails(booking, locale)
     .map(
       ([label, value]) => `
-        <tr>
-          <td style="padding:6px 0;color:#78716c;">${escapeHtml(label)}</td>
-          <td style="padding:6px 0;text-align:right;color:#1c1917;">${escapeHtml(value)}</td>
+        <tr style="border-bottom:1px solid #e7e1d8;">
+          <td style="padding:12px 0;color:#6f6a63;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">${escapeHtml(label)}</td>
+          <td style="padding:12px 0;text-align:right;color:#1c1917;font-size:14px;font-weight:500;">${escapeHtml(value)}</td>
         </tr>
       `,
     )
     .join("");
+  const cancellationReason = getCancellationReason(booking);
+  const cancellationReasonHtml = cancellationReason
+    ? `
+        <div style="border:1px solid #d8d0c5;background:#fffaf3;margin:28px 0 0;padding:18px 20px;">
+          <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6f6a63;">${escapeHtml(CANCELLATION_REASON_LABELS[locale] ?? CANCELLATION_REASON_LABELS.en)}</p>
+          <p style="margin:0;font-size:17px;line-height:1.55;color:#1c1917;">${escapeHtml(cancellationReason)}</p>
+        </div>
+      `
+    : "";
   const manageLinkHtml = booking.manage_url
     ? `
-        <p style="font-size:16px;line-height:1.6;">
-          ${escapeHtml(MANAGE_LINK_COPY[locale] ?? MANAGE_LINK_COPY.en)}
-          <a href="${escapeHtml(booking.manage_url)}" style="color:#1c1917;">${escapeHtml(booking.manage_url)}</a>
+        <p style="margin:28px 0 0;">
+          <a href="${escapeHtml(booking.manage_url)}" style="display:inline-block;border:1px solid #1c1917;background:#1c1917;color:#fffaf3;text-decoration:none;padding:14px 22px;font-size:12px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;">${escapeHtml(MANAGE_LINK_COPY[locale] ?? MANAGE_LINK_COPY.en)}</a>
         </p>
       `
     : "";
 
   return `
-    <div style="font-family:Arial,sans-serif;background:#f3eee7;color:#1c1917;padding:32px;">
-      <div style="max-width:560px;margin:0 auto;background:#fbf8f3;border:1px solid #d6d3d1;padding:28px;">
-        <p style="margin:0 0 18px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#78716c;">Capri Love Boat</p>
-        <h1 style="margin:0 0 18px;font-size:28px;font-weight:300;">${escapeHtml(copy.subject)}</h1>
-        <p style="font-size:16px;line-height:1.6;">Hello ${escapeHtml(formatValue(booking.customer_name))},</p>
-        <p style="font-size:16px;line-height:1.6;">${escapeHtml(copy.intro)}</p>
-        ${manageLinkHtml}
-        <table style="width:100%;border-top:1px solid #d6d3d1;margin-top:24px;padding-top:16px;font-size:14px;">
-          <tbody>${detailRows}</tbody>
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#f7f2ea;color:#1c1917;padding:36px 18px;color-scheme:light;supported-color-schemes:light;">
+      <div style="max-width:620px;margin:0 auto;">
+        <div style="border:1px solid #ddd6cc;background:#fffaf3;padding:34px 34px 30px;">
+          <p style="margin:0 0 26px;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:#6f6a63;">Capri Love Boat</p>
+          <h1 style="margin:0;color:#1c1917;font-size:32px;line-height:1.12;font-weight:300;letter-spacing:-0.03em;">${escapeHtml(copy.subject)}</h1>
+          <div style="height:1px;background:#ddd6cc;margin:26px 0;"></div>
+          <p style="margin:0 0 14px;font-size:16px;line-height:1.65;color:#1c1917;">Hello ${escapeHtml(formatValue(booking.customer_name))},</p>
+          <p style="margin:0;font-size:16px;line-height:1.65;color:#3f3a34;">${escapeHtml(copy.intro)}</p>
+          ${cancellationReasonHtml}
+          ${manageLinkHtml}
+        </div>
+        <table style="width:100%;border-collapse:collapse;background:#fffaf3;border-left:1px solid #ddd6cc;border-right:1px solid #ddd6cc;border-bottom:1px solid #ddd6cc;padding:0;font-size:14px;">
+          <tbody>
+            <tr>
+              <td colspan="2" style="padding:22px 34px 8px;color:#6f6a63;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">Booking details</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:0 34px 22px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <tbody>${detailRows}</tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
         </table>
+        <p style="margin:18px 0 0;text-align:center;color:#8a8178;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;">Capri, Italy</p>
       </div>
     </div>
   `;

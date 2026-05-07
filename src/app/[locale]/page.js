@@ -62,6 +62,7 @@ export default async function HomePage({ params }) {
             muted
             loop
             playsInline
+            poster="/assets/Videos/capri-hero-video-first-frame.png"
             aria-hidden="true"
           >
             <source src="/assets/Videos/capri-hero-video.mp4" type="video/mp4" />

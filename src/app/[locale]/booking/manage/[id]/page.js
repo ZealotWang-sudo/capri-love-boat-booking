@@ -2,7 +2,9 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import CustomerCancelBookingForm from "@/components/CustomerCancelBookingForm";
 import SiteHeader from "@/components/SiteHeader";
+import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import { confirmBookingPaymentFromSession } from "@/lib/stripe/confirmBookingPayment";
 
 const CANCELLABLE_STATUSES = new Set([
   "requested",
@@ -27,6 +29,21 @@ const STATUS_LABEL_KEYS = {
   payment_pending: "statusPaymentPending",
   requested: "statusRequested",
 };
+const NEXT_STEP_KEYS = {
+  cancelled: "nextStepCancelled",
+  checking_with_captain: "nextStepCheckingWithCaptain",
+  completed: "nextStepCompleted",
+  confirmed: "nextStepConfirmed",
+  expired: "nextStepExpired",
+  not_available: "nextStepNotAvailable",
+  payment_pending: "nextStepPaymentPending",
+  requested: "nextStepRequested",
+};
+const PAGE_TITLE_KEYS = {
+  cancelled: "titleCancelled",
+  completed: "titleCompleted",
+  confirmed: "titleConfirmed",
+};
 
 function getSearchText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -40,9 +57,14 @@ function formatValue(value) {
   return value || "-";
 }
 
-function SummaryItem({ label, value }) {
+function SummaryItem({ fullWidth = false, label, value }) {
   return (
-    <div className="border-b border-stone-200 py-3">
+    <div
+      className={[
+        "border-b border-stone-200 py-3",
+        fullWidth ? "sm:col-span-2" : "",
+      ].join(" ")}
+    >
       <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
         {label}
       </p>
@@ -72,16 +94,45 @@ async function getManagedBooking({ bookingId, token }) {
   return data;
 }
 
+async function confirmReturnedStripePayment({ bookingId, sessionId, token }) {
+  if (!bookingId || !sessionId || !token) {
+    return;
+  }
+
+  try {
+    await confirmBookingPaymentFromSession({
+      bookingId,
+      sessionId,
+      token,
+    });
+  } catch (error) {
+    console.error("[customer booking manage] Could not confirm Stripe return", {
+      bookingId,
+      message: error.message,
+    });
+  }
+}
+
 export default async function ManageBookingPage({ params, searchParams }) {
   const { id, locale } = await params;
   const query = await searchParams;
   const token = getSearchText(query?.token);
+  const paymentStatus = getSearchText(query?.payment);
+  const stripeSessionId = getSearchText(query?.session_id);
   const isCancelled = getSearchText(query?.cancelled) === "1";
   const hasCancelError = getSearchText(query?.cancelError) === "1";
   setRequestLocale(locale);
 
   const t = await getTranslations("BookingManage");
   const common = await getTranslations("Common");
+  if (paymentStatus === "success") {
+    await confirmReturnedStripePayment({
+      bookingId: id,
+      sessionId: stripeSessionId,
+      token,
+    });
+  }
+
   const booking = await getManagedBooking({ bookingId: id, token });
   const managePath = `/booking/manage/${id}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 
@@ -117,6 +168,9 @@ export default async function ManageBookingPage({ params, searchParams }) {
   const statusLabel = statusLabelKey
     ? t(statusLabelKey)
     : formatValue(booking.booking_status);
+  const nextStepKey = NEXT_STEP_KEYS[booking.booking_status];
+  const pageTitleKey = PAGE_TITLE_KEYS[booking.booking_status] ?? "title";
+  const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY);
 
   return (
     <main className="min-h-screen bg-[#f3eee7] text-stone-950">
@@ -128,7 +182,7 @@ export default async function ManageBookingPage({ params, searchParams }) {
             {t("eyebrow")}
           </p>
           <h1 className="mt-4 text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
-            {t("title")}
+            {t(pageTitleKey)}
           </h1>
           <p className="mt-6 text-lg font-light leading-8 text-stone-600">
             {t("subtitle")}
@@ -171,8 +225,19 @@ export default async function ManageBookingPage({ params, searchParams }) {
               label={t("payOnBoard")}
               value={formatEuro(booking.pay_on_board_eur)}
             />
-            <SummaryItem label={t("status")} value={statusLabel} />
+            <SummaryItem fullWidth label={t("status")} value={statusLabel} />
           </div>
+
+          {nextStepKey ? (
+            <section className="mt-8 border border-stone-300 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {t("nextStepTitle")}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                {t(nextStepKey)}
+              </p>
+            </section>
+          ) : null}
 
           {booking.booking_status === "payment_pending" ? (
             <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
@@ -180,15 +245,40 @@ export default async function ManageBookingPage({ params, searchParams }) {
                 {t("paymentTitle")}
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                {t("paymentMockNote")}
+                {stripeConfigured
+                  ? t("paymentReadyNote")
+                  : t("paymentMissingLink")}
               </p>
-              <button
-                type="button"
-                disabled
-                className="mt-5 w-full border border-stone-950 bg-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.2em] text-[#f3eee7] opacity-70 sm:w-auto"
-              >
-                {t("paymentButton")}
-              </button>
+              {stripeConfigured ? (
+                <StripeCheckoutButton
+                  bookingId={booking.id}
+                  labels={{
+                    default: t("paymentButton"),
+                    error: t("paymentError"),
+                    pending: t("paymentRedirecting"),
+                  }}
+                  token={token}
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="mt-5 w-full border border-stone-950 bg-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.2em] text-[#f3eee7] opacity-50 sm:w-auto"
+                >
+                  {t("paymentUnavailableButton")}
+                </button>
+              )}
+            </div>
+          ) : null}
+
+          {booking.booking_status === "confirmed" ? (
+            <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {t("paymentTitle")}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                {t("reservationFeeReceived")}
+              </p>
             </div>
           ) : null}
 

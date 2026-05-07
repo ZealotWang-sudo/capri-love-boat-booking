@@ -16,13 +16,13 @@ const TOUR_LABELS = {
 const PRIMARY_STATUS_ACTIONS = {
   requested: {
     value: "checking_with_captain",
-    label: "Captain OKed",
+    label: "Contact captain",
     confirmMessage: "Mark this booking as checking with captain?",
     confirmTitle: "Update booking status?",
   },
   payment_pending: {
     value: "confirmed",
-    label: "Confirm",
+    label: "Confirm manually",
     confirmMessage: "Confirm this booking and mark payment as captured?",
     confirmTitle: "Confirm this booking?",
     variant: "primary",
@@ -67,9 +67,18 @@ const BOOKING_GROUPS = [
     },
   },
   {
+    id: "completed_trips",
+    title: "Completed trips",
+    statuses: ["completed"],
+    defaultOpen: false,
+    sort(bookings) {
+      return sortByDateDesc(bookings, "updated_at");
+    },
+  },
+  {
     id: "closed",
     title: "Closed / cancelled",
-    statuses: ["completed", "cancelled", "not_available", "expired"],
+    statuses: ["cancelled", "not_available", "expired"],
     defaultOpen: false,
     sort(bookings) {
       return sortByDateDesc(bookings, "updated_at");
@@ -77,7 +86,6 @@ const BOOKING_GROUPS = [
   },
 ];
 const CLOSED_BOOKING_STATUSES = new Set([
-  "completed",
   "cancelled",
   "not_available",
   "expired",
@@ -191,16 +199,11 @@ function StatusBadges({ booking }) {
 }
 
 function getPrimaryStatusAction(booking) {
-  if (CLOSED_BOOKING_STATUSES.has(booking.booking_status)) {
-    return {
-      actionType: "delete",
-      confirmLabel: "Delete booking",
-      confirmMessage:
-        "This permanently deletes the booking request and related email logs. This cannot be undone.",
-      confirmTitle: "Delete this closed booking?",
-      label: "Delete",
-      variant: "danger",
-    };
+  if (
+    CLOSED_BOOKING_STATUSES.has(booking.booking_status) ||
+    booking.booking_status === "completed"
+  ) {
+    return null;
   }
 
   if (
@@ -209,7 +212,7 @@ function getPrimaryStatusAction(booking) {
   ) {
     return {
       value: "captain_available",
-      label: "Captain OK",
+      label: "Captain available",
       confirmMessage:
         "Mark the captain as available and move this booking to payment pending?",
       confirmTitle: "Captain confirmed time?",
@@ -502,7 +505,7 @@ export default async function AdminPage() {
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
-      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, payment_status, captain_status, message, customer_cancelled_at, customer_cancel_reason",
+      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, payment_status, captain_status, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
     )
     .order("created_at", { ascending: false })
     .limit(50);

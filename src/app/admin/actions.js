@@ -16,6 +16,14 @@ const CLOSED_BOOKING_STATUSES = new Set([
   "not_available",
   "expired",
 ]);
+const CANCELLATION_TYPES = new Set([
+  "customer_requested",
+  "captain_unavailable",
+  "weather_or_safety",
+  "admin_decision",
+  "duplicate_or_test",
+  "other",
+]);
 const BOOKING_STATUS_UPDATES = {
   checking_with_captain: {
     booking_status: "checking_with_captain",
@@ -107,6 +115,7 @@ async function getAdminSupabaseClient() {
 export async function updateBookingOperationalStatus(formData) {
   const bookingId = getFormText(formData, "bookingId");
   const cancellationReason = getFormText(formData, "cancellationReason");
+  const cancellationType = getFormText(formData, "cancellationType");
   const statusAction = getFormText(formData, "statusAction");
   const updateFields = BOOKING_STATUS_UPDATES[statusAction];
 
@@ -114,8 +123,12 @@ export async function updateBookingOperationalStatus(formData) {
     throw new Error("Invalid booking status update.");
   }
 
-  if (statusAction === "cancelled" && !cancellationReason) {
-    throw new Error("Cancellation reason is required.");
+  if (statusAction === "cancelled" && !CANCELLATION_TYPES.has(cancellationType)) {
+    throw new Error("Cancellation type is required.");
+  }
+
+  if (statusAction === "captain_not_available" && !cancellationReason) {
+    throw new Error("Not available reason is required.");
   }
 
   const supabase = await getAdminSupabaseClient();
@@ -125,7 +138,16 @@ export async function updateBookingOperationalStatus(formData) {
   };
 
   if (statusAction === "cancelled") {
-    updatePayload.customer_cancel_reason = cancellationReason;
+    updatePayload.cancelled_at = new Date().toISOString();
+    updatePayload.cancelled_by = "admin";
+    updatePayload.cancellation_reason = cancellationReason || null;
+    updatePayload.cancellation_type = cancellationType;
+  }
+
+  if (statusAction === "captain_not_available") {
+    updatePayload.cancellation_reason = cancellationReason;
+    updatePayload.cancellation_type = "captain_unavailable";
+    updatePayload.cancelled_by = "captain";
   }
 
   const { data: updatedBooking, error } = await supabase
@@ -133,7 +155,7 @@ export async function updateBookingOperationalStatus(formData) {
     .update(updatePayload)
     .eq("id", bookingId)
     .select(
-      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, customer_manage_token",
+      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, customer_manage_token, cancellation_reason",
     )
     .single();
 
@@ -151,7 +173,6 @@ export async function updateBookingOperationalStatus(formData) {
     const emailResult = await sendBookingEmail({
       booking: {
         ...updatedBooking,
-        cancellation_reason: cancellationReason,
         manage_url: manageUrl,
       },
       eventType: emailEventType,

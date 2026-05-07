@@ -7,29 +7,42 @@ import CopyCaptainMessageButton from "./CopyCaptainMessageButton";
 const STATUS_ACTIONS = [
   {
     value: "checking_with_captain",
-    label: "Time Slot Under Review",
+    label: "Contact captain",
     confirmMessage: "Mark this booking as checking with captain?",
     confirmTitle: "Update booking status?",
+    showWhen: { booking_status: "requested" },
   },
   {
     value: "captain_available",
-    label: "Captain Confirmed Time",
+    label: "Captain available",
     confirmMessage:
       "Mark the captain as available and move this booking to payment pending?",
     confirmTitle: "Captain confirmed time?",
+    showWhen: {
+      booking_status: "checking_with_captain",
+      captain_status: "pending",
+    },
   },
   {
     value: "captain_not_available",
     label: "Captain not available",
     confirmMessage: "Mark this booking as not available?",
     confirmTitle: "Captain not available?",
+    cancellationTypeDefault: "captain_unavailable",
+    cancellationTypeFieldName: "cancellationType",
+    reasonFieldName: "cancellationReason",
+    reasonLabel: "Reason",
+    reasonPlaceholder: "Tell the customer why this time is not available.",
+    reasonRequired: true,
+    showWhen: { booking_status: "checking_with_captain" },
     variant: "danger",
   },
   {
     value: "confirmed",
-    label: "Booking Deposit Paid",
+    label: "Mark confirmed manually",
     confirmMessage: "Confirm this booking and mark payment as captured?",
     confirmTitle: "Confirm this booking?",
+    showWhen: { booking_status: "payment_pending" },
     variant: "primary",
   },
   {
@@ -41,32 +54,43 @@ const STATUS_ACTIONS = [
   },
   {
     value: "cancelled",
-    label: "Cancel booking",
+    label: "Cancel request",
+    cancellationTypeFieldName: "cancellationType",
+    cancellationTypeLabel: "Cancellation type",
     confirmMessage: "Cancel this booking request?",
     confirmTitle: "Cancel this booking?",
     reasonFieldName: "cancellationReason",
     reasonLabel: "Reason for cancellation",
-    reasonPlaceholder: "Tell the customer why this booking is being cancelled.",
-    reasonRequired: true,
+    reasonPlaceholder: "Optional note to include in the customer email.",
+    showWhenStatuses: ["requested", "checking_with_captain", "payment_pending"],
     variant: "danger",
   },
   {
-    actionType: "delete",
-    label: "Delete booking",
-    confirmLabel: "Delete booking",
+    value: "cancelled",
+    label: "Cancel booking",
+    cancellationTypeFieldName: "cancellationType",
+    cancellationTypeLabel: "Cancellation type",
+    confirmLabel: "Cancel booking",
     confirmMessage:
-      "This permanently deletes the booking request and related email logs. This cannot be undone.",
-    confirmTitle: "Delete this closed booking?",
-    showWhenStatuses: ["completed", "cancelled", "not_available", "expired"],
+      "Cancel this confirmed booking? The customer will receive a cancellation email.",
+    confirmTitle: "Cancel confirmed booking?",
+    reasonFieldName: "cancellationReason",
+    reasonLabel: "Reason for cancellation",
+    reasonPlaceholder: "Optional note to include in the customer email.",
+    refundWarning:
+      "Reservation fee has already been paid. Refund must be handled manually in Stripe for now.",
+    showWhen: { booking_status: "confirmed" },
     variant: "danger",
   },
 ];
-const CLOSED_BOOKING_STATUSES = new Set([
-  "completed",
-  "cancelled",
-  "not_available",
-  "expired",
-]);
+const CANCELLATION_TYPE_OPTIONS = [
+  { label: "Customer requested", value: "customer_requested" },
+  { label: "Captain unavailable", value: "captain_unavailable" },
+  { label: "Weather or safety", value: "weather_or_safety" },
+  { label: "Admin decision", value: "admin_decision" },
+  { label: "Duplicate or test", value: "duplicate_or_test" },
+  { label: "Other", value: "other" },
+];
 
 function formatValue(value) {
   return value || "-";
@@ -101,11 +125,15 @@ function DetailItem({ label, value }) {
   );
 }
 
-function StatusActionForm({ action, bookingId }) {
+function StatusActionForm({ action, booking }) {
   return (
     <AdminActionForm
       actionType={action.actionType}
-      bookingId={bookingId}
+      bookingId={booking.id}
+      cancellationTypeDefault={action.cancellationTypeDefault}
+      cancellationTypeFieldName={action.cancellationTypeFieldName}
+      cancellationTypeLabel={action.cancellationTypeLabel}
+      cancellationTypeOptions={CANCELLATION_TYPE_OPTIONS}
       confirmLabel={action.confirmLabel}
       confirmMessage={action.confirmMessage}
       confirmTitle={action.confirmTitle}
@@ -116,15 +144,16 @@ function StatusActionForm({ action, bookingId }) {
       reasonRequired={action.reasonRequired}
       statusAction={action.value}
       variant={action.variant}
+      warningNotice={
+        action.refundWarning && booking.payment_status === "captured"
+          ? action.refundWarning
+          : undefined
+      }
     />
   );
 }
 
 function shouldShowStatusAction(action, booking) {
-  if (CLOSED_BOOKING_STATUSES.has(booking.booking_status)) {
-    return !["cancelled", "captain_not_available"].includes(action.value);
-  }
-
   if (!action.showWhen) {
     return action.showWhenStatuses
       ? action.showWhenStatuses.includes(booking.booking_status)
@@ -140,8 +169,15 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
   const [isOpen, setIsOpen] = useState(false);
   const whatsappHref = getWhatsappHref(booking.phone);
   const showCancellationDetails =
-    CLOSED_BOOKING_STATUSES.has(booking.booking_status) &&
-    (booking.customer_cancel_reason || booking.customer_cancelled_at);
+    booking.cancellation_reason ||
+    booking.cancellation_type ||
+    booking.cancelled_at ||
+    booking.cancelled_by ||
+    booking.customer_cancel_reason ||
+    booking.customer_cancelled_at;
+  const availableActions = STATUS_ACTIONS.filter((action) =>
+    shouldShowStatusAction(action, booking),
+  );
 
   return (
     <>
@@ -276,8 +312,22 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                     value={booking.customer_cancelled_at}
                   />
                 ) : null}
+                {booking.cancelled_at ? (
+                  <DetailItem label="Cancelled at" value={booking.cancelled_at} />
+                ) : null}
+                {booking.cancelled_by ? (
+                  <DetailItem label="Cancelled by" value={booking.cancelled_by} />
+                ) : null}
+                {booking.cancellation_type ? (
+                  <DetailItem
+                    label="Cancellation type"
+                    value={booking.cancellation_type}
+                  />
+                ) : null}
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-700">
-                  {formatValue(booking.customer_cancel_reason)}
+                  {formatValue(
+                    booking.cancellation_reason || booking.customer_cancel_reason,
+                  )}
                 </p>
               </section>
             ) : null}
@@ -298,17 +348,21 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
               <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
                 Manual actions
               </h3>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {STATUS_ACTIONS.filter((action) =>
-                  shouldShowStatusAction(action, booking),
-                ).map((action) => (
-                  <StatusActionForm
-                    key={action.value ?? action.actionType}
-                    action={action}
-                    bookingId={booking.id}
-                  />
-                ))}
-              </div>
+              {availableActions.length > 0 ? (
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {availableActions.map((action) => (
+                    <StatusActionForm
+                      key={action.value ?? action.actionType}
+                      action={action}
+                      booking={booking}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-stone-500">
+                  No manual action buttons for this booking.
+                </p>
+              )}
             </section>
           </div>
         </div>

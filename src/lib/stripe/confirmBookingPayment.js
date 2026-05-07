@@ -1,0 +1,98 @@
+import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
+import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
+import { getStripe } from "@/lib/stripe/server";
+
+function getPaymentIntentId(paymentIntent) {
+  if (!paymentIntent) {
+    return null;
+  }
+
+  return typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
+}
+
+export async function confirmBookingPaymentFromSession({
+  bookingId,
+  session,
+  sessionId,
+  token,
+}) {
+  const checkoutSession =
+    session ??
+    (sessionId
+      ? await getStripe().checkout.sessions.retrieve(sessionId)
+      : null);
+
+  if (!checkoutSession?.id || checkoutSession.payment_status !== "paid") {
+    return { confirmed: false, reason: "checkout session is not paid" };
+  }
+
+  const supabase = createSupabaseServiceRoleServerClient();
+  let query = supabase
+    .from("bookings")
+    .select(
+      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status",
+    )
+    .eq("stripe_checkout_session_id", checkoutSession.id);
+
+  if (bookingId) {
+    query = query.eq("id", bookingId);
+  }
+
+  if (token) {
+    query = query.eq("customer_manage_token", token);
+  }
+
+  const { data: booking, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error("[stripe payment confirm] Could not load booking", error.message);
+    throw new Error("Could not load booking for checkout session.");
+  }
+
+  if (!booking) {
+    return { confirmed: false, reason: "booking not found" };
+  }
+
+  if (booking.booking_status === "confirmed") {
+    return { confirmed: false, reason: "booking already confirmed" };
+  }
+
+  const { data: updatedBooking, error: updateError } = await supabase
+    .from("bookings")
+    .update({
+      booking_status: "confirmed",
+      payment_status: "captured",
+      stripe_payment_intent_id: getPaymentIntentId(checkoutSession.payment_intent),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", booking.id)
+    .neq("booking_status", "confirmed")
+    .select(
+      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status",
+    )
+    .maybeSingle();
+
+  if (updateError) {
+    console.error("[stripe payment confirm] Could not confirm booking", updateError.message);
+    throw new Error("Could not confirm booking.");
+  }
+
+  if (!updatedBooking) {
+    return { confirmed: false, reason: "booking already confirmed" };
+  }
+
+  const emailResult = await sendBookingEmail({
+    booking: updatedBooking,
+    eventType: "booking_confirmed",
+    supabase,
+  });
+
+  if (!emailResult.sent) {
+    console.error("[stripe payment confirm] Confirmation email was not sent", {
+      bookingId: updatedBooking.id,
+      reason: emailResult.reason,
+    });
+  }
+
+  return { confirmed: true };
+}

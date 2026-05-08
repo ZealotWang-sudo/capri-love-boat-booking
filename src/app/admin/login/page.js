@@ -4,14 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-function getNextPath() {
-  if (typeof window === "undefined") {
-    return "/admin";
-  }
+const SUPABASE_AUTH_COOKIE_NAME = "sb-ubmpyxqsnqmvzrrvlogq-auth-token";
 
-  const nextPath = new URLSearchParams(window.location.search).get("next");
-
-  return nextPath?.startsWith("/admin") ? nextPath : "/admin";
+function wait(milliseconds) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
 }
 
 export default function AdminLoginPage() {
@@ -42,16 +40,22 @@ export default function AdminLoginPage() {
     }
 
     const {
-      data: { session },
+      data: sessionData,
     } = await supabase.auth.getSession();
-    const nextPath = getNextPath();
+
+    await wait(500);
 
     console.info("[admin login] Client session exists after sign in", {
-      hasSession: Boolean(session),
-      userEmail: session?.user?.email ?? null,
+      authCookiePresent: document.cookie.includes(SUPABASE_AUTH_COOKIE_NAME),
+      hasSession: Boolean(sessionData.session),
+      storageKeys: Object.keys(localStorage).filter(
+        (key) => key.includes("supabase") || key.includes("sb-"),
+      ),
+      userEmail: sessionData.session?.user?.email ?? null,
     });
 
-    window.location.assign(nextPath);
+    router.push("/admin");
+    router.refresh();
   }
 
   return (

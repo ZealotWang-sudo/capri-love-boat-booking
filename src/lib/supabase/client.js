@@ -14,5 +14,12 @@ export function createSupabaseBrowserClient() {
     );
   }
 
-  return createBrowserClient(supabaseUrl, supabaseKey);
+  return createBrowserClient(supabaseUrl, supabaseKey, {
+    cookieOptions: {
+      name: "sb-ubmpyxqsnqmvzrrvlogq-auth-token",
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+    },
+  });
 }

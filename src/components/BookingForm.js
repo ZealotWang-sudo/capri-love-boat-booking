@@ -7,6 +7,23 @@ import PhoneInput from "@/components/PhoneInput";
 import PolicyContent from "@/components/PolicyContent";
 import StyledCheckbox from "@/components/StyledCheckbox";
 
+const FALLBACK_ALTERNATIVE_TOUR_COPY = {
+  en: {
+    message:
+      "Your selected tour type is fully booked at this time on this date, but another tour type is still available: {tours}.",
+    switchButton: "Switch to another tour type",
+  },
+  zh: {
+    message: "这个日期所选行程类型在当前时间段已满，但还有其他行程类型可预约：{tours}。",
+    switchButton: "切换到其他行程类型",
+  },
+  it: {
+    message:
+      "Il tipo di tour selezionato e al completo per questo orario in questa data, ma un altro tipo di tour e ancora disponibile: {tours}.",
+    switchButton: "Passa a un altro tipo di tour",
+  },
+};
+
 export default function BookingForm({ locale, labels }) {
   const router = useRouter();
   const policyScrollRef = useRef(null);
@@ -23,10 +40,11 @@ export default function BookingForm({ locale, labels }) {
   const [selectedTime, setSelectedTime] = useState("");
   const [calendarMonth, setCalendarMonth] = useState("");
   const [availability, setAvailability] = useState({
+    alternativeAvailableDates: [],
+    alternativeTourTypesByDate: {},
     blockedSlotsByDate: {},
     fullyBookedDates: [],
     month: "",
-    partiallyBookedDates: [],
     tourType: "",
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
@@ -62,11 +80,32 @@ export default function BookingForm({ locale, labels }) {
     availability.tourType === availabilityTourType
       ? availability.fullyBookedDates
       : [];
-  const partiallyBookedDates =
+  const alternativeAvailableDates =
     availability.month === calendarMonth &&
     availability.tourType === availabilityTourType
-      ? availability.partiallyBookedDates
+      ? availability.alternativeAvailableDates
       : [];
+  const alternativeTourTypesForSelectedDate =
+    selectedDate &&
+    availability.month === calendarMonth &&
+    availability.tourType === availabilityTourType
+      ? (availability.alternativeTourTypesByDate[selectedDate] ?? [])
+      : [];
+  const alternativeTourOptionsForSelectedDate = labels.tourOptions.filter((option) =>
+    alternativeTourTypesForSelectedDate.includes(option.value),
+  );
+  const alternativeTourLabels = alternativeTourOptionsForSelectedDate
+    .map((option) => option.label)
+    .join(", ");
+  const fallbackAlternativeTourCopy =
+    FALLBACK_ALTERNATIVE_TOUR_COPY[locale] ?? FALLBACK_ALTERNATIVE_TOUR_COPY.en;
+  const otherTourAvailableMessage =
+    labels.otherTourAvailableMessage?.startsWith("Booking.")
+      ? fallbackAlternativeTourCopy.message
+      : labels.otherTourAvailableMessage;
+  const switchToTourLabel = labels.switchToTour?.startsWith("Booking.")
+    ? fallbackAlternativeTourCopy.switchButton
+    : labels.switchToTour;
   const allTimeSlotsBlocked =
     selectedTourOption?.timeSlots.length > 0 &&
     selectedTourOption.timeSlots.every((timeSlot) =>
@@ -75,6 +114,16 @@ export default function BookingForm({ locale, labels }) {
   const handleCalendarMonthChange = useCallback((month) => {
     setCalendarMonth(month);
   }, []);
+
+  function selectTour(tourValue, { clearDate = true } = {}) {
+    setSelectedTour(tourValue);
+    if (clearDate) {
+      setSelectedDate("");
+    }
+    setSelectedTime("");
+    setDateError(false);
+    setSubmitError("");
+  }
 
   function handlePolicyScroll(event) {
     const element = event.currentTarget;
@@ -111,10 +160,11 @@ export default function BookingForm({ locale, labels }) {
 
         const data = await response.json();
         const nextAvailability = {
+          alternativeAvailableDates: data.alternativeAvailableDates ?? [],
+          alternativeTourTypesByDate: data.alternativeTourTypesByDate ?? {},
           blockedSlotsByDate: data.blockedSlotsByDate ?? {},
           fullyBookedDates: data.fullyBookedDates ?? [],
           month: calendarMonth,
-          partiallyBookedDates: data.partiallyBookedDates ?? [],
           tourType: availabilityTourType,
         };
 
@@ -365,12 +415,9 @@ export default function BookingForm({ locale, labels }) {
               value={option.value}
               label={option.label}
               required
+              checked={selectedTour === option.value}
               onChange={() => {
-                setSelectedTour(option.value);
-                setSelectedDate("");
-                setSelectedTime("");
-                setDateError(false);
-                setSubmitError("");
+                selectTour(option.value);
               }}
             />
           ))}
@@ -422,6 +469,7 @@ export default function BookingForm({ locale, labels }) {
         <section className="border-t border-stone-300 pt-6">
           <AvailabilityCalendar
             key={selectedTour}
+            alternativeAvailableDates={alternativeAvailableDates}
             fullyBookedDates={fullyBookedDates}
             label={labels.stepChooseDate}
             labels={labels.calendar}
@@ -432,7 +480,7 @@ export default function BookingForm({ locale, labels }) {
               setSelectedDate(date);
               setSelectedTime("");
             }}
-            partiallyBookedDates={partiallyBookedDates}
+            value={selectedDate}
           />
         </section>
       ) : null}
@@ -476,9 +524,32 @@ export default function BookingForm({ locale, labels }) {
             : labels.timeConfirmationNote}
         </p>
         {selectedTourOption && selectedDate && allTimeSlotsBlocked ? (
-          <p className="mt-3 text-sm leading-6 text-red-900">
-            {labels.allTimeSlotsBooked}
-          </p>
+          <div
+            className={`mt-3 border p-4 text-sm leading-6 ${
+              alternativeTourOptionsForSelectedDate.length > 0
+                ? "border-amber-200 bg-amber-50 text-amber-950"
+                : "border-red-200 bg-red-50 text-red-900"
+            }`}
+          >
+            <p>
+              {alternativeTourOptionsForSelectedDate.length > 0
+                ? otherTourAvailableMessage.replace("{tours}", alternativeTourLabels)
+                : labels.allTimeSlotsBooked}
+            </p>
+            {alternativeTourOptionsForSelectedDate.length > 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  selectTour(alternativeTourOptionsForSelectedDate[0].value, {
+                    clearDate: false,
+                  })
+                }
+                className="mt-3 border border-amber-700 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-amber-950 transition hover:bg-amber-700 hover:text-white"
+              >
+                {switchToTourLabel}
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </section>
 

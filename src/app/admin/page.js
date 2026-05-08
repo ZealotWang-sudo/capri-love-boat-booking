@@ -1,10 +1,10 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import AdminActionForm from "./AdminActionForm";
+import AdminHeader from "./AdminHeader";
 import AdminBookingDetails from "./AdminBookingDetails";
+import { getAdminUser, isAllowedAdmin } from "./auth";
+import UnauthorizedAdmin from "./UnauthorizedAdmin";
 
-const ADMIN_EMAIL = "wangkexin-personal@outlook.com";
 const TOUR_LABELS = {
   three_hours: "3 hours",
   four_hours: "4 hours",
@@ -13,29 +13,6 @@ const TOUR_LABELS = {
   two_hours: "2 hours",
   special_request: "Special request",
 };
-const ADMIN_TOOL_LINKS = [
-  {
-    href: "/admin/email-preview",
-    isInternal: true,
-    label: "Email Preview",
-  },
-  {
-    href: "https://dashboard.stripe.com/acct_1TUI4bGni59g0iEs/dashboard",
-    label: "Stripe",
-  },
-  {
-    href: "https://vercel.com/zealotwang-sudos-projects/capri-love-boat-booking-fszh",
-    label: "Vercel",
-  },
-  {
-    href: "https://resend.com/emails",
-    label: "Resend",
-  },
-  {
-    href: "https://supabase.com/dashboard/project/ubmpyxqsnqmvzrrvlogq",
-    label: "Supabase",
-  },
-];
 const PRIMARY_STATUS_ACTIONS = {
   requested: {
     value: "checking_with_captain",
@@ -217,34 +194,6 @@ function StatusBadges({ booking }) {
       />
       <StatusBadge label="Payment" value={booking.payment_status} />
       <StatusBadge label="Captain" value={booking.captain_status} />
-    </div>
-  );
-}
-
-function AdminToolLinks() {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {ADMIN_TOOL_LINKS.map((toolLink) => (
-        toolLink.isInternal ? (
-          <Link
-            key={toolLink.href}
-            href={toolLink.href}
-            className="border border-stone-300 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
-          >
-            {toolLink.label}
-          </Link>
-        ) : (
-          <a
-            key={toolLink.href}
-            href={toolLink.href}
-            target="_blank"
-            rel="noreferrer"
-            className="border border-stone-300 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
-          >
-            {toolLink.label}
-          </a>
-        )
-      ))}
     </div>
   );
 }
@@ -520,41 +469,13 @@ function BookingGroup({ group }) {
 }
 
 export default async function AdminPage() {
+  const user = await getAdminUser("/admin");
+
+  if (!isAllowedAdmin(user)) {
+    return <UnauthorizedAdmin />;
+  }
+
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login?next=/admin");
-  }
-
-  if (user.email?.toLowerCase() !== ADMIN_EMAIL) {
-    return (
-      <main className="min-h-screen bg-[#f3eee7] px-5 py-16 text-stone-950 sm:px-8">
-        <section className="mx-auto max-w-3xl border-t border-stone-300 pt-10">
-          <p className="brand-logo text-xs text-stone-500">
-            Capri Love Boat Admin
-          </p>
-          <h1 className="mt-8 text-4xl font-light tracking-[-0.03em]">
-            Unauthorized
-          </h1>
-          <p className="mt-6 text-stone-600">
-            This account does not have access to the admin area.
-          </p>
-          <form action="/admin/logout" method="post">
-            <button
-              type="submit"
-              className="mt-10 border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
-            >
-              Sign out
-            </button>
-          </form>
-        </section>
-      </main>
-    );
-  }
-
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
@@ -568,30 +489,11 @@ export default async function AdminPage() {
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
       <section className="mx-auto max-w-7xl">
-        <div className="flex flex-col justify-between gap-6 border-b border-stone-300 pb-8 sm:flex-row sm:items-end">
-          <div>
-            <p className="brand-logo text-xs text-stone-500">
-              Capri Love Boat Admin
-            </p>
-            <h1 className="mt-5 text-4xl font-light tracking-[-0.03em]">
-              Booking requests
-            </h1>
-            <p className="mt-3 text-sm text-stone-600">
-              Signed in as {user.email}
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-3 sm:items-end">
-            <AdminToolLinks />
-            <form action="/admin/logout" method="post">
-              <button
-                type="submit"
-                className="border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
+        <AdminHeader
+          active="bookings"
+          title="Booking requests"
+          userEmail={user.email}
+        />
 
         {error ? (
           <div className="mt-8 border border-red-900/30 bg-red-50 p-5 text-sm text-red-900">

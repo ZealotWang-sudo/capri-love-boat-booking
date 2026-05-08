@@ -82,6 +82,16 @@ const STATUS_ACTIONS = [
     showWhen: { booking_status: "confirmed" },
     variant: "danger",
   },
+  {
+    actionType: "delete",
+    label: "Delete booking",
+    confirmLabel: "Delete permanently",
+    confirmMessage:
+      "Permanently delete this closed booking from the admin list? This cannot be undone.",
+    confirmTitle: "Delete this booking?",
+    showWhenStatuses: ["completed", "cancelled", "not_available", "expired"],
+    variant: "danger",
+  },
 ];
 const CANCELLATION_TYPE_OPTIONS = [
   { label: "Customer requested", value: "customer_requested" },

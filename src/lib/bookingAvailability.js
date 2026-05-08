@@ -25,6 +25,35 @@ export const TIME_SLOT_WINDOWS = {
   sunset: { start: "18:00", end: "18:00" },
 };
 
+export const BOOKING_TIME_SLOT_ORDER = [
+  "morning_0930",
+  "morning_1000",
+  "afternoon_1330",
+  "afternoon_1400",
+  "sunset_1800",
+];
+
+export const BOOKING_SCHEDULE_PERIODS = [
+  {
+    id: "morning",
+    label: "Morning schedule",
+    timeRange: "Starts at 09:30",
+    timeSlots: ["morning_0930", "morning_1000"],
+  },
+  {
+    id: "afternoon",
+    label: "Afternoon schedule",
+    timeRange: "Starts at 13:30",
+    timeSlots: ["afternoon_1330", "afternoon_1400"],
+  },
+  {
+    id: "sunset",
+    label: "Sunset schedule",
+    timeRange: "Starts at 18:00",
+    timeSlots: ["sunset_1800"],
+  },
+];
+
 export const TOUR_TIME_SLOTS = {
   two_hours: [
     "morning_0930",

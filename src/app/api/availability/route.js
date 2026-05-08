@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
 import {
+  getManualBlockedTimeSlots,
+  groupUnavailableSlotsByDate,
+  isUnavailableSlotsTableMissing,
+} from "@/lib/adminUnavailableSlots";
+import {
   ACTIVE_BOOKING_STATUSES,
   getBlockedTimeSlots,
   getValidTimeSlotsForTour,
 } from "@/lib/bookingAvailability";
+
+const CUSTOMER_TOUR_TYPES = [
+  "three_hours",
+  "four_hours",
+  "sunset_three_hours",
+  "five_hours",
+];
 
 function jsonError(message, status = 400, details) {
   console.error("[availability API]", message, details);
@@ -42,14 +54,41 @@ function getMonthRange(month) {
   return { endDate, startDate };
 }
 
-function buildAvailability(existingBookings, tourType, dates) {
+function getBlockedSlotsForTour({
+  date,
+  existingBookings,
+  tourType,
+  unavailableSlotsByDate,
+}) {
   const validTimeSlots = getValidTimeSlotsForTour(tourType);
+  return Array.from(
+    new Set([
+      ...getBlockedTimeSlots(existingBookings, tourType, date),
+      ...getManualBlockedTimeSlots({
+        date,
+        unavailableSlotsByDate,
+        validTimeSlots,
+      }),
+    ]),
+  );
+}
+
+function buildAvailability(existingBookings, unavailableSlots, tourType, dates) {
+  const validTimeSlots = getValidTimeSlotsForTour(tourType);
+  const unavailableSlotsByDate = groupUnavailableSlotsByDate(unavailableSlots);
+  const alternativeAvailableDates = [];
+  const alternativeTourTypesByDate = {};
   const blockedSlotsByDate = {};
   const fullyBookedDates = [];
   const partiallyBookedDates = [];
 
   dates.forEach((date) => {
-    const blockedTimeSlots = getBlockedTimeSlots(existingBookings, tourType, date);
+    const blockedTimeSlots = getBlockedSlotsForTour({
+      date,
+      existingBookings,
+      tourType,
+      unavailableSlotsByDate,
+    });
     blockedSlotsByDate[date] = blockedTimeSlots;
 
     if (
@@ -57,12 +96,45 @@ function buildAvailability(existingBookings, tourType, dates) {
       blockedTimeSlots.length === validTimeSlots.length
     ) {
       fullyBookedDates.push(date);
+
+      const alternativeTourTypes = CUSTOMER_TOUR_TYPES.filter(
+        (alternativeTourType) => {
+          if (alternativeTourType === tourType) {
+            return false;
+          }
+
+          const alternativeValidTimeSlots =
+            getValidTimeSlotsForTour(alternativeTourType);
+          const alternativeBlockedTimeSlots = getBlockedSlotsForTour({
+            date,
+            existingBookings,
+            tourType: alternativeTourType,
+            unavailableSlotsByDate,
+          });
+
+          return (
+            alternativeValidTimeSlots.length > 0 &&
+            alternativeBlockedTimeSlots.length < alternativeValidTimeSlots.length
+          );
+        },
+      );
+
+      if (alternativeTourTypes.length > 0) {
+        alternativeAvailableDates.push(date);
+        alternativeTourTypesByDate[date] = alternativeTourTypes;
+      }
     } else if (blockedTimeSlots.length > 0) {
       partiallyBookedDates.push(date);
     }
   });
 
-  return { blockedSlotsByDate, fullyBookedDates, partiallyBookedDates };
+  return {
+    alternativeAvailableDates,
+    alternativeTourTypesByDate,
+    blockedSlotsByDate,
+    fullyBookedDates,
+    partiallyBookedDates,
+  };
 }
 
 export async function GET(request) {
@@ -100,6 +172,18 @@ export async function GET(request) {
     });
   }
 
+  const { data: unavailableSlots, error: unavailableSlotsError } = await supabase
+    .from("admin_unavailable_slots")
+    .select("date, time_slot")
+    .gte("date", range.startDate)
+    .lte("date", range.endDate);
+
+  if (unavailableSlotsError && !isUnavailableSlotsTableMissing(unavailableSlotsError)) {
+    return jsonError("Could not load manual unavailable slots.", 500, {
+      message: unavailableSlotsError.message,
+    });
+  }
+
   const dates = date
     ? [date]
     : Array.from(
@@ -107,7 +191,12 @@ export async function GET(request) {
         (_, index) =>
           `${month}-${String(index + 1).padStart(2, "0")}`,
       );
-  const availability = buildAvailability(existingBookings ?? [], tourType, dates);
+  const availability = buildAvailability(
+    existingBookings ?? [],
+    unavailableSlotsError ? [] : unavailableSlots,
+    tourType,
+    dates,
+  );
 
   return NextResponse.json({
     success: true,

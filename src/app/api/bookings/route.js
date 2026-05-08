@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import { isUnavailableSlotsTableMissing } from "@/lib/adminUnavailableSlots";
 import {
   ACTIVE_BOOKING_STATUSES,
   bookingOverlapsSelection,
@@ -185,6 +186,23 @@ export async function POST(request) {
     return jsonError("Could not check booking availability.", 500, {
       message: availabilityError.message,
     });
+  }
+
+  const { data: unavailableSlot, error: unavailableSlotError } = await supabase
+    .from("admin_unavailable_slots")
+    .select("date")
+    .eq("date", requestedDate)
+    .eq("time_slot", timeSlot)
+    .maybeSingle();
+
+  if (unavailableSlotError && !isUnavailableSlotsTableMissing(unavailableSlotError)) {
+    return jsonError("Could not check manual unavailable slots.", 500, {
+      message: unavailableSlotError.message,
+    });
+  }
+
+  if (unavailableSlot) {
+    return jsonError("Selected time is no longer available.", 409);
   }
 
   const hasOverlap = (existingBookings ?? []).some((existingBooking) =>

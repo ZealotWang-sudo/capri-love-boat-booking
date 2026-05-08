@@ -510,11 +510,6 @@ export default async function AdminPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  console.info("[admin page] Server auth user", {
-    hasUser: Boolean(user),
-    userEmail: user?.email ?? null,
-  });
-
   if (!user) {
     redirect("/admin/login?next=/admin");
   }
@@ -532,12 +527,14 @@ export default async function AdminPage() {
           <p className="mt-6 text-stone-600">
             This account does not have access to the admin area.
           </p>
-          <Link
-            href="/admin/logout"
-            className="mt-10 inline-block border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
-          >
-            Sign out
-          </Link>
+          <form action="/admin/logout" method="post">
+            <button
+              type="submit"
+              className="mt-10 border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
+            >
+              Sign out
+            </button>
+          </form>
         </section>
       </main>
     );
@@ -570,12 +567,14 @@ export default async function AdminPage() {
           </div>
           <div className="flex flex-col items-start gap-3 sm:items-end">
             <AdminToolLinks />
-            <Link
-              href="/admin/logout"
-              className="border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
-            >
-              Sign out
-            </Link>
+            <form action="/admin/logout" method="post">
+              <button
+                type="submit"
+                className="border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
 

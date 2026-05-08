@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { SUPABASE_AUTH_COOKIE_OPTIONS } from "./cookies";
 
 function getSupabaseConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,6 +24,7 @@ export async function updateSupabaseSession(request, response) {
   const { supabaseKey, supabaseUrl } = getSupabaseConfig();
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookieOptions: SUPABASE_AUTH_COOKIE_OPTIONS,
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -43,19 +45,7 @@ export async function updateSupabaseSession(request, response) {
     },
   });
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    console.info("[supabase middleware] Admin session refresh", {
-      hasUser: Boolean(user),
-      path: request.nextUrl.pathname,
-      userEmail: user?.email ?? null,
-      error: error?.message ?? null,
-    });
-  }
+  await supabase.auth.getUser();
 
   return supabaseResponse;
 }

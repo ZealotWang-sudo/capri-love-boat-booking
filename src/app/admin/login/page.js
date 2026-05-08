@@ -4,14 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const SUPABASE_AUTH_COOKIE_NAME = "sb-ubmpyxqsnqmvzrrvlogq-auth-token";
-
-function wait(milliseconds) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
-}
-
 export default function AdminLoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -38,21 +30,6 @@ export default function AdminLoginPage() {
       setIsSubmitting(false);
       return;
     }
-
-    const {
-      data: sessionData,
-    } = await supabase.auth.getSession();
-
-    await wait(500);
-
-    console.info("[admin login] Client session exists after sign in", {
-      authCookiePresent: document.cookie.includes(SUPABASE_AUTH_COOKIE_NAME),
-      hasSession: Boolean(sessionData.session),
-      storageKeys: Object.keys(localStorage).filter(
-        (key) => key.includes("supabase") || key.includes("sb-"),
-      ),
-      userEmail: sessionData.session?.user?.email ?? null,
-    });
 
     router.push("/admin");
     router.refresh();

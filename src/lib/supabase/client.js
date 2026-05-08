@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { SUPABASE_AUTH_COOKIE_OPTIONS } from "./cookies";
 
 export function createSupabaseBrowserClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,11 +16,6 @@ export function createSupabaseBrowserClient() {
   }
 
   return createBrowserClient(supabaseUrl, supabaseKey, {
-    cookieOptions: {
-      name: "sb-ubmpyxqsnqmvzrrvlogq-auth-token",
-      path: "/",
-      sameSite: "lax",
-      secure: true,
-    },
+    cookieOptions: SUPABASE_AUTH_COOKIE_OPTIONS,
   });
 }

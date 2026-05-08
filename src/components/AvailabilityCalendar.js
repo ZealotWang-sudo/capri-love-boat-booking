@@ -92,9 +92,14 @@ export default function AvailabilityCalendar({
         <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
           {label}
         </label>
-        <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-          {selectedDate || labels.selectDate}
-        </p>
+        <div className="text-right">
+          <p className="text-[0.65rem] uppercase tracking-[0.18em] text-stone-500">
+            {labels.selectDate}
+          </p>
+          <p className="mt-1 border border-stone-950 bg-stone-950 px-3 py-1.5 text-sm font-medium tracking-[0.08em] text-[#f3eee7]">
+            {selectedDate || "—"}
+          </p>
+        </div>
       </div>
 
       <div className="mt-3 border border-stone-300 bg-[#f3eee7]/40 p-4">

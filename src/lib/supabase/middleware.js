@@ -43,7 +43,19 @@ export async function updateSupabaseSession(request, response) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    console.info("[supabase middleware] Admin session refresh", {
+      hasUser: Boolean(user),
+      path: request.nextUrl.pathname,
+      userEmail: user?.email ?? null,
+      error: error?.message ?? null,
+    });
+  }
 
   return supabaseResponse;
 }

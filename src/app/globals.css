@@ -28,3 +28,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.font-display {
+  font-family: "Times New Roman", Georgia, serif;
+  font-weight: 400;
+}
+
+.brand-logo {
+  font-family: "Times New Roman", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}

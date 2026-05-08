@@ -6,7 +6,7 @@ export default function SiteHeader({ brand, locale, path = "" }) {
     <header className="relative z-10 mx-auto flex h-20 w-full max-w-7xl items-center justify-between gap-4 px-8">
       <Link
         href={`/${locale}`}
-        className="shrink-0 text-xs uppercase tracking-[0.22em] sm:text-sm sm:tracking-[0.28em]"
+        className="brand-logo shrink-0 text-xs sm:text-sm"
       >
         {brand}
       </Link>

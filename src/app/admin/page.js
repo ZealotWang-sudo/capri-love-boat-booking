@@ -13,6 +13,24 @@ const TOUR_LABELS = {
   two_hours: "2 hours",
   special_request: "Special request",
 };
+const ADMIN_TOOL_LINKS = [
+  {
+    href: "https://dashboard.stripe.com/acct_1TUI4bGni59g0iEs/dashboard",
+    label: "Stripe",
+  },
+  {
+    href: "https://vercel.com/zealotwang-sudos-projects/capri-love-boat-booking-fszh",
+    label: "Vercel",
+  },
+  {
+    href: "https://resend.com/emails",
+    label: "Resend",
+  },
+  {
+    href: "https://supabase.com/dashboard/project/ubmpyxqsnqmvzrrvlogq",
+    label: "Supabase",
+  },
+];
 const PRIMARY_STATUS_ACTIONS = {
   requested: {
     value: "checking_with_captain",
@@ -194,6 +212,24 @@ function StatusBadges({ booking }) {
       />
       <StatusBadge label="Payment" value={booking.payment_status} />
       <StatusBadge label="Captain" value={booking.captain_status} />
+    </div>
+  );
+}
+
+function AdminToolLinks() {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {ADMIN_TOOL_LINKS.map((toolLink) => (
+        <a
+          key={toolLink.href}
+          href={toolLink.href}
+          target="_blank"
+          rel="noreferrer"
+          className="border border-stone-300 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
+        >
+          {toolLink.label}
+        </a>
+      ))}
     </div>
   );
 }
@@ -474,15 +510,20 @@ export default async function AdminPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  console.info("[admin page] Server auth user", {
+    hasUser: Boolean(user),
+    userEmail: user?.email ?? null,
+  });
+
   if (!user) {
-    redirect("/admin/login");
+    redirect("/admin/login?next=/admin");
   }
 
   if (user.email?.toLowerCase() !== ADMIN_EMAIL) {
     return (
       <main className="min-h-screen bg-[#f3eee7] px-5 py-16 text-stone-950 sm:px-8">
         <section className="mx-auto max-w-3xl border-t border-stone-300 pt-10">
-          <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
+          <p className="brand-logo text-xs text-stone-500">
             Capri Love Boat Admin
           </p>
           <h1 className="mt-8 text-4xl font-light tracking-[-0.03em]">
@@ -517,7 +558,7 @@ export default async function AdminPage() {
       <section className="mx-auto max-w-7xl">
         <div className="flex flex-col justify-between gap-6 border-b border-stone-300 pb-8 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
+            <p className="brand-logo text-xs text-stone-500">
               Capri Love Boat Admin
             </p>
             <h1 className="mt-5 text-4xl font-light tracking-[-0.03em]">
@@ -527,12 +568,15 @@ export default async function AdminPage() {
               Signed in as {user.email}
             </p>
           </div>
-          <Link
-            href="/admin/logout"
-            className="border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
-          >
-            Sign out
-          </Link>
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <AdminToolLinks />
+            <Link
+              href="/admin/logout"
+              className="border border-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition hover:bg-stone-950 hover:text-[#f3eee7]"
+            >
+              Sign out
+            </Link>
+          </div>
         </div>
 
         {error ? (

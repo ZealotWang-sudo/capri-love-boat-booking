@@ -218,9 +218,9 @@ function buildHtmlEmail({ booking, copy, locale }) {
   const detailRows = getBookingDetails(booking, locale)
     .map(
       ([label, value]) => `
-        <tr style="border-bottom:1px solid #e7e1d8;">
-          <td style="padding:12px 0;color:#6f6a63;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">${escapeHtml(label)}</td>
-          <td style="padding:12px 0;text-align:right;color:#1c1917;font-size:14px;font-weight:500;">${escapeHtml(value)}</td>
+        <tr>
+          <td style="padding:7px 5px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;text-align:left;">${escapeHtml(label)}</td>
+          <td style="padding:7px 5px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;text-align:right;">${escapeHtml(value)}</td>
         </tr>
       `,
     )
@@ -228,48 +228,78 @@ function buildHtmlEmail({ booking, copy, locale }) {
   const cancellationReason = getCancellationReason(booking);
   const cancellationReasonHtml = cancellationReason
     ? `
-        <div style="border:1px solid #d8d0c5;background:#fffaf3;margin:28px 0 0;padding:18px 20px;">
-          <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6f6a63;">${escapeHtml(CANCELLATION_REASON_LABELS[locale] ?? CANCELLATION_REASON_LABELS.en)}</p>
-          <p style="margin:0;font-size:17px;line-height:1.55;color:#1c1917;">${escapeHtml(cancellationReason)}</p>
-        </div>
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:22px;">
+          <tr>
+            <td style="border-top:1px solid #bbb;border-bottom:1px solid #bbb;padding:16px 10px;text-align:center;">
+              <p style="margin:0 0 8px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(CANCELLATION_REASON_LABELS[locale] ?? CANCELLATION_REASON_LABELS.en)}</p>
+              <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:18px;line-height:25px;">${escapeHtml(cancellationReason)}</p>
+            </td>
+          </tr>
+        </table>
       `
     : "";
   const manageLinkHtml = booking.manage_url
     ? `
-        <p style="margin:28px 0 0;">
-          <a href="${escapeHtml(booking.manage_url)}" style="display:inline-block;border:1px solid #1c1917;background:#1c1917;color:#fffaf3;text-decoration:none;padding:14px 22px;font-size:12px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;">${escapeHtml(MANAGE_LINK_COPY[locale] ?? MANAGE_LINK_COPY.en)}</a>
-        </p>
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:22px;">
+          <tr>
+            <td align="center">
+              <a href="${escapeHtml(booking.manage_url)}" style="background-color:#313131;border:1px solid #313131;border-radius:2px;color:#f3efe6;display:inline-block;font-family:'Times New Roman',Georgia,serif;font-size:14px;line-height:30px;text-align:center;text-decoration:none;padding:0 14px;">${escapeHtml(MANAGE_LINK_COPY[locale] ?? MANAGE_LINK_COPY.en)}</a>
+            </td>
+          </tr>
+        </table>
       `
     : "";
 
   return `
-    <div style="font-family:Arial,Helvetica,sans-serif;background:#f7f2ea;color:#1c1917;padding:36px 18px;color-scheme:light;supported-color-schemes:light;">
-      <div style="max-width:620px;margin:0 auto;">
-        <div style="border:1px solid #ddd6cc;background:#fffaf3;padding:34px 34px 30px;">
-          <p style="margin:0 0 26px;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:#6f6a63;">Capri Love Boat</p>
-          <h1 style="margin:0;color:#1c1917;font-size:32px;line-height:1.12;font-weight:300;letter-spacing:-0.03em;">${escapeHtml(copy.subject)}</h1>
-          <div style="height:1px;background:#ddd6cc;margin:26px 0;"></div>
-          <p style="margin:0 0 14px;font-size:16px;line-height:1.65;color:#1c1917;">Hello ${escapeHtml(formatValue(booking.customer_name))},</p>
-          <p style="margin:0;font-size:16px;line-height:1.65;color:#3f3a34;">${escapeHtml(copy.intro)}</p>
-          ${cancellationReasonHtml}
-          ${manageLinkHtml}
-        </div>
-        <table style="width:100%;border-collapse:collapse;background:#fffaf3;border-left:1px solid #ddd6cc;border-right:1px solid #ddd6cc;border-bottom:1px solid #ddd6cc;padding:0;font-size:14px;">
-          <tbody>
-            <tr>
-              <td colspan="2" style="padding:22px 34px 8px;color:#6f6a63;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">Booking details</td>
-            </tr>
-            <tr>
-              <td colspan="2" style="padding:0 34px 22px;">
-                <table style="width:100%;border-collapse:collapse;">
-                  <tbody>${detailRows}</tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p style="margin:18px 0 0;text-align:center;color:#8a8178;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;">Capri, Italy</p>
-      </div>
+    <div style="background-color:#f0f0f0;margin:0;padding:0;color:#313131;">
+      <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#f0f0f0;">
+        <tr>
+          <td align="center">
+            <table width="640" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:640px;max-width:100%;background-color:#f3efe6;color:#313131;margin:0 auto;">
+              <tr>
+                <td style="padding:22px 24px 10px;text-align:center;">
+                  <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;">Capri Love Boat</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:16px 34px 10px;text-align:center;">
+                  <h1 style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:24px;font-weight:400;line-height:30px;">${escapeHtml(copy.subject)}</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 34px 8px;text-align:center;">
+                  <p style="margin:0 0 12px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;">Hello ${escapeHtml(formatValue(booking.customer_name))},</p>
+                  <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:16px;line-height:24px;">${escapeHtml(copy.intro)}</p>
+                  ${cancellationReasonHtml}
+                  ${manageLinkHtml}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:28px 34px 5px;">
+                  <p style="margin:0;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;line-height:22px;">Booking details</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 34px 12px;">
+                  <div style="border-top:1px solid #bbb;font-size:1px;line-height:1px;">&nbsp;</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 29px 22px;">
+                  <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;">
+                    <tbody>${detailRows}</tbody>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:18px 34px 30px;text-align:center;border-top:1px solid #bbb;">
+                  <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:14px;line-height:20px;">Capri, Italy</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </div>
   `;
 }

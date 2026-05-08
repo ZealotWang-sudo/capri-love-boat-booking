@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Capri Love Boat",
   description: "Capri private boat booking",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export function generateStaticParams() {

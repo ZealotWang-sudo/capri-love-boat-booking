@@ -102,7 +102,7 @@ async function getAdminSupabaseClient() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/admin/login");
+    redirect("/admin/login?next=/admin");
   }
 
   if (user.email?.toLowerCase() !== ADMIN_EMAIL) {
@@ -189,6 +189,7 @@ export async function updateBookingOperationalStatus(formData) {
   }
 
   revalidatePath("/admin");
+  redirect("/admin");
 }
 
 export async function deleteClosedBooking(formData) {
@@ -217,4 +218,5 @@ export async function deleteClosedBooking(formData) {
   }
 
   revalidatePath("/admin");
+  redirect("/admin");
 }

@@ -4,6 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+function getNextPath() {
+  if (typeof window === "undefined") {
+    return "/admin";
+  }
+
+  const nextPath = new URLSearchParams(window.location.search).get("next");
+
+  return nextPath?.startsWith("/admin") ? nextPath : "/admin";
+}
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -31,14 +41,23 @@ export default function AdminLoginPage() {
       return;
     }
 
-    router.push("/admin");
-    router.refresh();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const nextPath = getNextPath();
+
+    console.info("[admin login] Client session exists after sign in", {
+      hasSession: Boolean(session),
+      userEmail: session?.user?.email ?? null,
+    });
+
+    window.location.assign(nextPath);
   }
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-16 text-stone-950 sm:px-8">
       <section className="mx-auto max-w-md border-t border-stone-300 pt-10">
-        <p className="text-xs uppercase tracking-[0.28em] text-stone-500">
+        <p className="brand-logo text-xs text-stone-500">
           Capri Love Boat
         </p>
         <h1 className="mt-8 text-4xl font-light tracking-[-0.03em]">

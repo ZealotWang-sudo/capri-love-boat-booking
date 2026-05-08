@@ -1,17 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import PhoneInput from "@/components/PhoneInput";
+import PolicyContent from "@/components/PolicyContent";
 import StyledCheckbox from "@/components/StyledCheckbox";
 
 export default function BookingForm({ locale, labels }) {
   const router = useRouter();
+  const policyScrollRef = useRef(null);
   const [dateError, setDateError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const [policyScrolledToEnd, setPolicyScrolledToEnd] = useState(false);
   const [tourInfoOpen, setTourInfoOpen] = useState(false);
   const [selectedTour, setSelectedTour] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -21,26 +26,30 @@ export default function BookingForm({ locale, labels }) {
     blockedSlotsByDate: {},
     fullyBookedDates: [],
     month: "",
+    partiallyBookedDates: [],
     tourType: "",
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const selectedTourOption = labels.tourOptions.find(
     (option) => option.value === selectedTour,
   );
+  const availabilityTourType = selectedTour;
   const blockedTimeSlots = useMemo(() => {
     if (!selectedDate) {
       return new Set();
     }
 
     const isCurrentAvailability =
-      availability.month === calendarMonth && availability.tourType === selectedTour;
+      availability.month === calendarMonth &&
+      availability.tourType === availabilityTourType;
 
     return new Set(
-      isCurrentAvailability
+      selectedTour && isCurrentAvailability
         ? (availability.blockedSlotsByDate[selectedDate] ?? [])
         : [],
     );
   }, [
+    availabilityTourType,
     availability.blockedSlotsByDate,
     availability.month,
     availability.tourType,
@@ -49,8 +58,14 @@ export default function BookingForm({ locale, labels }) {
     selectedTour,
   ]);
   const fullyBookedDates =
-    availability.month === calendarMonth && availability.tourType === selectedTour
+    availability.month === calendarMonth &&
+    availability.tourType === availabilityTourType
       ? availability.fullyBookedDates
+      : [];
+  const partiallyBookedDates =
+    availability.month === calendarMonth &&
+    availability.tourType === availabilityTourType
+      ? availability.partiallyBookedDates
       : [];
   const allTimeSlotsBlocked =
     selectedTourOption?.timeSlots.length > 0 &&
@@ -60,6 +75,16 @@ export default function BookingForm({ locale, labels }) {
   const handleCalendarMonthChange = useCallback((month) => {
     setCalendarMonth(month);
   }, []);
+
+  function handlePolicyScroll(event) {
+    const element = event.currentTarget;
+    const distanceFromBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+
+    if (distanceFromBottom <= 8) {
+      setPolicyScrolledToEnd(true);
+    }
+  }
 
   useEffect(() => {
     if (!selectedTour || !calendarMonth) {
@@ -74,7 +99,7 @@ export default function BookingForm({ locale, labels }) {
       try {
         const params = new URLSearchParams({
           month: calendarMonth,
-          tourType: selectedTour,
+          tourType: availabilityTourType,
         });
         const response = await fetch(`/api/availability?${params}`, {
           signal: controller.signal,
@@ -89,7 +114,8 @@ export default function BookingForm({ locale, labels }) {
           blockedSlotsByDate: data.blockedSlotsByDate ?? {},
           fullyBookedDates: data.fullyBookedDates ?? [],
           month: calendarMonth,
-          tourType: selectedTour,
+          partiallyBookedDates: data.partiallyBookedDates ?? [],
+          tourType: availabilityTourType,
         };
 
         setAvailability(nextAvailability);
@@ -117,10 +143,33 @@ export default function BookingForm({ locale, labels }) {
     return () => {
       controller.abort();
     };
-  }, [calendarMonth, selectedDate, selectedTime, selectedTour]);
+  }, [availabilityTourType, calendarMonth, selectedDate, selectedTime, selectedTour]);
+
+  useEffect(() => {
+    if (!policyModalOpen) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const element = policyScrollRef.current;
+
+      if (element && element.scrollHeight <= element.clientHeight + 8) {
+        setPolicyScrolledToEnd(true);
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [policyModalOpen]);
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (!policyAccepted) {
+      setSubmitError(labels.policyRequired);
+      setPolicyScrolledToEnd(false);
+      setPolicyModalOpen(true);
+      return;
+    }
 
     const formData = new FormData(event.currentTarget);
     const email = formData.get("email")?.toString().trim().toLowerCase();
@@ -289,21 +338,6 @@ export default function BookingForm({ locale, labels }) {
       </div>
 
       <section className="border-t border-stone-300 pt-6">
-        <AvailabilityCalendar
-          fullyBookedDates={selectedTour ? fullyBookedDates : []}
-          label={labels.stepChooseDate}
-          labels={labels.calendar}
-          error={dateError}
-          onMonthChange={handleCalendarMonthChange}
-          onSelect={(date) => {
-            setDateError(false);
-            setSelectedDate(date);
-            setSelectedTime("");
-          }}
-        />
-      </section>
-
-      <section className="border-t border-stone-300 pt-6">
         <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
           {labels.stepChooseTour}
         </label>
@@ -333,7 +367,9 @@ export default function BookingForm({ locale, labels }) {
               required
               onChange={() => {
                 setSelectedTour(option.value);
+                setSelectedDate("");
                 setSelectedTime("");
+                setDateError(false);
                 setSubmitError("");
               }}
             />
@@ -381,6 +417,25 @@ export default function BookingForm({ locale, labels }) {
           </div>
         ) : null}
       </section>
+
+      {selectedTour ? (
+        <section className="border-t border-stone-300 pt-6">
+          <AvailabilityCalendar
+            key={selectedTour}
+            fullyBookedDates={fullyBookedDates}
+            label={labels.stepChooseDate}
+            labels={labels.calendar}
+            error={dateError}
+            onMonthChange={handleCalendarMonthChange}
+            onSelect={(date) => {
+              setDateError(false);
+              setSelectedDate(date);
+              setSelectedTime("");
+            }}
+            partiallyBookedDates={partiallyBookedDates}
+          />
+        </section>
+      ) : null}
 
       <section className="border-t border-stone-300 pt-6">
         <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
@@ -476,6 +531,65 @@ export default function BookingForm({ locale, labels }) {
       </button>
       {submitError ? (
         <p className="text-sm leading-6 text-red-900">{submitError}</p>
+      ) : null}
+      {policyModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-stone-950/45 px-5 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="policy-modal-title"
+        >
+          <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden border border-stone-950 bg-[#fbf8f3] shadow-xl">
+            <div className="shrink-0 border-b border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="policy-modal-title"
+                  className="text-2xl font-light tracking-[-0.03em]"
+                >
+                  {labels.policyModalTitle}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-stone-600">
+                  {labels.policyModalIntro}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPolicyScrolledToEnd(false);
+                  setPolicyModalOpen(false);
+                }}
+                className="border border-stone-300 px-3 py-2 text-xs uppercase tracking-[0.18em] text-stone-600 transition hover:border-stone-950 hover:text-stone-950"
+              >
+                {labels.policyModalClose}
+              </button>
+              </div>
+            </div>
+
+            <div
+              className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8"
+              onScroll={handlePolicyScroll}
+              ref={policyScrollRef}
+            >
+              <PolicyContent labels={labels.policy} variant="modal" />
+            </div>
+
+            <div className="shrink-0 border-t border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
+              <button
+                type="button"
+                disabled={!policyScrolledToEnd}
+                onClick={() => {
+                  setPolicyAccepted(true);
+                  setPolicyModalOpen(false);
+                  setSubmitError("");
+                }}
+                className="w-full border border-stone-950 bg-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-stone-950 disabled:hover:text-[#f3eee7]"
+              >
+                {labels.policyModalAccept}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </form>
   );

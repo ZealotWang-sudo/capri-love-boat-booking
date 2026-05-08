@@ -32,9 +32,7 @@ export default async function ThankYouPage({ params }) {
 
       <section className="mx-auto flex max-w-3xl items-center px-5  sm:px-8 ">
         <div className="w-full py-10 border-stone-300  text-center ">
-          {/* <div className="mx-auto flex size-16 items-center justify-center border border-stone-950 text-xs uppercase tracking-[0.22em]">
-            OK
-          </div> */}
+     
           <h1 className="mt-3 text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
             {t("title")}
           </h1>

@@ -4,6 +4,7 @@ import { createSupabasePublicServerClient } from "@/lib/supabase/server";
 import {
   ACTIVE_BOOKING_STATUSES,
   bookingOverlapsSelection,
+  getDisplayTimeForTimeSlot,
   isValidTimeSlotForTour,
 } from "@/lib/bookingAvailability";
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
@@ -162,7 +163,7 @@ export async function POST(request) {
     requested_date: requestedDate,
     tour_type: tourType,
     time_slot: timeSlot,
-    time_window: getOptionalText(body.time_window),
+    time_window: getDisplayTimeForTimeSlot(timeSlot) || getOptionalText(body.time_window),
     total_price_eur: totalPriceEur,
     reservation_fee_eur: reservationFeeEur,
     pay_on_board_eur: payOnBoardEur,

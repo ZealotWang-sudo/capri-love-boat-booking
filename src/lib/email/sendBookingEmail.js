@@ -36,112 +36,189 @@ const TOUR_LABELS = {
     zh: "5小时",
   },
 };
-const CANCELLATION_REASON_LABELS = {
-  en: "Cancellation reason",
-  it: "Motivo della cancellazione",
-  zh: "取消原因",
-};
 const MANAGE_LINK_COPY = {
-  en: "Manage your request",
-  it: "Gestisci la tua richiesta",
-  zh: "管理你的预约请求",
+  en: "Manage booking",
+  it: "Gestisci prenotazione",
+  zh: "管理预约",
+};
+const EMAIL_LABELS = {
+  en: {
+    cancellationReason: "Cancellation reason",
+    date: "Date",
+    detailsTitle: "Booking details",
+    greeting: "Hello",
+    guests: "Guests",
+    name: "Name",
+    payOnBoard: "Pay on board",
+    reservationFee: "Reservation fee",
+    time: "Time",
+    totalPrice: "Total price",
+    tour: "Tour",
+  },
+  it: {
+    cancellationReason: "Motivo della cancellazione",
+    date: "Data",
+    detailsTitle: "Dettagli prenotazione",
+    greeting: "Ciao",
+    guests: "Ospiti",
+    name: "Nome",
+    payOnBoard: "Da pagare a bordo",
+    reservationFee: "Deposito",
+    time: "Orario",
+    totalPrice: "Prezzo totale",
+    tour: "Tour",
+  },
+  zh: {
+    cancellationReason: "取消原因",
+    date: "日期",
+    detailsTitle: "预约详情",
+    greeting: "您好",
+    guests: "人数",
+    name: "姓名",
+    payOnBoard: "船上支付",
+    reservationFee: "预约订金",
+    time: "时间",
+    totalPrice: "总价",
+    tour: "船游",
+  },
 };
 const EMAIL_COPY = {
   booking_received: {
     en: {
+      cta: "Manage request",
       intro:
-        "We received your Capri boat request and will review captain availability.",
-      subject: "We received your Capri boat request",
+        "Thank you for your request. We will check captain availability and get back to you shortly. Your booking is not confirmed yet.",
+      subject: "Request received",
     },
     it: {
+      cta: "Gestisci richiesta",
       intro:
-        "Abbiamo ricevuto la tua richiesta per il tour in barca a Capri e verificheremo la disponibilita del capitano.",
-      subject: "Abbiamo ricevuto la tua richiesta per il tour in barca a Capri",
+        "Grazie per la richiesta. Verificheremo la disponibilita del capitano e ti risponderemo al piu presto. La prenotazione non e ancora confermata.",
+      subject: "Richiesta ricevuta",
     },
     zh: {
-      intro: "我们已收到你的卡普里船游预约请求，并会确认船长是否有空档。",
-      subject: "我们已收到你的卡普里船游预约请求",
+      cta: "管理预约请求",
+      intro: "感谢您的预约请求。我们会先确认船长档期，并尽快回复您。当前预约尚未确认。",
+      subject: "我们已收到您的预约请求",
     },
   },
   payment_pending: {
     en: {
+      cta: "Pay reservation fee",
       intro:
-        "Your selected time slot is available. Please use the link below to pay the deposit and lock the time slot reservation. Otherwise, the reservation hold will expire within 24 hours.",
-      subject: "Time slot available — reserve your boat",
+        "Good news, your selected time is available. Please pay the reservation fee within 24 hours to secure it.",
+      subject: "Captain available - reserve your time",
     },
     it: {
+      cta: "Paga il deposito",
       intro:
-        "L'orario scelto e disponibile. Usa il link qui sotto per pagare il deposito e bloccare la prenotazione dell'orario. In caso contrario, il blocco della prenotazione scadra entro 24 ore.",
-      subject: "Orario disponibile — blocca la tua barca",
+        "Buone notizie, l'orario scelto e disponibile. Paga il deposito entro 24 ore per bloccarlo.",
+      subject: "Capitano disponibile - blocca l'orario",
     },
     zh: {
+      cta: "支付预约订金",
       intro:
-        "你选择的时间可预约。请使用下方链接支付订金并锁定该时间段预约，否则预约保留将在 24 小时内过期。",
-      subject: "时间可预约，请支付预约订金锁定船只",
+        "好消息，您选择的时间可以预约。请在 24 小时内支付预约订金以锁定该时间。",
+      subject: "船长有空，请锁定时间",
     },
   },
   booking_confirmed: {
     en: {
-      intro: "Your Capri boat booking is confirmed.",
-      subject: "Your Capri boat booking is confirmed",
+      cta: "View booking details",
+      intro:
+        "Your reservation fee has been received and your boat is reserved. We will share final departure details before the tour.",
+      subject: "Booking confirmed",
     },
     it: {
-      intro: "La tua prenotazione in barca a Capri e confermata.",
-      subject: "La tua prenotazione in barca a Capri è confermata",
+      cta: "Vedi dettagli",
+      intro:
+        "Abbiamo ricevuto il deposito e la barca e riservata. Ti invieremo i dettagli finali prima del tour.",
+      subject: "Prenotazione confermata",
     },
     zh: {
-      intro: "你的卡普里船游预约已确认。",
-      subject: "你的卡普里船游预约已确认",
+      cta: "查看预约详情",
+      intro: "我们已收到预约订金，船只已为您保留。出发前我们会发送最终出发信息。",
+      subject: "预约已确认",
     },
   },
   not_available: {
     en: {
+      cta: "Review request",
       intro:
-        "The captain is not available for your selected time. We can help look for another option.",
-      subject: "Captain not available for your selected time",
+        "We are sorry, the captain is not available for your selected time. We can help look for another option if you would like.",
+      subject: "Selected time unavailable",
     },
     it: {
+      cta: "Rivedi richiesta",
       intro:
-        "Il capitano non e disponibile per l'orario scelto. Possiamo aiutarti a trovare un'altra opzione.",
-      subject: "Il capitano non è disponibile per l’orario scelto",
+        "Ci dispiace, il capitano non e disponibile per l'orario scelto. Se vuoi, possiamo aiutarti a trovare un'altra opzione.",
+      subject: "Orario non disponibile",
     },
     zh: {
-      intro: "你选择的时间船长暂时不可用。我们可以帮你寻找其他可选时间。",
-      subject: "你选择的时间船长暂时不可用",
+      cta: "查看预约请求",
+      intro: "很抱歉，您选择的时间船长暂时不可用。如您愿意，我们可以帮您寻找其他可选时间。",
+      subject: "所选时间暂不可预约",
     },
   },
   cancelled: {
     en: {
-      intro: "Your Capri boat booking request was cancelled.",
-      subject: "Your Capri boat booking request was cancelled",
+      cta: "View cancellation",
+      intro:
+        "Your booking request has been cancelled. If a reason was provided, it is shown below.",
+      subject: "Booking cancelled",
     },
     it: {
-      intro: "La tua richiesta di prenotazione e stata annullata.",
-      subject: "La tua richiesta di prenotazione è stata annullata",
+      cta: "Vedi cancellazione",
+      intro:
+        "La richiesta di prenotazione e stata annullata. Se e stato indicato un motivo, lo trovi qui sotto.",
+      subject: "Prenotazione annullata",
     },
     zh: {
-      intro: "你的卡普里船游预约请求已取消。",
-      subject: "你的卡普里船游预约请求已取消",
+      cta: "查看取消详情",
+      intro: "您的预约请求已取消。如有取消原因，会显示在下方。",
+      subject: "预约已取消",
     },
   },
   completed: {
     en: {
-      intro: "Thank you for joining the Capri boat tour.",
-      subject: "Thank you for joining the Capri boat tour",
+      cta: "View trip details",
+      intro:
+        "Thank you for spending the day with us in Capri. We hope you had a beautiful time on the water.",
+      subject: "Thank you for joining us",
     },
     it: {
-      intro: "Grazie per aver partecipato al tour in barca a Capri.",
-      subject: "Grazie per aver partecipato al tour in barca a Capri",
+      cta: "Vedi dettagli tour",
+      intro:
+        "Grazie per aver trascorso la giornata con noi a Capri. Speriamo sia stata una splendida esperienza in mare.",
+      subject: "Grazie per essere stati con noi",
     },
     zh: {
-      intro: "感谢你参加卡普里船游体验。",
-      subject: "感谢你参加卡普里船游体验",
+      cta: "查看行程详情",
+      intro: "感谢您与我们一起在卡普里度过这一天。希望您享受了这次海上体验。",
+      subject: "感谢您的加入",
     },
   },
 };
+export const SUPPORTED_EMAIL_LOCALES = ["en", "zh", "it"];
+export const BOOKING_EMAIL_EVENTS = [
+  { eventType: "booking_received", label: "Booking received" },
+  { eventType: "payment_pending", label: "Payment pending" },
+  { eventType: "booking_confirmed", label: "Booking confirmed" },
+  { eventType: "not_available", label: "Captain not available" },
+  { eventType: "cancelled", label: "Cancelled" },
+  { eventType: "completed", label: "Completed" },
+];
 
 function getLocale(locale) {
-  return ["en", "it", "zh"].includes(locale) ? locale : "en";
+  return SUPPORTED_EMAIL_LOCALES.includes(locale) ? locale : "en";
+}
+
+function getEmailCopy(eventType, locale) {
+  return EMAIL_COPY[eventType]?.[locale] ?? EMAIL_COPY[eventType]?.en;
+}
+
+function getEmailLabels(locale) {
+  return EMAIL_LABELS[locale] ?? EMAIL_LABELS.en;
 }
 
 function formatEuro(value) {
@@ -166,15 +243,17 @@ function formatTourType(tourType, locale) {
 }
 
 function getBookingDetails(booking, locale) {
+  const labels = getEmailLabels(locale);
+
   return [
-    ["Name", formatValue(booking.customer_name)],
-    ["Date", formatValue(booking.requested_date)],
-    ["Time", formatValue(booking.time_window || booking.time_slot)],
-    ["Tour", formatTourType(booking.tour_type, locale)],
-    ["Guests", formatValue(booking.guest_count)],
-    ["Total price", formatEuro(booking.total_price_eur)],
-    ["Reservation fee", formatEuro(booking.reservation_fee_eur)],
-    ["Pay on board", formatEuro(booking.pay_on_board_eur)],
+    [labels.name, formatValue(booking.customer_name)],
+    [labels.date, formatValue(booking.requested_date)],
+    [labels.time, formatValue(booking.time_window || booking.time_slot)],
+    [labels.tour, formatTourType(booking.tour_type, locale)],
+    [labels.guests, formatValue(booking.guest_count)],
+    [labels.totalPrice, formatEuro(booking.total_price_eur)],
+    [labels.reservationFee, formatEuro(booking.reservation_fee_eur)],
+    [labels.payOnBoard, formatEuro(booking.pay_on_board_eur)],
   ];
 }
 
@@ -189,17 +268,21 @@ function getCancellationReasonText(booking, locale) {
     return "";
   }
 
-  const label = CANCELLATION_REASON_LABELS[locale] ?? CANCELLATION_REASON_LABELS.en;
+  const label = getEmailLabels(locale).cancellationReason;
 
   return `\n\n${label}: ${cancellationReason}`;
 }
 
-function getManageLinkText(booking, locale) {
+function getManageLinkLabel(copy, locale) {
+  return copy.cta || MANAGE_LINK_COPY[locale] || MANAGE_LINK_COPY.en;
+}
+
+function getManageLinkText(booking, copy, locale) {
   if (!booking.manage_url) {
     return "";
   }
 
-  const label = MANAGE_LINK_COPY[locale] ?? MANAGE_LINK_COPY.en;
+  const label = getManageLinkLabel(copy, locale);
 
   return `\n\n${label}: ${booking.manage_url}`;
 }
@@ -209,9 +292,10 @@ function buildTextEmail({ booking, copy, locale }) {
     .map(([label, value]) => `${label}: ${value}`)
     .join("\n");
   const cancellationReasonText = getCancellationReasonText(booking, locale);
-  const manageLinkText = getManageLinkText(booking, locale);
+  const manageLinkText = getManageLinkText(booking, copy, locale);
+  const labels = getEmailLabels(locale);
 
-  return `Hello ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}\n\n${details}\n\nCapri Love Boat`;
+  return `${labels.greeting} ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}\n\n${details}\n\nCapri Love Boat`;
 }
 
 function buildHtmlEmail({ booking, copy, locale }) {
@@ -225,13 +309,14 @@ function buildHtmlEmail({ booking, copy, locale }) {
       `,
     )
     .join("");
+  const labels = getEmailLabels(locale);
   const cancellationReason = getCancellationReason(booking);
   const cancellationReasonHtml = cancellationReason
     ? `
         <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:22px;">
           <tr>
             <td style="border-top:1px solid #bbb;border-bottom:1px solid #bbb;padding:16px 10px;text-align:center;">
-              <p style="margin:0 0 8px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(CANCELLATION_REASON_LABELS[locale] ?? CANCELLATION_REASON_LABELS.en)}</p>
+              <p style="margin:0 0 8px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(labels.cancellationReason)}</p>
               <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:18px;line-height:25px;">${escapeHtml(cancellationReason)}</p>
             </td>
           </tr>
@@ -243,7 +328,7 @@ function buildHtmlEmail({ booking, copy, locale }) {
         <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:22px;">
           <tr>
             <td align="center">
-              <a href="${escapeHtml(booking.manage_url)}" style="background-color:#313131;border:1px solid #313131;border-radius:2px;color:#f3efe6;display:inline-block;font-family:'Times New Roman',Georgia,serif;font-size:14px;line-height:30px;text-align:center;text-decoration:none;padding:0 14px;">${escapeHtml(MANAGE_LINK_COPY[locale] ?? MANAGE_LINK_COPY.en)}</a>
+              <a href="${escapeHtml(booking.manage_url)}" style="background-color:#313131;border:1px solid #313131;border-radius:2px;color:#f3efe6;display:inline-block;font-family:'Times New Roman',Georgia,serif;font-size:14px;line-height:30px;text-align:center;text-decoration:none;padding:0 14px;">${escapeHtml(getManageLinkLabel(copy, locale))} <span style="font-family:Arial,Helvetica,sans-serif;font-size:13px;">&#8599;</span></a>
             </td>
           </tr>
         </table>
@@ -268,7 +353,7 @@ function buildHtmlEmail({ booking, copy, locale }) {
               </tr>
               <tr>
                 <td style="padding:8px 34px 8px;text-align:center;">
-                  <p style="margin:0 0 12px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;">Hello ${escapeHtml(formatValue(booking.customer_name))},</p>
+                  <p style="margin:0 0 12px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;">${escapeHtml(labels.greeting)} ${escapeHtml(formatValue(booking.customer_name))},</p>
                   <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:16px;line-height:24px;">${escapeHtml(copy.intro)}</p>
                   ${cancellationReasonHtml}
                   ${manageLinkHtml}
@@ -276,7 +361,7 @@ function buildHtmlEmail({ booking, copy, locale }) {
               </tr>
               <tr>
                 <td style="padding:28px 34px 5px;">
-                  <p style="margin:0;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;line-height:22px;">Booking details</p>
+                  <p style="margin:0;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;line-height:22px;">${escapeHtml(labels.detailsTitle)}</p>
                 </td>
               </tr>
               <tr>
@@ -349,6 +434,24 @@ export function getBookingEmailEventForStatus(bookingStatus) {
   return EMAIL_EVENTS_BY_STATUS[bookingStatus] ?? null;
 }
 
+export function buildBookingEmailPreview({ booking, eventType, locale }) {
+  const normalizedLocale = getLocale(locale);
+  const copy = getEmailCopy(eventType, normalizedLocale);
+
+  if (!copy) {
+    return null;
+  }
+
+  return {
+    cta: getManageLinkLabel(copy, normalizedLocale),
+    eventType,
+    html: buildHtmlEmail({ booking, copy, locale: normalizedLocale }),
+    locale: normalizedLocale,
+    subject: copy.subject,
+    text: buildTextEmail({ booking, copy, locale: normalizedLocale }),
+  };
+}
+
 export async function sendBookingEmail({
   booking,
   checkDuplicate = true,
@@ -360,7 +463,7 @@ export async function sendBookingEmail({
   }
 
   const locale = getLocale(booking.locale);
-  const copy = EMAIL_COPY[eventType]?.[locale] ?? EMAIL_COPY[eventType]?.en;
+  const copy = getEmailCopy(eventType, locale);
 
   if (!copy) {
     return { reason: "unknown email event type", sent: false };

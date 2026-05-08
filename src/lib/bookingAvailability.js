@@ -15,17 +15,37 @@ export const TOUR_DURATIONS_MINUTES = {
 };
 
 export const TIME_SLOT_WINDOWS = {
+  morning_0930: { start: "09:30", end: "09:30" },
+  morning_1000: { start: "10:00", end: "10:00" },
+  afternoon_1330: { start: "13:30", end: "13:30" },
+  afternoon_1400: { start: "14:00", end: "14:00" },
+  sunset_1800: { start: "18:00", end: "18:00" },
   morning: { start: "09:30", end: "10:00" },
   afternoon: { start: "13:30", end: "14:00" },
   sunset: { start: "18:00", end: "18:00" },
 };
 
 export const TOUR_TIME_SLOTS = {
-  two_hours: ["morning", "afternoon"],
-  three_hours: ["morning", "afternoon"],
-  four_hours: ["morning", "afternoon"],
-  sunset_three_hours: ["sunset"],
-  five_hours: ["morning"],
+  two_hours: [
+    "morning_0930",
+    "morning_1000",
+    "afternoon_1330",
+    "afternoon_1400",
+  ],
+  three_hours: [
+    "morning_0930",
+    "morning_1000",
+    "afternoon_1330",
+    "afternoon_1400",
+  ],
+  four_hours: [
+    "morning_0930",
+    "morning_1000",
+    "afternoon_1330",
+    "afternoon_1400",
+  ],
+  sunset_three_hours: ["sunset_1800"],
+  five_hours: ["morning_0930", "morning_1000"],
 };
 
 function parseTimeToMinutes(value) {
@@ -93,6 +113,18 @@ export function isActiveBlockingStatus(bookingStatus) {
 
 export function getValidTimeSlotsForTour(tourType) {
   return TOUR_TIME_SLOTS[tourType] ?? [];
+}
+
+export function getDisplayTimeForTimeSlot(timeSlot) {
+  const timeSlotWindow = TIME_SLOT_WINDOWS[timeSlot];
+
+  if (!timeSlotWindow) {
+    return "";
+  }
+
+  return timeSlotWindow.start === timeSlotWindow.end
+    ? timeSlotWindow.start
+    : `${timeSlotWindow.start}-${timeSlotWindow.end}`;
 }
 
 export function isValidTimeSlotForTour(tourType, timeSlot) {

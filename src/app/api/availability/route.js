@@ -46,6 +46,7 @@ function buildAvailability(existingBookings, tourType, dates) {
   const validTimeSlots = getValidTimeSlotsForTour(tourType);
   const blockedSlotsByDate = {};
   const fullyBookedDates = [];
+  const partiallyBookedDates = [];
 
   dates.forEach((date) => {
     const blockedTimeSlots = getBlockedTimeSlots(existingBookings, tourType, date);
@@ -56,10 +57,12 @@ function buildAvailability(existingBookings, tourType, dates) {
       blockedTimeSlots.length === validTimeSlots.length
     ) {
       fullyBookedDates.push(date);
+    } else if (blockedTimeSlots.length > 0) {
+      partiallyBookedDates.push(date);
     }
   });
 
-  return { blockedSlotsByDate, fullyBookedDates };
+  return { blockedSlotsByDate, fullyBookedDates, partiallyBookedDates };
 }
 
 export async function GET(request) {

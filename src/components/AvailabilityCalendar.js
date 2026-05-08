@@ -43,6 +43,7 @@ export default function AvailabilityCalendar({
   error,
   onMonthChange,
   onSelect,
+  partiallyBookedDates = [],
 }) {
   const today = useMemo(() => {
     const now = new Date();
@@ -56,6 +57,10 @@ export default function AvailabilityCalendar({
   const fullyBookedDateSet = useMemo(
     () => new Set(fullyBookedDates),
     [fullyBookedDates],
+  );
+  const partiallyBookedDateSet = useMemo(
+    () => new Set(partiallyBookedDates),
+    [partiallyBookedDates],
   );
   const monthDays = getMonthDays(displayDate);
   const monthLabel = new Intl.DateTimeFormat(labels.locale, {
@@ -93,9 +98,7 @@ export default function AvailabilityCalendar({
           {label}
         </label>
         <div className="text-right">
-          <p className="text-[0.65rem] uppercase tracking-[0.18em] text-stone-500">
-            {labels.selectDate}
-          </p>
+        
           <p className="mt-1 border border-stone-950 bg-stone-950 px-3 py-1.5 text-sm font-medium tracking-[0.08em] text-[#f3eee7]">
             {selectedDate || "—"}
           </p>
@@ -142,6 +145,13 @@ export default function AvailabilityCalendar({
           </span>
           <span className="flex items-center gap-2">
             <span
+              className="h-2.5 w-2.5 bg-amber-500"
+              aria-hidden="true"
+            />
+            {labels.partiallyBooked}
+          </span>
+          <span className="flex items-center gap-2">
+            <span
               className="h-2.5 w-2.5 bg-stone-400"
               aria-hidden="true"
             />
@@ -168,13 +178,17 @@ export default function AvailabilityCalendar({
             const isToday = dateKey === todayDateKey;
             const unavailable = date <= today;
             const booked = !unavailable && fullyBookedDateSet.has(dateKey);
+            const partiallyBooked =
+              !unavailable && !booked && partiallyBookedDateSet.has(dateKey);
             const disabled = booked || unavailable;
             const selected = dateKey === selectedDate;
             const statusLabel = unavailable
               ? labels.unavailable
               : booked
                 ? labels.booked
-                : labels.available;
+                : partiallyBooked
+                  ? labels.partiallyBooked
+                  : labels.available;
 
             return (
               <button
@@ -186,13 +200,13 @@ export default function AvailabilityCalendar({
                   "flex min-h-16 flex-col items-start justify-start border-b-4 p-2 text-left transition",
                   selected
                     ? "border-stone-950 bg-stone-950 text-[#f3eee7]"
-                    : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm hover:border-stone-950",
-                  booked
-                    ? "cursor-not-allowed border-x-red-200 border-t-red-200 border-b-red-700 bg-red-50/70 text-stone-400 opacity-70 shadow-none hover:border-x-red-200 hover:border-t-red-200 hover:border-b-red-700"
-                    : "",
-                  unavailable
-                    ? "cursor-not-allowed border-x-stone-200 border-t-stone-200 border-b-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none hover:border-x-stone-200 hover:border-t-stone-200 hover:border-b-stone-400"
-                    : "",
+                    : booked
+                      ? "cursor-not-allowed border-x-red-200 border-t-red-200 border-b-red-700 bg-red-50/70 text-stone-400 opacity-70 shadow-none hover:border-x-red-200 hover:border-t-red-200 hover:border-b-red-700"
+                      : unavailable
+                        ? "cursor-not-allowed border-x-stone-200 border-t-stone-200 border-b-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none hover:border-x-stone-200 hover:border-t-stone-200 hover:border-b-stone-400"
+                        : partiallyBooked
+                          ? "border-x-amber-200 border-t-amber-200 border-b-amber-500 bg-amber-50/80 text-stone-950 shadow-sm hover:border-stone-950"
+                          : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm hover:border-stone-950",
                   isToday ? "ring-2 ring-stone-950 ring-offset-2" : "",
                 ].join(" ")}
                 aria-label={`${dateKey} ${statusLabel}${

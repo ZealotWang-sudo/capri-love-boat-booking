@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import BookingForm from "@/components/BookingForm";
+import { POLICY_ITEM_KEYS } from "@/components/PolicyContent";
 import SiteHeader from "@/components/SiteHeader";
 
 export default async function BookingPage({ params }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Booking");
+  const policyT = await getTranslations("Policy");
   const common = await getTranslations("Common");
 
   const labels = {
@@ -29,6 +31,7 @@ export default async function BookingPage({ params }) {
       nextMonth: t("calendarNextMonth"),
       available: t("calendarAvailable"),
       booked: t("calendarBooked"),
+      partiallyBooked: t("calendarPartiallyBooked"),
       unavailable: t("calendarUnavailable"),
       selectDate: t("calendarSelectDate"),
       today: t("calendarToday"),
@@ -65,6 +68,21 @@ export default async function BookingPage({ params }) {
     submit: t("submit"),
     submitting: t("submitting"),
     submitError: t("submitError"),
+    policyModalTitle: t("policyModalTitle"),
+    policyModalIntro: t("policyModalIntro"),
+    policyModalAccept: t("policyModalAccept"),
+    policyModalClose: t("policyModalClose"),
+    policyRequired: t("policyRequired"),
+    policy: {
+      introTitle: policyT("introTitle"),
+      introText: policyT("introText"),
+      ...Object.fromEntries(
+        POLICY_ITEM_KEYS.flatMap((itemKey) => [
+          [`${itemKey}Title`, policyT(`${itemKey}Title`)],
+          [`${itemKey}Text`, policyT(`${itemKey}Text`)],
+        ]),
+      ),
+    },
     tourOptions: [
       {
         value: "three_hours",
@@ -76,11 +94,17 @@ export default async function BookingPage({ params }) {
         payOnBoard: t("tourThreeHourPayOnBoard"),
         payOnBoardEur: 280,
         timeSlots: [
-          { value: "morning", label: t("timeMorning"), window: "09:30-10:00" },
+          { value: "morning_0930", label: t("timeMorning0930"), window: "09:30" },
+          { value: "morning_1000", label: t("timeMorning1000"), window: "10:00" },
           {
-            value: "afternoon",
-            label: t("timeAfternoon"),
-            window: "13:30-14:00",
+            value: "afternoon_1330",
+            label: t("timeAfternoon1330"),
+            window: "13:30",
+          },
+          {
+            value: "afternoon_1400",
+            label: t("timeAfternoon1400"),
+            window: "14:00",
           },
         ],
       },
@@ -94,11 +118,17 @@ export default async function BookingPage({ params }) {
         payOnBoard: t("tourFourHourPayOnBoard"),
         payOnBoardEur: 360,
         timeSlots: [
-          { value: "morning", label: t("timeMorning"), window: "09:30-10:00" },
+          { value: "morning_0930", label: t("timeMorning0930"), window: "09:30" },
+          { value: "morning_1000", label: t("timeMorning1000"), window: "10:00" },
           {
-            value: "afternoon",
-            label: t("timeAfternoon"),
-            window: "13:30-14:00",
+            value: "afternoon_1330",
+            label: t("timeAfternoon1330"),
+            window: "13:30",
+          },
+          {
+            value: "afternoon_1400",
+            label: t("timeAfternoon1400"),
+            window: "14:00",
           },
         ],
       },
@@ -111,7 +141,9 @@ export default async function BookingPage({ params }) {
         reservationFeeEur: 100,
         payOnBoard: t("tourSunsetThreeHourPayOnBoard"),
         payOnBoardEur: 280,
-        timeSlots: [{ value: "sunset", label: t("timeSunset"), window: "18:00" }],
+        timeSlots: [
+          { value: "sunset_1800", label: t("timeSunset1800"), window: "18:00" },
+        ],
       },
       {
         value: "five_hours",
@@ -123,7 +155,8 @@ export default async function BookingPage({ params }) {
         payOnBoard: t("tourFiveHourPayOnBoard"),
         payOnBoardEur: 450,
         timeSlots: [
-          { value: "morning", label: t("timeMorning"), window: "09:30-10:00" },
+          { value: "morning_0930", label: t("timeMorning0930"), window: "09:30" },
+          { value: "morning_1000", label: t("timeMorning1000"), window: "10:00" },
         ],
       },
     ],

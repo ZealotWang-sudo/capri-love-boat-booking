@@ -15,6 +15,11 @@ const TOUR_LABELS = {
 };
 const ADMIN_TOOL_LINKS = [
   {
+    href: "/admin/email-preview",
+    isInternal: true,
+    label: "Email Preview",
+  },
+  {
     href: "https://dashboard.stripe.com/acct_1TUI4bGni59g0iEs/dashboard",
     label: "Stripe",
   },
@@ -220,15 +225,25 @@ function AdminToolLinks() {
   return (
     <div className="flex flex-wrap gap-2">
       {ADMIN_TOOL_LINKS.map((toolLink) => (
-        <a
-          key={toolLink.href}
-          href={toolLink.href}
-          target="_blank"
-          rel="noreferrer"
-          className="border border-stone-300 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
-        >
-          {toolLink.label}
-        </a>
+        toolLink.isInternal ? (
+          <Link
+            key={toolLink.href}
+            href={toolLink.href}
+            className="border border-stone-300 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
+          >
+            {toolLink.label}
+          </Link>
+        ) : (
+          <a
+            key={toolLink.href}
+            href={toolLink.href}
+            target="_blank"
+            rel="noreferrer"
+            className="border border-stone-300 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
+          >
+            {toolLink.label}
+          </a>
+        )
       ))}
     </div>
   );

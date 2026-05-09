@@ -2,7 +2,9 @@
   "Common": {
     "brand": "Capri Love Boat",
     "book": "Richiedi una prenotazione",
-    "home": "Torna alla home"
+    "contact": "Contatti",
+    "home": "Torna alla home",
+    "policy": "Policy"
   },
   "Home": {
     "eyebrow": "PRIVATO · CAPITANO LOCALE · PREZZI TRASPARENTI",
@@ -158,6 +160,7 @@
     "calendarNextMonth": "Mese successivo",
     "calendarAvailable": "Disponibile",
     "calendarBooked": "Al completo",
+    "calendarPartiallyBooked": "Parzialmente prenotato",
     "calendarOtherTourAvailable": "Altro tipo di tour disponibile",
     "calendarUnavailable": "Non disponibile",
     "calendarSelectDate": "Seleziona una data",
@@ -249,7 +252,7 @@
     "titleCancelled": "Richiesta cancellata",
     "subtitle": "Controlla la tua richiesta per il tour in barca a Capri e cancellala se non e ancora confermata.",
     "invalidTitle": "Link di prenotazione non valido o scaduto.",
-    "invalidMessage": "Questo link non corrisponde a una richiesta di prenotazione attiva. Contattaci se hai bisogno di aiuto.",
+    "invalidMessage": "Questo link non corrisponde a una richiesta di prenotazione attiva. Se hai bisogno di aiuto, contattaci a info@capriloveboat.com.",
     "summaryTitle": "Riepilogo richiesta",
     "name": "Nome cliente",
     "date": "Data richiesta",
@@ -277,7 +280,7 @@
     "nextStepConfirmed": "La barca è riservata per te. Ti chiediamo di arrivare puntuale. Il saldo verrà pagato direttamente al capitano il giorno del tour.",
     "nextStepCompleted": "Il tour è stato completato. Grazie per aver partecipato.",
     "nextStepCancelled": "Questa richiesta è stata annullata.",
-    "nextStepNotAvailable": "Il capitano non è disponibile per questo orario. Contattaci se vuoi scegliere un altro orario.",
+    "nextStepNotAvailable": "Il capitano non è disponibile per questo orario. Se hai bisogno di aiuto, contattaci a info@capriloveboat.com.",
     "nextStepExpired": "Questa richiesta è scaduta.",
     "paymentTitle": "Pagamento prenotazione",
     "paymentMockNote": "Il pagamento sara disponibile qui quando Stripe sara collegato.",
@@ -296,7 +299,7 @@
     "statusNotAvailable": "Capitano non disponibile",
     "statusCancelled": "Richiesta cancellata",
     "statusExpired": "Richiesta scaduta",
-    "confirmedMessage": "La tua prenotazione è confermata. Contattaci se hai bisogno di richiedere la cancellazione.",
+    "confirmedMessage": "La tua prenotazione è confermata. Se hai bisogno di aiuto, contattaci a info@capriloveboat.com.",
     "cannotCancelMessage": "Questa richiesta di prenotazione non puo piu essere cancellata da questo link.",
     "tourTwoHour": "2 ore",
     "tourThreeHour": "3 ore",
@@ -330,7 +333,14 @@
     "blueGrottoTitle": "Grotta Azzurra",
     "blueGrottoText": "La Grotta Azzurra e opzionale e non e garantita. Dipende dalle condizioni del mare, dall'apertura, dalla coda e dalla durata del tour. Il biglietto per la Grotta Azzurra non è incluso nel prezzo del tour. Attualmente costa €18 a persona. Se la Grotta Azzurra è aperta e decidi di entrare, il biglietto si paga direttamente all’ingresso della grotta, in contanti o con carta. L'attesa e spesso di circa 40 minuti-1 ora, soprattutto a giugno, luglio e agosto. Di solito non e consigliata per tour di 2 o 3 ore, e piu adatta a tour di 4 ore, 5 ore o giornata intera, e non e consigliata per il tour al tramonto.",
     "contactTitle": "Hai bisogno di aiuto?",
-    "contactText": "Se hai domande sulla prenotazione o su queste condizioni, contattaci prima della data del tour.",
+    "contactText": "Se hai domande sulla prenotazione o su queste condizioni, visita la pagina contatti prima della data del tour.",
+    "backToBooking": "Richiedi una prenotazione"
+  },
+  "Contact": {
+    "eyebrow": "Contatti",
+    "title": "Hai bisogno di aiuto con il tour in barca a Capri?",
+    "text": "Se hai bisogno di aiuto, contattaci a info@capriloveboat.com.",
+    "emailLabel": "Email",
     "backToBooking": "Richiedi una prenotazione"
   }
 }

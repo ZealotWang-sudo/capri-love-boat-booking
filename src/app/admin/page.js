@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import AdminActionForm from "./AdminActionForm";
 import AdminHeader from "./AdminHeader";
@@ -90,6 +91,7 @@ const CLOSED_BOOKING_STATUSES = new Set([
   "not_available",
   "expired",
 ]);
+const ADMIN_TIME_ZONE = "Europe/Rome";
 
 function getDateTime(value) {
   const time = Date.parse(value);
@@ -109,8 +111,13 @@ function formatDateTime(value) {
   }
 
   return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone: ADMIN_TIME_ZONE,
+    timeZoneName: "short",
+    year: "numeric",
   }).format(new Date(value));
 }
 
@@ -132,6 +139,46 @@ function formatReferenceCode(id) {
 
 function formatBookingStatus(value) {
   return value === "available" ? "payment_pending" : formatValue(value);
+}
+
+function getSearchQuery(searchParams) {
+  const query = searchParams?.q;
+
+  return typeof query === "string" ? query.trim() : "";
+}
+
+function normalizeSearchValue(value) {
+  return String(value ?? "").toLowerCase();
+}
+
+function bookingMatchesSearch(booking, searchQuery) {
+  if (!searchQuery) {
+    return true;
+  }
+
+  const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+  const searchableText = [
+    booking.id,
+    formatReferenceCode(booking.id),
+    booking.customer_name,
+    booking.email,
+    booking.phone,
+    booking.locale,
+    booking.requested_date,
+    booking.time_slot,
+    booking.time_window,
+    booking.tour_type,
+    formatTourType(booking.tour_type),
+    booking.booking_status,
+    formatBookingStatus(booking.booking_status),
+    booking.payment_status,
+    booking.captain_status,
+    booking.message,
+  ]
+    .map(normalizeSearchValue)
+    .join(" ");
+
+  return searchTerms.every((term) => searchableText.includes(term));
 }
 
 function getWhatsappHref(phone) {
@@ -468,13 +515,54 @@ function BookingGroup({ group }) {
   );
 }
 
-export default async function AdminPage() {
+function BookingSearchForm({ resultCount, searchQuery, totalCount }) {
+  return (
+    <section className="mt-8 border border-stone-300 bg-[#fbf8f3] p-4 sm:p-5">
+      <form className="flex flex-col gap-3 sm:flex-row" action="/admin">
+        <label className="sr-only" htmlFor="admin-booking-search">
+          Search bookings
+        </label>
+        <input
+          id="admin-booking-search"
+          name="q"
+          type="search"
+          defaultValue={searchQuery}
+          placeholder="Search reference, name, email, phone, date, tour, status..."
+          className="min-h-12 flex-1 border border-stone-300 bg-transparent px-4 text-sm outline-none transition focus:border-stone-950"
+        />
+        <button
+          type="submit"
+          className="border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950"
+        >
+          Search
+        </button>
+        {searchQuery ? (
+          <Link
+            href="/admin"
+            className="border border-stone-300 px-5 py-3 text-center text-xs font-medium uppercase tracking-[0.18em] text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
+          >
+            Clear
+          </Link>
+        ) : null}
+      </form>
+      {searchQuery ? (
+        <p className="mt-3 text-sm text-stone-600">
+          Showing {resultCount} of {totalCount} loaded bookings for “{searchQuery}”.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export default async function AdminPage({ searchParams }) {
   const user = await getAdminUser("/admin");
 
   if (!isAllowedAdmin(user)) {
     return <UnauthorizedAdmin />;
   }
 
+  const queryParams = await searchParams;
+  const searchQuery = getSearchQuery(queryParams);
   const supabase = await createSupabaseServerClient();
   const { data: bookingRows, error } = await supabase
     .from("bookings")
@@ -482,8 +570,11 @@ export default async function AdminPage() {
       "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, payment_status, captain_status, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
     )
     .order("created_at", { ascending: false })
-    .limit(50);
-  const bookings = bookingRows ?? [];
+    .limit(searchQuery ? 200 : 50);
+  const loadedBookings = bookingRows ?? [];
+  const bookings = loadedBookings.filter((booking) =>
+    bookingMatchesSearch(booking, searchQuery),
+  );
   const bookingGroups = getGroupedBookings(bookings);
 
   return (
@@ -500,6 +591,12 @@ export default async function AdminPage() {
             Could not load bookings: {error.message}
           </div>
         ) : null}
+
+        <BookingSearchForm
+          resultCount={bookings.length}
+          searchQuery={searchQuery}
+          totalCount={loadedBookings.length}
+        />
 
         <div className="mt-8 space-y-6">
           {bookingGroups.map((group) => (

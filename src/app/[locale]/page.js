@@ -4,6 +4,13 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import RouteMap from "@/components/RouteMap.jsx";
 import SectionLink from "@/components/SectionLink";
 import SiteHeader from "@/components/SiteHeader";
+import { buildPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+
+  return buildPageMetadata("home", locale);
+}
 
 export default async function HomePage({ params }) {
   const { locale } = await params;

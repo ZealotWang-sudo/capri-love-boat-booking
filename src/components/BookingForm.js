@@ -45,6 +45,7 @@ export default function BookingForm({ locale, labels }) {
     blockedSlotsByDate: {},
     fullyBookedDates: [],
     month: "",
+    partiallyBookedDates: [],
     tourType: "",
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
@@ -84,6 +85,11 @@ export default function BookingForm({ locale, labels }) {
     availability.month === calendarMonth &&
     availability.tourType === availabilityTourType
       ? availability.alternativeAvailableDates
+      : [];
+  const partiallyBookedDates =
+    availability.month === calendarMonth &&
+    availability.tourType === availabilityTourType
+      ? availability.partiallyBookedDates
       : [];
   const alternativeTourTypesForSelectedDate =
     selectedDate &&
@@ -165,6 +171,7 @@ export default function BookingForm({ locale, labels }) {
           blockedSlotsByDate: data.blockedSlotsByDate ?? {},
           fullyBookedDates: data.fullyBookedDates ?? [],
           month: calendarMonth,
+          partiallyBookedDates: data.partiallyBookedDates ?? [],
           tourType: availabilityTourType,
         };
 
@@ -480,6 +487,7 @@ export default function BookingForm({ locale, labels }) {
               setSelectedDate(date);
               setSelectedTime("");
             }}
+            partiallyBookedDates={partiallyBookedDates}
             value={selectedDate}
           />
         </section>

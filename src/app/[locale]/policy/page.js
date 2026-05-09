@@ -2,6 +2,13 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import PolicyContent, { POLICY_ITEM_KEYS } from "@/components/PolicyContent";
 import SiteHeader from "@/components/SiteHeader";
+import { buildPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+
+  return buildPageMetadata("policy", locale);
+}
 
 export default async function PolicyPage({ params }) {
   const { locale } = await params;

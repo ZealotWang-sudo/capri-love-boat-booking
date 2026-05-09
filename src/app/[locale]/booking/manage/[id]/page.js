@@ -4,6 +4,7 @@ import CustomerCancelBookingForm from "@/components/CustomerCancelBookingForm";
 import SiteHeader from "@/components/SiteHeader";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import { buildPageMetadata } from "@/lib/seo";
 import { confirmBookingPaymentFromSession } from "@/lib/stripe/confirmBookingPayment";
 
 const CANCELLABLE_STATUSES = new Set([
@@ -44,6 +45,12 @@ const PAGE_TITLE_KEYS = {
   completed: "titleCompleted",
   confirmed: "titleConfirmed",
 };
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+
+  return buildPageMetadata("manage", locale, { noIndex: true });
+}
 
 function getSearchText(value) {
   return typeof value === "string" ? value.trim() : "";

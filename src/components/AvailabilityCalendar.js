@@ -226,14 +226,14 @@ export default function AvailabilityCalendar({
                   selected
                     ? "border-stone-950 bg-stone-950 text-[#f3eee7]"
                     : otherTourAvailable
-                      ? "border-x-amber-200 border-t-amber-200 border-b-amber-500 bg-amber-50/80 text-stone-950 shadow-sm hover:border-stone-950"
+                      ? "border-x-amber-200 border-t-amber-200 border-b-amber-500 bg-amber-50/80 text-stone-950 shadow-sm"
                       : booked
-                        ? "cursor-not-allowed border-x-red-200 border-t-red-200 border-b-red-700 bg-red-50/70 text-stone-400 opacity-70 shadow-none hover:border-x-red-200 hover:border-t-red-200 hover:border-b-red-700"
+                        ? "cursor-not-allowed border-x-red-200 border-t-red-200 border-b-red-700 bg-red-50/70 text-stone-400 opacity-70 shadow-none"
                         : unavailable
-                          ? "cursor-not-allowed border-x-stone-200 border-t-stone-200 border-b-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none hover:border-x-stone-200 hover:border-t-stone-200 hover:border-b-stone-400"
+                          ? "cursor-not-allowed border-x-stone-200 border-t-stone-200 border-b-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none"
                           : partiallyBooked
-                            ? "border-x-orange-200 border-t-orange-200 border-b-orange-500 bg-orange-50/80 text-stone-950 shadow-sm hover:border-stone-950"
-                            : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm hover:border-stone-950",
+                            ? "border-x-orange-200 border-t-orange-200 border-b-orange-500 bg-orange-50/80 text-stone-950 shadow-sm"
+                            : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm",
                   isToday ? "ring-2 ring-stone-950 ring-offset-2" : "",
                 ].join(" ")}
                 aria-label={`${dateKey} ${statusLabel}${

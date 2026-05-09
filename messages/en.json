@@ -2,7 +2,9 @@
   "Common": {
     "brand": "Capri Love Boat",
     "book": "Request a booking",
-    "home": "Back to home"
+    "contact": "Contact",
+    "home": "Back to home",
+    "policy": "Policy"
   },
   "Home": {
     "eyebrow": "PRIVATE · LOCAL CAPTAIN · TRANSPARENT PRICING",
@@ -158,6 +160,7 @@
     "calendarNextMonth": "Next month",
     "calendarAvailable": "Available",
     "calendarBooked": "Fully booked",
+    "calendarPartiallyBooked": "Partially booked",
     "calendarOtherTourAvailable": "Other tour type available",
     "calendarUnavailable": "Unavailable",
     "calendarSelectDate": "Select a date",
@@ -249,7 +252,7 @@
     "titleCancelled": "Cancelled request",
     "subtitle": "Review your Capri boat request and cancel it if it has not been confirmed yet.",
     "invalidTitle": "Invalid or expired booking link.",
-    "invalidMessage": "This link does not match an active booking request. Please contact us if you need help.",
+    "invalidMessage": "This link does not match an active booking request. If you need help, contact us at info@capriloveboat.com.",
     "summaryTitle": "Request summary",
     "name": "Customer name",
     "date": "Requested date",
@@ -277,7 +280,7 @@
     "nextStepConfirmed": "Your boat is reserved. Please arrive on time. The remaining balance is paid directly to the captain on the day.",
     "nextStepCompleted": "Your trip has been completed. Thank you for joining us.",
     "nextStepCancelled": "This request has been cancelled.",
-    "nextStepNotAvailable": "The captain is not available for this time. Please contact us if you want to choose another time.",
+    "nextStepNotAvailable": "The captain is not available for this time. If you need help, contact us at info@capriloveboat.com.",
     "nextStepExpired": "This request has expired.",
     "paymentTitle": "Reservation payment",
     "paymentMockNote": "Payment will be available here once Stripe is connected.",
@@ -296,7 +299,7 @@
     "statusNotAvailable": "Captain not available",
     "statusCancelled": "Request cancelled",
     "statusExpired": "Request expired",
-    "confirmedMessage": "Your booking is confirmed. Please contact us if you need to request cancellation.",
+    "confirmedMessage": "Your booking is confirmed. If you need help, contact us at info@capriloveboat.com.",
     "cannotCancelMessage": "This booking request can no longer be cancelled from this link.",
     "tourTwoHour": "2 hours",
     "tourThreeHour": "3 hours",
@@ -330,7 +333,14 @@
     "blueGrottoTitle": "Blue Grotto",
     "blueGrottoText": "The Blue Grotto is optional and not guaranteed. It depends on sea conditions, opening status, queue time, and tour duration. Blue Grotto entrance fee is not included. It is currently €18 per person. If Blue Grotto is open and you choose to enter, the entrance fee is paid directly at the cave by cash or card. The wait is often around 40 minutes to 1 hour, especially in June, July, and August. It is usually not recommended for 2-hour or 3-hour tours, is more suitable for 4-hour, 5-hour, or full-day tours, and is not recommended for the sunset tour.",
     "contactTitle": "Need help?",
-    "contactText": "If you have questions about your booking or these terms, please contact us before your tour date.",
+    "contactText": "If you have questions about your booking or these terms, visit the contact page before your tour date.",
+    "backToBooking": "Request a booking"
+  },
+  "Contact": {
+    "eyebrow": "Contact",
+    "title": "Need help with your Capri boat tour?",
+    "text": "If you need help, contact us at info@capriloveboat.com.",
+    "emailLabel": "Email",
     "backToBooking": "Request a booking"
   }
 }

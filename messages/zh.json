@@ -2,7 +2,9 @@
   "Common": {
     "brand": "Capri Love Boat",
     "book": "提交预约请求",
-    "home": "返回首页"
+    "contact": "联系",
+    "home": "返回首页",
+    "policy": "预约政策"
   },
   "Home": {
     "eyebrow": "私享 · 本地船长 · 价格透明",
@@ -158,6 +160,7 @@
     "calendarNextMonth": "下一个月",
     "calendarAvailable": "可预约",
     "calendarBooked": "已满",
+    "calendarPartiallyBooked": "部分已预约",
     "calendarOtherTourAvailable": "其他行程类型可预约",
     "calendarUnavailable": "不可预约",
     "calendarSelectDate": "选择日期",
@@ -249,7 +252,7 @@
     "titleCancelled": "已取消的请求",
     "subtitle": "查看您的卡普里船游预约请求。如果尚未确认，您可以在这里取消。",
     "invalidTitle": "预约链接无效或已过期。",
-    "invalidMessage": "这个链接无法匹配有效的预约请求。如需帮助，请联系我们。",
+    "invalidMessage": "这个链接无法匹配有效的预约请求。如需帮助，请通过 info@capriloveboat.com 联系我们。",
     "summaryTitle": "请求摘要",
     "name": "客户姓名",
     "date": "预约日期",
@@ -277,7 +280,7 @@
     "nextStepConfirmed": "船只已为您锁定。请准时到达，剩余费用将在出海当天直接支付给船长。",
     "nextStepCompleted": "您的行程已完成，感谢您参加这次体验。",
     "nextStepCancelled": "该预约请求已取消。",
-    "nextStepNotAvailable": "船长在该时间不可用。如果您想选择其他时间，请联系我们。",
+    "nextStepNotAvailable": "船长在该时间不可用。如需帮助，请通过 info@capriloveboat.com 联系我们。",
     "nextStepExpired": "该预约请求已过期。",
     "paymentTitle": "预约订金支付",
     "paymentMockNote": "连接 Stripe 后，这里将可以完成支付。",
@@ -296,7 +299,7 @@
     "statusNotAvailable": "船长不可用",
     "statusCancelled": "预约请求已取消",
     "statusExpired": "预约请求已过期",
-    "confirmedMessage": "您的预约已确认。如需取消，请联系我们处理。",
+    "confirmedMessage": "您的预约已确认。如需帮助，请通过 info@capriloveboat.com 联系我们。",
     "cannotCancelMessage": "这个预约请求已无法通过此链接取消。",
     "tourTwoHour": "2小时",
     "tourThreeHour": "3小时",
@@ -330,7 +333,14 @@
     "blueGrottoTitle": "蓝洞",
     "blueGrottoText": "蓝洞为可选项目，不保证一定可以进入。是否适合进入取决于当天海况、开放状态、排队时间和行程时长。蓝洞门票不包含在船游价格中，目前价格为每人 18 欧元。如果当天蓝洞开放，且您选择进入蓝洞，门票需在蓝洞入口现场另行支付，可使用现金或银行卡。等待时间通常约为 40 分钟到 1 小时，尤其是在 6 月、7 月和 8 月。通常不建议 2 小时或 3 小时行程进入蓝洞；4 小时、5 小时或全天行程更适合安排蓝洞；日落行程不建议进入蓝洞。",
     "contactTitle": "需要帮助？",
-    "contactText": "如果您对预约或以上说明有任何疑问，请在出行日期前联系我们。",
+    "contactText": "如果您对预约或以上说明有任何疑问，请在出行日期前访问联系页面。",
+    "backToBooking": "提交预约请求"
+  },
+  "Contact": {
+    "eyebrow": "联系",
+    "title": "需要卡普里船游帮助？",
+    "text": "如需帮助，请通过 info@capriloveboat.com 联系我们。",
+    "emailLabel": "邮箱",
     "backToBooking": "提交预约请求"
   }
 }

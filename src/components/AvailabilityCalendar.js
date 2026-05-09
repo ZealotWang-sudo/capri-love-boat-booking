@@ -44,6 +44,7 @@ export default function AvailabilityCalendar({
   error,
   onMonthChange,
   onSelect,
+  partiallyBookedDates = [],
   value,
 }) {
   const today = useMemo(() => {
@@ -63,6 +64,10 @@ export default function AvailabilityCalendar({
   const fullyBookedDateSet = useMemo(
     () => new Set(fullyBookedDates),
     [fullyBookedDates],
+  );
+  const partiallyBookedDateSet = useMemo(
+    () => new Set(partiallyBookedDates),
+    [partiallyBookedDates],
   );
   const monthDays = getMonthDays(displayDate);
   const monthLabel = new Intl.DateTimeFormat(labels.locale, {
@@ -152,6 +157,13 @@ export default function AvailabilityCalendar({
           </span>
           <span className="flex items-center gap-2">
             <span
+              className="h-2.5 w-2.5 bg-orange-500"
+              aria-hidden="true"
+            />
+            {labels.partiallyBooked}
+          </span>
+          <span className="flex items-center gap-2">
+            <span
               className="h-2.5 w-2.5 bg-amber-500"
               aria-hidden="true"
             />
@@ -189,6 +201,8 @@ export default function AvailabilityCalendar({
               !unavailable &&
               booked &&
               alternativeAvailableDateSet.has(dateKey);
+            const partiallyBooked =
+              !unavailable && !booked && partiallyBookedDateSet.has(dateKey);
             const disabled = unavailable || (booked && !otherTourAvailable);
             const selected = dateKey === selectedDateValue;
             const statusLabel = unavailable
@@ -197,7 +211,9 @@ export default function AvailabilityCalendar({
                 ? labels.otherTourAvailable
                 : booked
                   ? labels.booked
-                  : labels.available;
+                  : partiallyBooked
+                    ? labels.partiallyBooked
+                    : labels.available;
 
             return (
               <button
@@ -215,7 +231,9 @@ export default function AvailabilityCalendar({
                         ? "cursor-not-allowed border-x-red-200 border-t-red-200 border-b-red-700 bg-red-50/70 text-stone-400 opacity-70 shadow-none hover:border-x-red-200 hover:border-t-red-200 hover:border-b-red-700"
                         : unavailable
                           ? "cursor-not-allowed border-x-stone-200 border-t-stone-200 border-b-stone-400 bg-stone-100 text-stone-400 opacity-60 shadow-none hover:border-x-stone-200 hover:border-t-stone-200 hover:border-b-stone-400"
-                          : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm hover:border-stone-950",
+                          : partiallyBooked
+                            ? "border-x-orange-200 border-t-orange-200 border-b-orange-500 bg-orange-50/80 text-stone-950 shadow-sm hover:border-stone-950"
+                            : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm hover:border-stone-950",
                   isToday ? "ring-2 ring-stone-950 ring-offset-2" : "",
                 ].join(" ")}
                 aria-label={`${dateKey} ${statusLabel}${

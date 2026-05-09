@@ -3,6 +3,13 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import BookingForm from "@/components/BookingForm";
 import { POLICY_ITEM_KEYS } from "@/components/PolicyContent";
 import SiteHeader from "@/components/SiteHeader";
+import { buildPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+
+  return buildPageMetadata("book", locale);
+}
 
 export default async function BookingPage({ params }) {
   const { locale } = await params;
@@ -31,6 +38,7 @@ export default async function BookingPage({ params }) {
       nextMonth: t("calendarNextMonth"),
       available: t("calendarAvailable"),
       booked: t("calendarBooked"),
+      partiallyBooked: t("calendarPartiallyBooked"),
       otherTourAvailable: t("calendarOtherTourAvailable"),
       unavailable: t("calendarUnavailable"),
       selectDate: t("calendarSelectDate"),
@@ -58,7 +66,7 @@ export default async function BookingPage({ params }) {
     timeUnavailable: t("timeUnavailable"),
     availabilityLoading: t("availabilityLoading"),
     allTimeSlotsBooked: t("allTimeSlotsBooked"),
-    otherTourAvailableMessage: t("otherTourAvailableMessage"),
+    otherTourAvailableMessage: t.raw("otherTourAvailableMessage"),
     switchToTour: t("switchToTour"),
     timeNoLongerAvailable: t("timeNoLongerAvailable"),
     price: t("price"),

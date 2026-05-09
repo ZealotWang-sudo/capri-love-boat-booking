@@ -1,6 +1,7 @@
 import { Resend } from "resend";
+import { DEFAULT_EMAIL_FROM } from "@/lib/contact";
 
-const EMAIL_FROM = process.env.EMAIL_FROM || "bookings@your-domain.com";
+const EMAIL_FROM = process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM;
 const EMAIL_EVENTS_BY_STATUS = {
   requested: "booking_received",
   payment_pending: "payment_pending",
@@ -119,7 +120,7 @@ const EMAIL_COPY = {
       cta: "支付预约订金",
       intro:
         "好消息，您选择的时间可以预约。请在 24 小时内支付预约订金以锁定该时间。",
-      subject: "船长有空，请锁定时间",
+      subject: "请锁定时间",
     },
   },
   booking_confirmed: {

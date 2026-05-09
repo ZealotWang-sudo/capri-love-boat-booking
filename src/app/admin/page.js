@@ -90,6 +90,7 @@ const CLOSED_BOOKING_STATUSES = new Set([
   "not_available",
   "expired",
 ]);
+const ADMIN_TIME_ZONE = "Europe/Rome";
 
 function getDateTime(value) {
   const time = Date.parse(value);
@@ -109,8 +110,13 @@ function formatDateTime(value) {
   }
 
   return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone: ADMIN_TIME_ZONE,
+    timeZoneName: "short",
+    year: "numeric",
   }).format(new Date(value));
 }
 

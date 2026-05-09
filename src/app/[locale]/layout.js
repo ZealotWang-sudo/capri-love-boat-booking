@@ -1,7 +1,11 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
+import PageViewAnalytics from "@/components/PageViewAnalytics";
+import SiteFooter from "@/components/SiteFooter";
+import StructuredData from "@/components/StructuredData";
+import { SITE_URL, getTourServiceJsonLd } from "@/lib/seo";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -15,6 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Capri Love Boat",
   description: "Capri private boat booking",
   icons: {
@@ -29,6 +34,7 @@ export function generateStaticParams() {
 export default async function LocaleLayout({ children, params }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const common = await getTranslations("Common");
 
   return (
     <html
@@ -36,7 +42,19 @@ export default async function LocaleLayout({ children, params }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <PageViewAnalytics locale={locale} />
+          <StructuredData data={getTourServiceJsonLd()} />
+          {children}
+          <SiteFooter
+            labels={{
+              brand: common("brand"),
+              contact: common("contact"),
+              policy: common("policy"),
+            }}
+            locale={locale}
+          />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

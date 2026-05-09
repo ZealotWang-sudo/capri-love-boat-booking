@@ -127,18 +127,21 @@ const EMAIL_COPY = {
     en: {
       cta: "View booking details",
       intro:
-        "Your reservation fee has been received and your boat is reserved. We will share final departure details before the tour.",
+        "Your reservation fee has been received and your boat is reserved. Here are the departure and boat details for your confirmed tour.",
+      showTourLogistics: true,
       subject: "Booking confirmed",
     },
     it: {
       cta: "Vedi dettagli",
       intro:
-        "Abbiamo ricevuto il deposito e la barca e riservata. Ti invieremo i dettagli finali prima del tour.",
+        "Abbiamo ricevuto il deposito e la barca è riservata. Ecco i dettagli di partenza e della barca per il tuo tour confermato.",
+      showTourLogistics: true,
       subject: "Prenotazione confermata",
     },
     zh: {
       cta: "查看预约详情",
-      intro: "我们已收到预约订金，船只已为您保留。出发前我们会发送最终出发信息。",
+      intro: "我们已收到预约订金，船只已为您保留。以下是已确认行程的出发与船只信息。",
+      showTourLogistics: true,
       subject: "预约已确认",
     },
   },
@@ -209,6 +212,68 @@ export const BOOKING_EMAIL_EVENTS = [
   { eventType: "cancelled", label: "Cancelled" },
   { eventType: "completed", label: "Completed" },
 ];
+const TOUR_LOGISTICS = {
+  en: {
+    items: [
+      {
+        label: "Departure point",
+        value:
+          "Molo 21, Marina Grande / Capri main port, about 5 minutes from the public ferry and hydrofoil arrival area.",
+      },
+      {
+        label: "Toilet",
+        value:
+          "Public toilets are available at the arrival quay before departure. The boat also has a chemical toilet for basic needs.",
+      },
+      {
+        label: "Boat model",
+        value:
+          "Aequa 7.50 by Fratelli Di Donna, a special model with a large 4 m × 2.60 m sunbathing area.",
+      },
+    ],
+    title: "Tour information",
+  },
+  it: {
+    items: [
+      {
+        label: "Punto di partenza",
+        value:
+          "Molo 21, Marina Grande / porto principale di Capri, a circa 5 minuti dall'area di arrivo di traghetti e aliscafi pubblici.",
+      },
+      {
+        label: "Toilette",
+        value:
+          "I bagni pubblici sono disponibili al molo di arrivo prima della partenza. La barca ha anche una toilette chimica per necessita di base.",
+      },
+      {
+        label: "Modello barca",
+        value:
+          "Aequa 7.50 di Fratelli Di Donna, un modello speciale con un'ampia area prendisole di 4 m × 2,60 m.",
+      },
+    ],
+    title: "Informazioni tour",
+  },
+  zh: {
+    items: [
+      {
+        label: "出发地点",
+        value:
+          "Molo 21，Marina Grande / 卡普里主港，距离公共渡轮和水翼船抵达区域步行约 5 分钟。",
+      },
+      {
+        label: "洗手间",
+        value:
+          "出发前可使用抵达码头的公共洗手间。船上也配有化学厕所，可满足基本需要。",
+      },
+      {
+        label: "船型",
+        value:
+          "Fratelli Di Donna 的 Aequa 7.50 特别船型，配有宽敞的 4 m × 2.60 m 日光浴区域。",
+      },
+    ],
+    title: "行程信息",
+  },
+};
 
 function getLocale(locale) {
   return SUPPORTED_EMAIL_LOCALES.includes(locale) ? locale : "en";
@@ -220,6 +285,10 @@ function getEmailCopy(eventType, locale) {
 
 function getEmailLabels(locale) {
   return EMAIL_LABELS[locale] ?? EMAIL_LABELS.en;
+}
+
+function getTourLogistics(locale) {
+  return TOUR_LOGISTICS[locale] ?? TOUR_LOGISTICS.en;
 }
 
 function formatEuro(value) {
@@ -295,8 +364,14 @@ function buildTextEmail({ booking, copy, locale }) {
   const cancellationReasonText = getCancellationReasonText(booking, locale);
   const manageLinkText = getManageLinkText(booking, copy, locale);
   const labels = getEmailLabels(locale);
+  const tourLogistics = copy.showTourLogistics ? getTourLogistics(locale) : null;
+  const tourLogisticsText = tourLogistics
+    ? `\n\n${tourLogistics.title}\n${tourLogistics.items
+        .map((item) => `${item.label}: ${item.value}`)
+        .join("\n")}`
+    : "";
 
-  return `${labels.greeting} ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}\n\n${details}\n\nCapri Love Boat`;
+  return `${labels.greeting} ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}\n\n${details}${tourLogisticsText}\n\nCapri Love Boat`;
 }
 
 function buildHtmlEmail({ booking, copy, locale }) {
@@ -333,6 +408,35 @@ function buildHtmlEmail({ booking, copy, locale }) {
             </td>
           </tr>
         </table>
+      `
+    : "";
+  const tourLogistics = copy.showTourLogistics ? getTourLogistics(locale) : null;
+  const tourLogisticsHtml = tourLogistics
+    ? `
+        <tr>
+          <td style="padding:0 34px 8px;">
+            <p style="margin:0;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;line-height:22px;">${escapeHtml(tourLogistics.title)}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 34px 12px;">
+            <div style="border-top:1px solid #bbb;font-size:1px;line-height:1px;">&nbsp;</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 34px 22px;">
+            ${tourLogistics.items
+              .map(
+                (item) => `
+                  <div style="margin:0 0 14px;">
+                    <p style="margin:0 0 4px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(item.label)}</p>
+                    <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:16px;line-height:24px;">${escapeHtml(item.value)}</p>
+                  </div>
+                `,
+              )
+              .join("")}
+          </td>
+        </tr>
       `
     : "";
 
@@ -377,6 +481,7 @@ function buildHtmlEmail({ booking, copy, locale }) {
                   </table>
                 </td>
               </tr>
+              ${tourLogisticsHtml}
               <tr>
                 <td style="padding:18px 34px 30px;text-align:center;border-top:1px solid #bbb;">
                   <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:14px;line-height:20px;">Capri, Italy</p>

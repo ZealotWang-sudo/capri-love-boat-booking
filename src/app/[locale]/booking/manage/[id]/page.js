@@ -80,6 +80,17 @@ function SummaryItem({ fullWidth = false, label, value }) {
   );
 }
 
+function TourLogisticsItem({ label, value }) {
+  return (
+    <div className="border-t border-stone-300 pt-4 first:border-t-0 first:pt-0">
+      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+        {label}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-stone-700">{value}</p>
+    </div>
+  );
+}
+
 async function getManagedBooking({ bookingId, token }) {
   if (!bookingId || !token) {
     return null;
@@ -287,6 +298,28 @@ export default async function ManageBookingPage({ params, searchParams }) {
                 {t("reservationFeeReceived")}
               </p>
             </div>
+          ) : null}
+
+          {booking.booking_status === "confirmed" ? (
+            <section className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {t("tourLogisticsTitle")}
+              </p>
+              <div className="mt-5 space-y-4">
+                <TourLogisticsItem
+                  label={t("departurePointTitle")}
+                  value={t("departurePointText")}
+                />
+                <TourLogisticsItem
+                  label={t("toiletTitle")}
+                  value={t("toiletText")}
+                />
+                <TourLogisticsItem
+                  label={t("boatModelTitle")}
+                  value={t("boatModelText")}
+                />
+              </div>
+            </section>
           ) : null}
 
           <div className="mt-8">

@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
@@ -44,6 +45,7 @@ export default async function LocaleLayout({ children, params }) {
       <body className="min-h-full">
         <NextIntlClientProvider>
           <PageViewAnalytics locale={locale} />
+          <Analytics />
           <StructuredData data={getTourServiceJsonLd()} />
           {children}
           <SiteFooter

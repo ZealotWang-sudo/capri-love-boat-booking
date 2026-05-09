@@ -192,7 +192,7 @@
     "allTimeSlotsBooked": "All time slots for this date are currently booked.",
     "otherTourAvailableMessage": "Your selected tour type is fully booked at this time on this date, but another tour type is still available: {tours}.",
     "switchToTour": "Switch to another tour type",
-    "timeNoLongerAvailable": "That time was just booked. Please choose another time.",
+    "timeNoLongerAvailable": "This time is no longer available. Please choose another time.",
     "price": "Price",
     "pricePlaceholder": "Choose a tour to see the price.",
     "totalPrice": "Total price",

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import AdminRealtimeRefresh from "@/components/admin/AdminRealtimeRefresh";
 import AdminActionForm from "./AdminActionForm";
 import AdminHeader from "./AdminHeader";
 import AdminBookingDetails from "./AdminBookingDetails";
@@ -173,6 +174,8 @@ function bookingMatchesSearch(booking, searchQuery) {
     formatBookingStatus(booking.booking_status),
     booking.payment_status,
     booking.captain_status,
+    booking.stripe_checkout_session_id,
+    booking.stripe_payment_intent_id,
     booking.message,
   ]
     .map(normalizeSearchValue)
@@ -567,7 +570,7 @@ export default async function AdminPage({ searchParams }) {
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
-      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, payment_status, captain_status, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
+      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, payment_status, captain_status, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
     )
     .order("created_at", { ascending: false })
     .limit(searchQuery ? 200 : 50);
@@ -579,6 +582,7 @@ export default async function AdminPage({ searchParams }) {
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
+      <AdminRealtimeRefresh />
       <section className="mx-auto max-w-7xl">
         <AdminHeader
           active="bookings"

@@ -192,7 +192,7 @@
     "allTimeSlotsBooked": "Tutti gli orari per questa data sono gia prenotati.",
     "otherTourAvailableMessage": "Il tipo di tour selezionato e al completo per questo orario in questa data, ma un altro tipo di tour e ancora disponibile: {tours}.",
     "switchToTour": "Passa a un altro tipo di tour",
-    "timeNoLongerAvailable": "Questo orario e appena stato prenotato. Scegli un altro orario.",
+    "timeNoLongerAvailable": "Questo orario non è più disponibile. Scegli un altro orario.",
     "price": "Prezzo",
     "pricePlaceholder": "Scegli un tour per vedere il prezzo.",
     "totalPrice": "Prezzo totale",

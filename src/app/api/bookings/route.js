@@ -29,6 +29,8 @@ const ALLOWED_TOUR_TYPES = new Set([
   "two_hours",
   "special_request",
 ]);
+const TIME_NO_LONGER_AVAILABLE_MESSAGE =
+  "This time is no longer available. Please choose another time.";
 
 function jsonError(message, status = 400, details) {
   console.error("[bookings API]", message, details);
@@ -202,7 +204,7 @@ export async function POST(request) {
   }
 
   if (unavailableSlot) {
-    return jsonError("Selected time is no longer available.", 409);
+    return jsonError(TIME_NO_LONGER_AVAILABLE_MESSAGE, 409);
   }
 
   const hasOverlap = (existingBookings ?? []).some((existingBooking) =>
@@ -210,7 +212,7 @@ export async function POST(request) {
   );
 
   if (hasOverlap) {
-    return jsonError("Selected time is no longer available.", 409);
+    return jsonError(TIME_NO_LONGER_AVAILABLE_MESSAGE, 409);
   }
 
   const { error } = await supabase.from("bookings").insert(bookingRequest);

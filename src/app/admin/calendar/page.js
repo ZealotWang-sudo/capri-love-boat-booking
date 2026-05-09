@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import AdminRealtimeRefresh from "@/components/admin/AdminRealtimeRefresh";
 import {
   ACTIVE_BOOKING_STATUSES,
   BOOKING_SCHEDULE_PERIODS,
@@ -272,6 +273,7 @@ export default async function AdminCalendarPage({ searchParams }) {
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
+      <AdminRealtimeRefresh />
       <section className="mx-auto max-w-7xl">
         <AdminHeader active="calendar" title="Calendar" userEmail={user.email} />
 

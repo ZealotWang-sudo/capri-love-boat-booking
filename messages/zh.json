@@ -192,7 +192,7 @@
     "allTimeSlotsBooked": "该日期的所有时间段目前都已被预约。",
     "otherTourAvailableMessage": "这个日期所选行程类型在当前时间段已满，但还有其他行程类型可预约：{tours}。",
     "switchToTour": "切换到其他行程类型",
-    "timeNoLongerAvailable": "该时间刚刚被预约，请选择其他时间。",
+    "timeNoLongerAvailable": "该时间目前不可预约，请选择其他时间。",
     "price": "价格",
     "pricePlaceholder": "请选择行程后查看价格。",
     "totalPrice": "总价",

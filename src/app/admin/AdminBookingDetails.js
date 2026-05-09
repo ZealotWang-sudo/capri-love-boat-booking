@@ -78,9 +78,22 @@ const STATUS_ACTIONS = [
     reasonLabel: "Reason for cancellation",
     reasonPlaceholder: "Optional note to include in the customer email.",
     refundWarning:
-      "Reservation fee has already been paid. Refund must be handled manually in Stripe for now.",
+      "Reservation fee has already been paid. Use the refund button separately if you also need to return the payment.",
     showWhen: { booking_status: "confirmed" },
     variant: "danger",
+  },
+  {
+    actionType: "refund",
+    label: "Refund Stripe payment",
+    confirmLabel: "Refund payment",
+    confirmMessage:
+      "Refund the reservation fee in Stripe and mark this booking payment as refunded? This does not cancel the booking.",
+    confirmTitle: "Refund reservation fee?",
+    requiresStripePaymentRecord: true,
+    showWhen: { payment_status: "captured" },
+    variant: "danger",
+    warningNotice:
+      "This creates a real Stripe refund for the captured reservation fee. Use the cancel action separately if the booking should also be cancelled.",
   },
   {
     actionType: "delete",
@@ -130,7 +143,9 @@ function DetailItem({ label, value }) {
       <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
         {label}
       </p>
-      <p className="mt-1 text-sm text-stone-950">{formatValue(value)}</p>
+      <p className="mt-1 break-all text-sm text-stone-950">
+        {formatValue(value)}
+      </p>
     </div>
   );
 }
@@ -155,15 +170,24 @@ function StatusActionForm({ action, booking }) {
       statusAction={action.value}
       variant={action.variant}
       warningNotice={
-        action.refundWarning && booking.payment_status === "captured"
+        action.warningNotice ??
+        (action.refundWarning && booking.payment_status === "captured"
           ? action.refundWarning
-          : undefined
+          : undefined)
       }
     />
   );
 }
 
 function shouldShowStatusAction(action, booking) {
+  if (
+    action.requiresStripePaymentRecord &&
+    !booking.stripe_payment_intent_id &&
+    !booking.stripe_checkout_session_id
+  ) {
+    return false;
+  }
+
   if (!action.showWhen) {
     return action.showWhenStatuses
       ? action.showWhenStatuses.includes(booking.booking_status)
@@ -299,6 +323,20 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                 />
                 <DetailItem label="Payment" value={booking.payment_status} />
                 <DetailItem label="Captain" value={booking.captain_status} />
+              </section>
+
+              <section className="space-y-4">
+                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                  Stripe
+                </h3>
+                <DetailItem
+                  label="Payment intent"
+                  value={booking.stripe_payment_intent_id}
+                />
+                <DetailItem
+                  label="Checkout session"
+                  value={booking.stripe_checkout_session_id}
+                />
               </section>
             </div>
 

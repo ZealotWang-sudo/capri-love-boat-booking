@@ -16,6 +16,10 @@ function formatTourType(value) {
   return value ? value.replaceAll("_", " ") : "Capri boat tour";
 }
 
+function formatReferenceCode(id) {
+  return id ? `CAPRI-${id.slice(0, 8).toUpperCase()}` : "CAPRI";
+}
+
 export async function POST(request) {
   let body;
 
@@ -68,26 +72,38 @@ export async function POST(request) {
 
   const stripe = getStripe();
   const siteUrl = getSiteUrl();
+  const referenceCode = formatReferenceCode(booking.id);
   const managePath = `/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(token)}`;
   const successUrl = `${siteUrl}${managePath}&payment=success&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${siteUrl}${managePath}&payment=cancelled`;
+  const paymentDescription = `${referenceCode} · ${formatTourType(booking.tour_type)} · ${booking.requested_date} · ${booking.time_window}`;
+  const stripeMetadata = {
+    booking_id: booking.id,
+    booking_reference: referenceCode,
+    requested_date: booking.requested_date,
+    tour_type: booking.tour_type,
+  };
   const session = await stripe.checkout.sessions.create({
+    client_reference_id: referenceCode,
     customer_email: booking.email,
     line_items: [
       {
         price_data: {
           currency: "eur",
           product_data: {
-            name: "Capri boat reservation fee",
-            description: `${formatTourType(booking.tour_type)} · ${booking.requested_date} · ${booking.time_window}`,
+            name: `${referenceCode} reservation fee`,
+            description: paymentDescription,
+            metadata: stripeMetadata,
           },
           unit_amount: booking.reservation_fee_eur * 100,
         },
         quantity: 1,
       },
     ],
-    metadata: {
-      booking_id: booking.id,
+    metadata: stripeMetadata,
+    payment_intent_data: {
+      description: paymentDescription,
+      metadata: stripeMetadata,
     },
     mode: "payment",
     success_url: successUrl,

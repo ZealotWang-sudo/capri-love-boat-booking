@@ -15,6 +15,14 @@ const TOUR_LABELS = {
   two_hours: "2 hours",
   special_request: "Special request",
 };
+const CAPTAIN_TOUR_LABELS = {
+  three_hours: "3 ore",
+  four_hours: "4 ore",
+  sunset_three_hours: "Sunset 3 ore",
+  five_hours: "5 ore",
+  two_hours: "2 ore",
+  special_request: "Richiesta speciale",
+};
 const PRIMARY_STATUS_ACTIONS = {
   requested: {
     value: "checking_with_captain",
@@ -134,6 +142,10 @@ function formatTourType(value) {
   return TOUR_LABELS[value] ?? formatValue(value);
 }
 
+function formatCaptainTourType(value) {
+  return CAPTAIN_TOUR_LABELS[value] ?? formatValue(value);
+}
+
 function formatReferenceCode(id) {
   return id ? `CAPRI-${id.slice(0, 8).toUpperCase()}` : "—";
 }
@@ -199,26 +211,46 @@ function getWhatsappHref(phone) {
 }
 
 function buildCaptainMessage(booking) {
-  const customerContact = booking.phone || booking.email || "—";
   const customerMessage = booking.message?.trim();
+  const isPaidBooking =
+    booking.payment_status === "captured" ||
+    booking.booking_status === "confirmed" ||
+    booking.booking_status === "completed";
+
+  if (!isPaidBooking) {
+    return [
+      "Ciao Capitano, abbiamo una nuova richiesta di prenotazione da verificare.",
+      "",
+      `Tour: ${formatCaptainTourType(booking.tour_type)}`,
+      `Data: ${formatValue(booking.requested_date)}`,
+      `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
+      `Ospiti: ${formatValue(booking.guest_count)}`,
+      "",
+      "Puoi confermare se sei disponibile per questo orario?",
+    ].join("\n");
+  }
 
   return [
-    "New booking request:",
+    "Ciao Capitano, la quota di prenotazione è stata pagata e questa prenotazione è confermata.",
     "",
-    `Date: ${formatValue(booking.requested_date)}`,
-    `Time: ${formatValue(booking.time_window || booking.time_slot)}`,
-    `Tour: ${formatTourType(booking.tour_type)}`,
-    `Guests: ${formatValue(booking.guest_count)}`,
-    `Customer: ${formatValue(booking.customer_name)}`,
-    `Contact: ${customerContact}`,
-    `Language: ${formatValue(booking.locale)}`,
-    ...(customerMessage ? [`Message: ${customerMessage}`] : []),
+    `Riferimento: ${formatReferenceCode(booking.id)}`,
+    `Cliente: ${formatValue(booking.customer_name)}`,
+    `Telefono: ${formatValue(booking.phone)}`,
+    `Email: ${formatValue(booking.email)}`,
+    `Lingua cliente: ${formatValue(booking.locale)}`,
+    `Metodo di contatto: ${formatValue(booking.contact_method)}`,
     "",
-    `Total price: ${formatEuro(booking.total_price_eur)}`,
-    `Reservation fee: ${formatEuro(booking.reservation_fee_eur)}`,
-    `Pay on board: ${formatEuro(booking.pay_on_board_eur)}`,
+    `Tour: ${formatCaptainTourType(booking.tour_type)}`,
+    `Data: ${formatValue(booking.requested_date)}`,
+    `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
+    `Ospiti: ${formatValue(booking.guest_count)}`,
     "",
-    "Can you confirm if you are available?",
+    `Prezzo totale: ${formatEuro(booking.total_price_eur)}`,
+    `Quota di prenotazione pagata: ${formatEuro(booking.reservation_fee_eur)}`,
+    `Saldo da incassare a bordo: ${formatEuro(booking.pay_on_board_eur)}`,
+    "",
+    "Messaggio del cliente:",
+    customerMessage || "Nessun messaggio.",
   ].join("\n");
 }
 

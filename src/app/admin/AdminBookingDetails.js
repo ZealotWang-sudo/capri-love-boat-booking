@@ -386,7 +386,7 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   Captain message
                 </h3>
                 <p className="mt-2 text-sm text-stone-600">
-                  Copies the generated captain availability message.
+                  Copies the generated Italian message for the captain.
                 </p>
               </div>
               <CopyCaptainMessageButton message={captainMessage} />

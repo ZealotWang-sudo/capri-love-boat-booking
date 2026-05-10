@@ -2,10 +2,6 @@ import { Resend } from "resend";
 import { DEFAULT_EMAIL_FROM, PUBLIC_CONTACT_EMAIL } from "@/lib/contact";
 
 const EMAIL_FROM = process.env.EMAIL_FROM || DEFAULT_EMAIL_FROM;
-const ADMIN_NOTIFICATION_EMAIL_EVENTS = new Set([
-  "booking_received",
-  "booking_confirmed",
-]);
 const EMAIL_EVENTS_BY_STATUS = {
   requested: "booking_received",
   payment_pending: "payment_pending",
@@ -383,11 +379,7 @@ function getManageLinkText(booking, copy, locale) {
   return `\n\n${label}: ${booking.manage_url}`;
 }
 
-function getAdminNotificationRecipients({ eventType, recipientEmail }) {
-  if (!ADMIN_NOTIFICATION_EMAIL_EVENTS.has(eventType)) {
-    return undefined;
-  }
-
+function getAdminNotificationRecipients({ recipientEmail }) {
   if (recipientEmail?.toLowerCase() === PUBLIC_CONTACT_EMAIL.toLowerCase()) {
     return undefined;
   }
@@ -652,7 +644,6 @@ export async function sendBookingEmail({
   try {
     const resend = new Resend(resendApiKey);
     const adminNotificationRecipients = getAdminNotificationRecipients({
-      eventType,
       recipientEmail: booking.email,
     });
     const { data, error } = await resend.emails.send({

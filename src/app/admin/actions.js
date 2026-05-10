@@ -8,6 +8,7 @@ import {
   getBookingEmailEventForStatus,
   sendBookingEmail,
 } from "@/lib/email/sendBookingEmail";
+import { getStripe } from "@/lib/stripe/server";
 
 const ADMIN_EMAIL = "wangkexin-personal@outlook.com";
 const CLOSED_BOOKING_STATUSES = new Set([
@@ -56,6 +57,14 @@ const BOOKING_STATUS_UPDATES = {
 function getFormText(formData, fieldName) {
   const value = formData.get(fieldName);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getPaymentIntentId(paymentIntent) {
+  if (!paymentIntent) {
+    return null;
+  }
+
+  return typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
 }
 
 async function getRequestOrigin() {
@@ -215,6 +224,93 @@ export async function deleteClosedBooking(formData) {
 
   if (!deletedBooking) {
     throw new Error("Only closed or cancelled bookings can be deleted.");
+  }
+
+  revalidatePath("/admin");
+  redirect("/admin");
+}
+
+export async function refundCapturedBookingPayment(formData) {
+  const bookingId = getFormText(formData, "bookingId");
+
+  if (!bookingId) {
+    throw new Error("Invalid booking refund request.");
+  }
+
+  const supabase = await getAdminSupabaseClient();
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, payment_status, reservation_fee_eur, stripe_checkout_session_id, stripe_payment_intent_id",
+    )
+    .eq("id", bookingId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[admin booking refund]", error.message);
+    throw new Error("Could not load booking for refund.");
+  }
+
+  if (!booking) {
+    throw new Error("Booking not found.");
+  }
+
+  if (booking.payment_status !== "captured") {
+    throw new Error("Only captured payments can be refunded.");
+  }
+
+  const stripe = getStripe();
+  let paymentIntentId = booking.stripe_payment_intent_id;
+
+  if (!paymentIntentId && booking.stripe_checkout_session_id) {
+    const checkoutSession = await stripe.checkout.sessions.retrieve(
+      booking.stripe_checkout_session_id,
+    );
+    paymentIntentId = getPaymentIntentId(checkoutSession.payment_intent);
+  }
+
+  if (!paymentIntentId) {
+    throw new Error("This booking does not have a Stripe payment record.");
+  }
+
+  const refund = await stripe.refunds.create(
+    {
+      payment_intent: paymentIntentId,
+      metadata: {
+        booking_id: booking.id,
+        booking_reference: `CAPRI-${booking.id.slice(0, 8).toUpperCase()}`,
+        refund_source: "admin_manual_action",
+      },
+      reason: "requested_by_customer",
+    },
+    {
+      idempotencyKey: `booking-${booking.id}-reservation-fee-refund`,
+    },
+  );
+
+  if (!["pending", "requires_action", "succeeded"].includes(refund.status)) {
+    throw new Error(`Stripe refund was not accepted: ${refund.status}`);
+  }
+
+  const { data: updatedBooking, error: updateError } = await supabase
+    .from("bookings")
+    .update({
+      payment_status: "refunded",
+      stripe_payment_intent_id: paymentIntentId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", booking.id)
+    .eq("payment_status", "captured")
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    console.error("[admin booking refund] Could not save refund", updateError.message);
+    throw new Error("Refund was created in Stripe, but the booking was not updated.");
+  }
+
+  if (!updatedBooking) {
+    throw new Error("Refund was created in Stripe, but the booking status changed.");
   }
 
   revalidatePath("/admin");

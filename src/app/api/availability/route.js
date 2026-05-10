@@ -10,13 +10,7 @@ import {
   getBlockedTimeSlots,
   getValidTimeSlotsForTour,
 } from "@/lib/bookingAvailability";
-
-const CUSTOMER_TOUR_TYPES = [
-  "three_hours",
-  "four_hours",
-  "sunset_three_hours",
-  "five_hours",
-];
+import { getActiveTourPrices } from "@/lib/tourPrices";
 
 function jsonError(message, status = 400, details) {
   console.error("[availability API]", message, details);
@@ -73,7 +67,13 @@ function getBlockedSlotsForTour({
   );
 }
 
-function buildAvailability(existingBookings, unavailableSlots, tourType, dates) {
+function buildAvailability({
+  activeTourTypes,
+  dates,
+  existingBookings,
+  tourType,
+  unavailableSlots,
+}) {
   const validTimeSlots = getValidTimeSlotsForTour(tourType);
   const unavailableSlotsByDate = groupUnavailableSlotsByDate(unavailableSlots);
   const alternativeAvailableDates = [];
@@ -97,7 +97,7 @@ function buildAvailability(existingBookings, unavailableSlots, tourType, dates) 
     ) {
       fullyBookedDates.push(date);
 
-      const alternativeTourTypes = CUSTOMER_TOUR_TYPES.filter(
+      const alternativeTourTypes = activeTourTypes.filter(
         (alternativeTourType) => {
           if (alternativeTourType === tourType) {
             return false;
@@ -159,6 +159,23 @@ export async function GET(request) {
   }
 
   const supabase = createSupabasePublicServerClient();
+  const { data: activeTourPrices, error: activeTourPricesError } =
+    await getActiveTourPrices(supabase);
+
+  if (activeTourPricesError) {
+    return jsonError("Could not load active tour prices.", 500, {
+      message: activeTourPricesError.message,
+    });
+  }
+
+  const activeTourTypes = (activeTourPrices ?? []).map(
+    (tourPrice) => tourPrice.tour_type,
+  );
+
+  if (!activeTourTypes.includes(tourType)) {
+    return jsonError("Invalid tourType.");
+  }
+
   const { data: existingBookings, error } = await supabase
     .from("bookings")
     .select("requested_date, tour_type, time_slot, time_window, booking_status")
@@ -191,12 +208,13 @@ export async function GET(request) {
         (_, index) =>
           `${month}-${String(index + 1).padStart(2, "0")}`,
       );
-  const availability = buildAvailability(
-    existingBookings ?? [],
-    unavailableSlotsError ? [] : unavailableSlots,
-    tourType,
+  const availability = buildAvailability({
+    activeTourTypes,
     dates,
-  );
+    existingBookings: existingBookings ?? [],
+    tourType,
+    unavailableSlots: unavailableSlotsError ? [] : unavailableSlots,
+  });
 
   return NextResponse.json({
     success: true,

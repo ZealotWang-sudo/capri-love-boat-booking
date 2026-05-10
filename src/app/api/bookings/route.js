@@ -9,6 +9,7 @@ import {
   isValidTimeSlotForTour,
 } from "@/lib/bookingAvailability";
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
+import { getActiveTourPriceByType } from "@/lib/tourPrices";
 
 const REQUIRED_FIELDS = [
   "customer_name",
@@ -21,14 +22,8 @@ const REQUIRED_FIELDS = [
 
 const ALLOWED_LOCALES = new Set(["en", "zh", "it"]);
 
-const ALLOWED_TOUR_TYPES = new Set([
-  "three_hours",
-  "four_hours",
-  "sunset_three_hours",
-  "five_hours",
-  "two_hours",
-  "special_request",
-]);
+const TIME_NO_LONGER_AVAILABLE_MESSAGE =
+  "This time is no longer available. Please choose another time.";
 
 function jsonError(message, status = 400, details) {
   console.error("[bookings API]", message, details);
@@ -56,16 +51,6 @@ function getOptionalText(value) {
   const text = getText(value);
 
   return text || null;
-}
-
-function getOptionalInteger(value) {
-  if (value === undefined || value === null || value === "") {
-    return null;
-  }
-
-  const number = Number(value);
-
-  return Number.isInteger(number) ? number : NaN;
 }
 
 function isValidDateString(value) {
@@ -123,26 +108,24 @@ export async function POST(request) {
 
   const tourType = getText(body.tour_type);
 
-  if (!ALLOWED_TOUR_TYPES.has(tourType)) {
-    return jsonError("Invalid tour_type.");
-  }
-
   const timeSlot = getText(body.time_slot);
 
   if (!timeSlot || !isValidTimeSlotForTour(tourType, timeSlot)) {
     return jsonError("Invalid time_slot for selected tour_type.");
   }
 
-  const totalPriceEur = getOptionalInteger(body.total_price_eur);
-  const reservationFeeEur = getOptionalInteger(body.reservation_fee_eur);
-  const payOnBoardEur = getOptionalInteger(body.pay_on_board_eur);
+  const supabase = createSupabasePublicServerClient();
+  const { data: tourPrice, error: tourPriceError } =
+    await getActiveTourPriceByType(supabase, tourType);
 
-  if (
-    Number.isNaN(totalPriceEur) ||
-    Number.isNaN(reservationFeeEur) ||
-    Number.isNaN(payOnBoardEur)
-  ) {
-    return jsonError("Price fields must be integers when provided.");
+  if (tourPriceError) {
+    return jsonError("Could not load selected tour price.", 500, {
+      message: tourPriceError.message,
+    });
+  }
+
+  if (!tourPrice) {
+    return jsonError("Invalid or inactive tour_type.");
   }
 
   const bookingId = randomUUID();
@@ -165,9 +148,9 @@ export async function POST(request) {
     tour_type: tourType,
     time_slot: timeSlot,
     time_window: getDisplayTimeForTimeSlot(timeSlot) || getOptionalText(body.time_window),
-    total_price_eur: totalPriceEur,
-    reservation_fee_eur: reservationFeeEur,
-    pay_on_board_eur: payOnBoardEur,
+    total_price_eur: tourPrice.total_price_eur,
+    reservation_fee_eur: tourPrice.reservation_fee_eur,
+    pay_on_board_eur: tourPrice.pay_on_board_eur,
     message: getOptionalText(body.message),
     booking_status: "requested",
     customer_manage_token: customerManageToken,
@@ -175,7 +158,6 @@ export async function POST(request) {
     captain_status: "pending",
   };
 
-  const supabase = createSupabasePublicServerClient();
   const { data: existingBookings, error: availabilityError } = await supabase
     .from("bookings")
     .select("requested_date, tour_type, time_slot, time_window, booking_status")
@@ -202,7 +184,7 @@ export async function POST(request) {
   }
 
   if (unavailableSlot) {
-    return jsonError("Selected time is no longer available.", 409);
+    return jsonError(TIME_NO_LONGER_AVAILABLE_MESSAGE, 409);
   }
 
   const hasOverlap = (existingBookings ?? []).some((existingBooking) =>
@@ -210,7 +192,7 @@ export async function POST(request) {
   );
 
   if (hasOverlap) {
-    return jsonError("Selected time is no longer available.", 409);
+    return jsonError(TIME_NO_LONGER_AVAILABLE_MESSAGE, 409);
   }
 
   const { error } = await supabase.from("bookings").insert(bookingRequest);

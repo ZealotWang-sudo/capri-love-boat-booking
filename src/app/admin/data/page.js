@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import AdminRealtimeRefresh from "@/components/admin/AdminRealtimeRefresh";
 import AdminHeader from "../AdminHeader";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
@@ -363,6 +364,7 @@ export default async function AdminDataPage() {
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
+      <AdminRealtimeRefresh />
       <section className="mx-auto max-w-7xl">
         <AdminHeader active="data" title="Data" userEmail={user.email} />
 

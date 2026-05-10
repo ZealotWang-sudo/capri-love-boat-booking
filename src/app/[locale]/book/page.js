@@ -1,9 +1,53 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import BookingForm from "@/components/BookingForm";
 import { POLICY_ITEM_KEYS } from "@/components/PolicyContent";
 import SiteHeader from "@/components/SiteHeader";
+import {
+  getDisplayTimeForTimeSlot,
+  getValidTimeSlotsForTour,
+} from "@/lib/bookingAvailability";
 import { buildPageMetadata } from "@/lib/seo";
+import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import {
+  formatEuro,
+  getActiveTourPrices,
+  getTourPriceDisplayName,
+  isTourPricesTableMissing,
+} from "@/lib/tourPrices";
+
+const TIME_SLOT_LABEL_KEYS = {
+  afternoon_1330: "timeAfternoon1330",
+  afternoon_1400: "timeAfternoon1400",
+  morning_0930: "timeMorning0930",
+  morning_1000: "timeMorning1000",
+  sunset_1800: "timeSunset1800",
+};
+
+function buildTimeSlots(t, tourType) {
+  return getValidTimeSlotsForTour(tourType).map((timeSlot) => ({
+    label: t(TIME_SLOT_LABEL_KEYS[timeSlot]),
+    value: timeSlot,
+    window: getDisplayTimeForTimeSlot(timeSlot),
+  }));
+}
+
+function buildTourOptions(tourPrices, locale, t) {
+  return tourPrices
+    .map((tourPrice) => ({
+      label: getTourPriceDisplayName(tourPrice, locale),
+      payOnBoard: formatEuro(tourPrice.pay_on_board_eur),
+      payOnBoardEur: tourPrice.pay_on_board_eur,
+      price: formatEuro(tourPrice.total_price_eur),
+      reservationFeeEur: tourPrice.reservation_fee_eur,
+      reserveToday: formatEuro(tourPrice.reservation_fee_eur),
+      timeSlots: buildTimeSlots(t, tourPrice.tour_type),
+      totalPriceEur: tourPrice.total_price_eur,
+      value: tourPrice.tour_type,
+    }))
+    .filter((option) => option.timeSlots.length > 0);
+}
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
@@ -17,6 +61,10 @@ export default async function BookingPage({ params }) {
   const t = await getTranslations("Booking");
   const policyT = await getTranslations("Policy");
   const common = await getTranslations("Common");
+  const supabase = createSupabasePublicServerClient();
+  const { data: tourPrices, error: tourPricesError } =
+    await getActiveTourPrices(supabase);
+  const tourOptions = buildTourOptions(tourPrices ?? [], locale, t);
 
   const labels = {
     name: t("name"),
@@ -74,6 +122,8 @@ export default async function BookingPage({ params }) {
     totalPrice: t("totalPrice"),
     reserveToday: t("reserveToday"),
     payOnBoard: t("payOnBoard"),
+    currencyLabel: t("currencyLabel"),
+    currencyOriginalEur: t("currencyOriginalEur"),
     message: t("message"),
     submit: t("submit"),
     submitting: t("submitting"),
@@ -93,83 +143,7 @@ export default async function BookingPage({ params }) {
         ]),
       ),
     },
-    tourOptions: [
-      {
-        value: "three_hours",
-        label: t("tourThreeHour"),
-        price: t("tourThreeHourPrice"),
-        totalPriceEur: 350,
-        reserveToday: t("tourThreeHourReserveToday"),
-        reservationFeeEur: 70,
-        payOnBoard: t("tourThreeHourPayOnBoard"),
-        payOnBoardEur: 280,
-        timeSlots: [
-          { value: "morning_0930", label: t("timeMorning0930"), window: "09:30" },
-          { value: "morning_1000", label: t("timeMorning1000"), window: "10:00" },
-          {
-            value: "afternoon_1330",
-            label: t("timeAfternoon1330"),
-            window: "13:30",
-          },
-          {
-            value: "afternoon_1400",
-            label: t("timeAfternoon1400"),
-            window: "14:00",
-          },
-        ],
-      },
-      {
-        value: "four_hours",
-        label: t("tourFourHour"),
-        price: t("tourFourHourPrice"),
-        totalPriceEur: 450,
-        reserveToday: t("tourFourHourReserveToday"),
-        reservationFeeEur: 90,
-        payOnBoard: t("tourFourHourPayOnBoard"),
-        payOnBoardEur: 360,
-        timeSlots: [
-          { value: "morning_0930", label: t("timeMorning0930"), window: "09:30" },
-          { value: "morning_1000", label: t("timeMorning1000"), window: "10:00" },
-          {
-            value: "afternoon_1330",
-            label: t("timeAfternoon1330"),
-            window: "13:30",
-          },
-          {
-            value: "afternoon_1400",
-            label: t("timeAfternoon1400"),
-            window: "14:00",
-          },
-        ],
-      },
-      {
-        value: "sunset_three_hours",
-        label: t("tourSunsetThreeHour"),
-        price: t("tourSunsetThreeHourPrice"),
-        totalPriceEur: 380,
-        reserveToday: t("tourSunsetThreeHourReserveToday"),
-        reservationFeeEur: 100,
-        payOnBoard: t("tourSunsetThreeHourPayOnBoard"),
-        payOnBoardEur: 280,
-        timeSlots: [
-          { value: "sunset_1800", label: t("timeSunset1800"), window: "18:00" },
-        ],
-      },
-      {
-        value: "five_hours",
-        label: t("tourFiveHour"),
-        price: t("tourFiveHourPrice"),
-        totalPriceEur: 570,
-        reserveToday: t("tourFiveHourReserveToday"),
-        reservationFeeEur: 120,
-        payOnBoard: t("tourFiveHourPayOnBoard"),
-        payOnBoardEur: 450,
-        timeSlots: [
-          { value: "morning_0930", label: t("timeMorning0930"), window: "09:30" },
-          { value: "morning_1000", label: t("timeMorning1000"), window: "10:00" },
-        ],
-      },
-    ],
+    tourOptions,
   };
 
   return (
@@ -193,9 +167,38 @@ export default async function BookingPage({ params }) {
           <div className="mt-10 border-l border-stone-950 pl-5 text-sm leading-7 text-stone-600">
             {t("note")}
           </div>
+          <div className="mt-10 border border-stone-300 bg-[#fbf8f3]">
+            <div className="relative aspect-[16/10] overflow-hidden bg-stone-200">
+              <Image
+                src="/boat/boat-2.jpeg"
+                alt={t("boatPreviewAlt")}
+                fill
+                sizes="(max-width: 1024px) 100vw, 36vw"
+                className="object-cover"
+              />
+            </div>
+            <div className="p-5">
+              <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+                {t("boatPreviewEyebrow")}
+              </p>
+              <h2 className="mt-3 text-2xl font-light tracking-[-0.03em]">
+                {t("boatPreviewTitle")}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-stone-600">
+                {t("boatPreviewText")}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="bg-[#fbf8f3] p-6 shadow-sm sm:p-10">
+          {tourPricesError ? (
+            <div className="mb-6 border border-red-900/30 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900">
+              {isTourPricesTableMissing(tourPricesError)
+                ? "Tour pricing is not configured yet. Please run the tour pricing SQL setup."
+                : "Tour pricing could not be loaded. Please try again later."}
+            </div>
+          ) : null}
           <BookingForm locale={locale} labels={labels} />
         </div>
       </section>

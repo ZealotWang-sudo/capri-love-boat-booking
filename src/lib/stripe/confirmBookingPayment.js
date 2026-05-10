@@ -49,11 +49,43 @@ export async function confirmBookingPaymentFromSession({
     throw new Error("Could not load booking for checkout session.");
   }
 
-  if (!booking) {
+  let bookingToConfirm = booking;
+
+  if (!bookingToConfirm && checkoutSession.metadata?.booking_id) {
+    if (bookingId && checkoutSession.metadata.booking_id !== bookingId) {
+      return { confirmed: false, reason: "checkout session booking mismatch" };
+    }
+
+    let metadataQuery = supabase
+      .from("bookings")
+      .select(
+        "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status",
+      )
+      .eq("id", checkoutSession.metadata.booking_id);
+
+    if (token) {
+      metadataQuery = metadataQuery.eq("customer_manage_token", token);
+    }
+
+    const { data: metadataBooking, error: metadataError } =
+      await metadataQuery.maybeSingle();
+
+    if (metadataError) {
+      console.error(
+        "[stripe payment confirm] Could not load booking from metadata",
+        metadataError.message,
+      );
+      throw new Error("Could not load booking from checkout metadata.");
+    }
+
+    bookingToConfirm = metadataBooking;
+  }
+
+  if (!bookingToConfirm) {
     return { confirmed: false, reason: "booking not found" };
   }
 
-  if (booking.booking_status === "confirmed") {
+  if (bookingToConfirm.booking_status === "confirmed") {
     return { confirmed: false, reason: "booking already confirmed" };
   }
 
@@ -65,7 +97,7 @@ export async function confirmBookingPaymentFromSession({
       stripe_payment_intent_id: getPaymentIntentId(checkoutSession.payment_intent),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", booking.id)
+    .eq("id", bookingToConfirm.id)
     .neq("booking_status", "confirmed")
     .select(
       "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status",

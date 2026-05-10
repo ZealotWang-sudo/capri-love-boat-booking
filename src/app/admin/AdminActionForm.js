@@ -6,8 +6,21 @@ import AdminStatusActionButton from "./AdminStatusActionButton";
 import AdminWarningModal from "./AdminWarningModal";
 import {
   deleteClosedBooking,
+  refundCapturedBookingPayment,
   updateBookingOperationalStatus,
 } from "./actions";
+
+function getServerAction(actionType) {
+  if (actionType === "delete") {
+    return deleteClosedBooking;
+  }
+
+  if (actionType === "refund") {
+    return refundCapturedBookingPayment;
+  }
+
+  return updateBookingOperationalStatus;
+}
 
 export default function AdminActionForm({
   actionType = "status",
@@ -29,8 +42,7 @@ export default function AdminActionForm({
   warningNotice,
 }) {
   const [warningOpen, setWarningOpen] = useState(false);
-  const serverAction =
-    actionType === "delete" ? deleteClosedBooking : updateBookingOperationalStatus;
+  const serverAction = getServerAction(actionType);
 
   return (
     <form action={serverAction}>

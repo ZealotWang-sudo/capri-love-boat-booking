@@ -243,6 +243,11 @@ export default function BookingForm({ locale, labels }) {
 
     const requestedDate = formData.get("date")?.toString();
 
+    if (!selectedTourOption) {
+      setSubmitError(labels.submitError);
+      return;
+    }
+
     if (!requestedDate) {
       setDateError(true);
       return;
@@ -277,9 +282,6 @@ export default function BookingForm({ locale, labels }) {
           tour_type: selectedTourOption?.value,
           time_slot: timeSlot,
           time_window: selectedTimeSlot?.window,
-          total_price_eur: selectedTourOption?.totalPriceEur,
-          reservation_fee_eur: selectedTourOption?.reservationFeeEur,
-          pay_on_board_eur: selectedTourOption?.payOnBoardEur,
           message,
         }),
       });
@@ -603,7 +605,7 @@ export default function BookingForm({ locale, labels }) {
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || labels.tourOptions.length === 0}
         className="w-full border border-stone-950 bg-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60 disabled:hover:bg-stone-950 disabled:hover:text-[#f3eee7]"
       >
         {isSubmitting ? labels.submitting : labels.submit}

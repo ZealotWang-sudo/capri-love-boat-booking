@@ -212,13 +212,23 @@ export const BOOKING_EMAIL_EVENTS = [
   { eventType: "cancelled", label: "Cancelled" },
   { eventType: "completed", label: "Completed" },
 ];
+const CAPTAIN_PHONE = "+39 339 665 0836";
+const CAPTAIN_PHONE_HREF = "tel:+393396650836";
+const MEETING_POINT_MAP_URL =
+  "https://www.google.com/maps/place/40°33'21.2%22N+14°14'24.8%22E/@40.5558895,14.2395912,63a,35y,70.31h,49.28t/data=!3m1!1e3!4m4!3m3!8m2!3d40.555894!4d14.240227?entry=ttu&g_ep=EgoyMDI2MDUwNi4wIKXMDSoASAFQAw%3D%3D";
 const TOUR_LOGISTICS = {
   en: {
     items: [
       {
+        href: MEETING_POINT_MAP_URL,
         label: "Departure point",
         value:
           "Molo 21, Marina Grande / Capri main port, about 5 minutes from the public ferry and hydrofoil arrival area.",
+      },
+      {
+        href: CAPTAIN_PHONE_HREF,
+        label: "Captain's cell",
+        value: CAPTAIN_PHONE,
       },
       {
         label: "Toilet",
@@ -236,9 +246,15 @@ const TOUR_LOGISTICS = {
   it: {
     items: [
       {
+        href: MEETING_POINT_MAP_URL,
         label: "Punto di partenza",
         value:
           "Molo 21, Marina Grande / porto principale di Capri, a circa 5 minuti dall'area di arrivo di traghetti e aliscafi pubblici.",
+      },
+      {
+        href: CAPTAIN_PHONE_HREF,
+        label: "Cellulare del capitano",
+        value: CAPTAIN_PHONE,
       },
       {
         label: "Toilette",
@@ -256,9 +272,15 @@ const TOUR_LOGISTICS = {
   zh: {
     items: [
       {
+        href: MEETING_POINT_MAP_URL,
         label: "出发地点",
         value:
           "Molo 21，Marina Grande / 卡普里主港，距离公共渡轮和水翼船抵达区域步行约 5 分钟。",
+      },
+      {
+        href: CAPTAIN_PHONE_HREF,
+        label: "船长电话",
+        value: CAPTAIN_PHONE,
       },
       {
         label: "洗手间",
@@ -367,7 +389,11 @@ function buildTextEmail({ booking, copy, locale }) {
   const tourLogistics = copy.showTourLogistics ? getTourLogistics(locale) : null;
   const tourLogisticsText = tourLogistics
     ? `\n\n${tourLogistics.title}\n${tourLogistics.items
-        .map((item) => `${item.label}: ${item.value}`)
+        .map((item) =>
+          item.href
+            ? `${item.label}: ${item.value} (${item.href})`
+            : `${item.label}: ${item.value}`,
+        )
         .join("\n")}`
     : "";
 
@@ -430,7 +456,11 @@ function buildHtmlEmail({ booking, copy, locale }) {
                 (item) => `
                   <div style="margin:0 0 14px;">
                     <p style="margin:0 0 4px;color:#313131;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(item.label)}</p>
-                    <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:16px;line-height:24px;">${escapeHtml(item.value)}</p>
+                    <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:16px;line-height:24px;">${
+                      item.href
+                        ? `<a href="${escapeHtml(item.href)}" style="color:#313131;text-decoration:underline;text-underline-offset:3px;">${escapeHtml(item.value)}</a>`
+                        : escapeHtml(item.value)
+                    }</p>
                   </div>
                 `,
               )

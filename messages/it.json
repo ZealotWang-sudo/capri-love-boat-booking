@@ -31,6 +31,7 @@
     "whyEasyText": "Contatto diretto con il proprietario della barca, senza costi di piattaforma o agenzia, senza mancia obbligatoria, senza extra carburante e con servizi essenziali inclusi.",
     "includedEyebrow": "Incluso",
     "includedTitle": "Essenziali inclusi in ogni tour",
+    "onBoardTitle": "A bordo",
     "includedSubtitle": "Extra semplici e trasparenti sono gia inclusi, cosi puoi rilassarti appena sali a bordo.",
     "includedSoftDrinksTitle": "Bevande analcoliche",
     "includedSoftDrinksText": "Acqua, Coca-Cola, Fanta, Sprite e limonata sono incluse in ogni tour.",
@@ -223,7 +224,11 @@
     "policyModalAccept": "Ho letto e accetto",
     "policyModalClose": "Chiudi",
     "policyRequired": "Leggi e accetta la politica di prenotazione prima di inviare.",
-    "note": "Nessun pagamento viene raccolto ora. Questa e solo una richiesta di prenotazione."
+    "note": "Nessun pagamento viene raccolto ora. Questa e solo una richiesta di prenotazione.",
+    "boatPreviewEyebrow": "La tua barca",
+    "boatPreviewTitle": "Barca privata Aequa 7.50",
+    "boatPreviewText": "Una barca privata comoda con area prendisole di 4 m × 2,60 m, bevande, asciugamani, attrezzatura snorkeling, carburante e una toilette chimica per necessita di base a bordo.",
+    "boatPreviewAlt": "Capri Love Boat in navigazione su acqua azzurra"
   },
   "ThankYou": {
     "title": "Grazie per la tua richiesta",

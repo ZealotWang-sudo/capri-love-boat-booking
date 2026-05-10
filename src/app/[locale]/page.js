@@ -1,10 +1,75 @@
-import Image from "next/image";
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import AutoImageCarousel from "@/components/AutoImageCarousel";
 import RouteMap from "@/components/RouteMap.jsx";
 import SectionLink from "@/components/SectionLink";
 import SiteHeader from "@/components/SiteHeader";
 import { buildPageMetadata } from "@/lib/seo";
+
+function OnBoardIcon({ type }) {
+  const iconProps = {
+    "aria-hidden": "true",
+    className: "mx-auto h-6 w-6",
+    fill: "none",
+    stroke: "currentColor",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    strokeWidth: 1.5,
+    viewBox: "0 0 24 24",
+  };
+
+  if (type === "wine") {
+    return (
+      <svg {...iconProps}>
+        <path d="M8 3h8l-1 8a3 3 0 0 1-6 0L8 3Z" />
+        <path d="M12 14v7" />
+        <path d="M9 21h6" />
+        <path d="M9 7h6" />
+      </svg>
+    );
+  }
+
+  if (type === "towel") {
+    return (
+      <svg {...iconProps}>
+        <path d="M6 5h12v14H6z" />
+        <path d="M9 9h6" />
+        <path d="M9 13h6" />
+        <path d="M9 17h6" />
+      </svg>
+    );
+  }
+
+  if (type === "fuel") {
+    return (
+      <svg {...iconProps}>
+        <path d="M7 21V4h8v17" />
+        <path d="M7 9h8" />
+        <path d="M15 7h2l2 2v8a2 2 0 0 0 2 2" />
+        <path d="M5 21h12" />
+      </svg>
+    );
+  }
+
+  if (type === "snorkeling") {
+    return (
+      <svg {...iconProps}>
+        <path d="M4 15c2 2 4 2 6 0s4-2 6 0 4 2 6 0" />
+        <path d="M4 19c2 2 4 2 6 0s4-2 6 0 4 2 6 0" />
+        <path d="M9 4h6v5H9z" />
+        <path d="M12 9v3" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...iconProps}>
+      <path d="M8 4h8l1 15H7L8 4Z" />
+      <path d="M9 8h6" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
@@ -25,11 +90,61 @@ export default async function HomePage({ params }) {
   ];
 
   const includedItems = [
-    ["includedSoftDrinksTitle", "includedSoftDrinksText"],
-    ["includedWineTitle", "includedWineText"],
-    ["includedTowelsTitle", "includedTowelsText"],
-    ["includedFuelTitle", "includedFuelText"],
-    ["includedSnorkelingTitle", "includedSnorkelingText"],
+    {
+      icon: "softDrinks",
+      titleKey: "includedSoftDrinksTitle",
+      textKey: "includedSoftDrinksText",
+    },
+    {
+      icon: "wine",
+      titleKey: "includedWineTitle",
+      textKey: "includedWineText",
+    },
+    {
+      icon: "towel",
+      titleKey: "includedTowelsTitle",
+      textKey: "includedTowelsText",
+    },
+    {
+      icon: "fuel",
+      titleKey: "includedFuelTitle",
+      textKey: "includedFuelText",
+    },
+    {
+      icon: "snorkeling",
+      titleKey: "includedSnorkelingTitle",
+      textKey: "includedSnorkelingText",
+    },
+  ];
+  const onBoardImages = [
+    {
+      altKey: "highlightOneTitle",
+      src: "/carousel/Capri%20Island%20Mar%2020%202026.jpeg",
+    },
+    {
+      altKey: "highlightTwoTitle",
+      src: "/carousel/Capri%20Island%20Photo%20Mar%2024%202026.JPG",
+    },
+    {
+      altKey: "highlightThreeTitle",
+      src: "/carousel/WhatsApp%20Image%202026-05-05%20at%2023.31.39%20%281%29.jpeg",
+    },
+    {
+      altKey: "highlightOneTitle",
+      src: "/carousel/Capri%20Island%20Photo%20Mar%2020%202026.jpg",
+    },
+    {
+      altKey: "highlightTwoTitle",
+      src: "/carousel/Sailing%20Boat%20Capri%20Island%20Mar%2018%202026.jpg",
+    },
+    {
+      altKey: "highlightThreeTitle",
+      src: "/carousel/47821191a8226f988bfe3517762d5b0f.jpg",
+    },
+    {
+      altKey: "routeMarkerTen",
+      src: "/carousel/Faro%20Lighthouse%20Capri%20Mar%2024%202026.jpg",
+    },
   ];
 
   const highlights = [
@@ -119,6 +234,10 @@ export default async function HomePage({ params }) {
     { href: "#booking-steps", label: t("howEyebrow") },
     { href: "#faq", label: t("faqEyebrow") },
   ];
+  const onBoardCarouselImages = onBoardImages.map(({ altKey, src }) => ({
+    alt: t(altKey),
+    src,
+  }));
 
   return (
     <main className="min-h-screen bg-[#f3eee7] text-stone-950">
@@ -175,40 +294,28 @@ export default async function HomePage({ params }) {
 
       <section className="border-b border-stone-300/70 py-24 sm:py-32" id="tour">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr]">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
-                {t("whyEyebrow")}
-              </p>
-              <div className="mt-14 w-full border-stone-300 ">
-                <Image
-                  src="/assets/images/capri-why-choose-us-image.jpeg"
-                  alt="Capri Love Boat"
-                    width={2400}
-                    height={2400}
-                />
-              </div>
-            </div>
-            <div>
-              <h2 className="max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
-                {t("whyTitle")}
-              </h2>
-              <p className="mt-8 max-w-2xl text-lg font-light leading-8 text-stone-600">
-                {t("whySubtitle")}
-              </p>
-              <div className="mt-16 grid gap-10 md:grid-cols-3">
-                {whyCards.map(([titleKey, textKey]) => (
-                  <article
-                    key={titleKey}
-                    className="border-t border-stone-300 pt-6"
-                  >
-                    <h3 className="text-xl font-normal">{t(titleKey)}</h3>
-                    <p className="mt-4 text-sm leading-7 text-stone-600">
-                      {t(textKey)}
-                    </p>
-                  </article>
-                ))}
-              </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
+              {t("whyEyebrow")}
+            </p>
+            <h2 className="mt-6 max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
+              {t("whyTitle")}
+            </h2>
+            <p className="mt-8 max-w-2xl text-lg font-light leading-8 text-stone-600">
+              {t("whySubtitle")}
+            </p>
+            <div className="mt-16 grid gap-10 md:grid-cols-3">
+              {whyCards.map(([titleKey, textKey]) => (
+                <article
+                  key={titleKey}
+                  className="border-t border-stone-300 pt-6"
+                >
+                  <h3 className="text-xl font-normal">{t(titleKey)}</h3>
+                  <p className="mt-4 text-sm leading-7 text-stone-600">
+                    {t(textKey)}
+                  </p>
+                </article>
+              ))}
             </div>
           </div>
           <nav
@@ -229,44 +336,12 @@ export default async function HomePage({ params }) {
       </section>
 
       <section
-        className="border-b border-stone-300/70 bg-[#fbf8f3] py-24 sm:py-32"
-        id="included"
+        className="border-b border-stone-300/70 bg-[#f3eee7] pb-24 sm:pb-32"
+        id="highlights"
       >
-        <div className="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.85fr_1.15fr]">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
-              {t("includedEyebrow")}
-            </p>
-            <h2 className="mt-6 max-w-xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
-              {t("includedTitle")}
-            </h2>
-            <p className="mt-8 max-w-2xl text-lg font-light leading-8 text-stone-600">
-              {t("includedSubtitle")}
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {includedItems.map(([titleKey, textKey], index) => (
-              <article
-                key={titleKey}
-                className={`border border-stone-300 bg-[#f3eee7] p-6 ${
-                  index === 0 ? "sm:col-span-2" : ""
-                }`}
-              >
-                <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
-                  0{index + 1}
-                </p>
-                <h3 className="mt-4 text-2xl font-normal">{t(titleKey)}</h3>
-                <p className="mt-4 text-sm leading-7 text-stone-600">
-                  {t(textKey)}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
+        <AutoImageCarousel images={onBoardCarouselImages} />
 
-      <section className="py-24 sm:py-32" id="highlights">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <div className="mx-auto max-w-7xl px-5 pt-20 sm:px-8 sm:pt-28">
           <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
             {t("highlightsEyebrow")}
           </p>
@@ -274,20 +349,11 @@ export default async function HomePage({ params }) {
             {t("highlightsTitle")}
           </h2>
           <div className="mt-16 grid gap-12 md:grid-cols-3">
-            {highlights.map(({ titleKey, textKey, imageSrc }, index) => (
+            {highlights.map(({ titleKey, textKey }, index) => (
               <article
                 key={titleKey}
-                className="group"
+                className="border-t border-stone-300 pt-8"
               >
-                <div className="relative mb-8 aspect-[4/5] overflow-hidden bg-stone-200">
-                  <Image
-                    src={imageSrc}
-                    alt={t(titleKey)}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    className="object-cover transition duration-700 group-hover:scale-105"
-                  />
-                </div>
                 <p className="text-xs uppercase tracking-[0.26em] text-stone-500">
                   0{index + 1}
                 </p>
@@ -296,6 +362,7 @@ export default async function HomePage({ params }) {
               </article>
             ))}
           </div>
+
           <RouteMap
             eyebrow={t("routeEyebrow")}
             listLabel={t("routeListLabel")}
@@ -305,6 +372,42 @@ export default async function HomePage({ params }) {
             subtitle={t("routeSubtitle")}
             title={t("routeTitle")}
           />
+        </div>
+      </section>
+
+      <section
+        className="border-b border-stone-300/70 bg-[#f3eee7] py-24 sm:py-32"
+        id="included"
+      >
+        <div className="mx-auto max-w-6xl px-5 text-center sm:px-8">
+          <div className="mx-auto max-w-2xl">
+            <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
+              {t("includedEyebrow")}
+            </p>
+            <h2 className="mt-5 text-3xl font-light leading-tight tracking-[-0.03em] sm:text-5xl">
+              {t("onBoardTitle")}
+            </h2>
+            <p className="mt-5 text-sm leading-7 text-stone-600 sm:text-base">
+              {t("includedSubtitle")}
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-8 sm:grid-cols-5">
+            {includedItems.map(({ icon, textKey, titleKey }) => (
+              <article
+                key={titleKey}
+                className="text-center text-stone-950"
+              >
+                <OnBoardIcon type={icon} />
+                <h3 className="mt-4 text-xs font-medium uppercase tracking-[0.18em]">
+                  {t(titleKey)}
+                </h3>
+                <p className="mt-3 text-xs leading-6 text-stone-600">
+                  {t(textKey)}
+                </p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -31,6 +31,7 @@
     "whyEasyText": "直接与船主对接，无平台费或中介费，不强制小费，不额外收取燃油费，基础便利用品免费包含。",
     "includedEyebrow": "包含项目",
     "includedTitle": "每个行程都包含的用品",
+    "onBoardTitle": "船上包含",
     "includedSubtitle": "基础用品和饮品已经包含在内，上船后可以更轻松地享受行程。",
     "includedSoftDrinksTitle": "软饮",
     "includedSoftDrinksText": "所有行程都包含水、可口可乐、芬达、雪碧和柠檬汽水。",
@@ -223,7 +224,11 @@
     "policyModalAccept": "我已阅读并接受",
     "policyModalClose": "关闭",
     "policyRequired": "提交前请先阅读并接受预约政策。",
-    "note": "现在不会收取付款。这只是预约请求。"
+    "note": "现在不会收取付款。这只是预约请求。",
+    "boatPreviewEyebrow": "您的船只",
+    "boatPreviewTitle": "Aequa 7.50 私人船",
+    "boatPreviewText": "一艘舒适的私人船，配有 4 m × 2.60 m 日光浴区域，并包含饮品、毛巾、浮潜设备、燃油和满足基本需要的化学厕所。",
+    "boatPreviewAlt": "Capri Love Boat 在清澈蓝色海水中航行"
   },
   "ThankYou": {
     "title": "感谢您的预约请求",

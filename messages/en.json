@@ -31,6 +31,7 @@
     "whyEasyText": "Connect directly with the boat owner, with no platform or agency charges, no forced tips, no extra fuel charges, and simple amenities included free.",
     "includedEyebrow": "Included",
     "includedTitle": "Essentials included on every tour",
+    "onBoardTitle": "On board",
     "includedSubtitle": "Simple, transparent extras are already included, so you can relax once you step on board.",
     "includedSoftDrinksTitle": "Soft drinks",
     "includedSoftDrinksText": "Water, Coca-Cola, Fanta, Sprite, and lemon soda are included for every tour.",
@@ -223,7 +224,11 @@
     "policyModalAccept": "I have read and accept",
     "policyModalClose": "Close",
     "policyRequired": "Please read and accept the booking policy before submitting.",
-    "note": "No payment is collected now. This is only a booking request."
+    "note": "No payment is collected now. This is only a booking request.",
+    "boatPreviewEyebrow": "Your boat",
+    "boatPreviewTitle": "Aequa 7.50 private boat",
+    "boatPreviewText": "A comfortable private boat with a 4 m × 2.60 m sunbathing area, drinks, towels, snorkeling equipment, fuel, and a basic chemical toilet on board.",
+    "boatPreviewAlt": "Capri Love Boat cruising on clear blue water"
   },
   "ThankYou": {
     "title": "Thank you for your request",

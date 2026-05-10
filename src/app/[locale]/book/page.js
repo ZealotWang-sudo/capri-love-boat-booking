@@ -38,9 +38,12 @@ function buildTourOptions(tourPrices, locale, t) {
     .map((tourPrice) => ({
       label: getTourPriceDisplayName(tourPrice, locale),
       payOnBoard: formatEuro(tourPrice.pay_on_board_eur),
+      payOnBoardEur: tourPrice.pay_on_board_eur,
       price: formatEuro(tourPrice.total_price_eur),
+      reservationFeeEur: tourPrice.reservation_fee_eur,
       reserveToday: formatEuro(tourPrice.reservation_fee_eur),
       timeSlots: buildTimeSlots(t, tourPrice.tour_type),
+      totalPriceEur: tourPrice.total_price_eur,
       value: tourPrice.tour_type,
     }))
     .filter((option) => option.timeSlots.length > 0);
@@ -119,6 +122,8 @@ export default async function BookingPage({ params }) {
     totalPrice: t("totalPrice"),
     reserveToday: t("reserveToday"),
     payOnBoard: t("payOnBoard"),
+    currencyLabel: t("currencyLabel"),
+    currencyOriginalEur: t("currencyOriginalEur"),
     message: t("message"),
     submit: t("submit"),
     submitting: t("submitting"),

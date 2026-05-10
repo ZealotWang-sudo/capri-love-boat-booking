@@ -38,9 +38,7 @@ async function getAdminSupabaseClient() {
 
 export async function updateTourPrice(formData) {
   const id = getFormText(formData, "id");
-  const totalPriceEur = getFormInteger(formData, "total_price_eur");
   const reservationFeeEur = getFormInteger(formData, "reservation_fee_eur");
-  const payOnBoardEur = getFormInteger(formData, "pay_on_board_eur");
   const captainPriceEur = getFormInteger(formData, "captain_price_eur");
   const notes = getFormText(formData, "notes");
   const isActive = getFormText(formData, "is_active") === "true";
@@ -49,29 +47,20 @@ export async function updateTourPrice(formData) {
     throw new Error("Missing tour price id.");
   }
 
-  if (
-    totalPriceEur === null ||
-    reservationFeeEur === null ||
-    payOnBoardEur === null
-  ) {
-    throw new Error("Total, reservation fee, and pay on board are required.");
+  if (reservationFeeEur === null || captainPriceEur === null) {
+    throw new Error("Reservation fee and captain price are required.");
   }
 
   if (reservationFeeEur <= 0) {
     throw new Error("Reservation fee must be greater than 0.");
   }
 
-  if (payOnBoardEur < 0) {
-    throw new Error("Pay on board must be 0 or greater.");
-  }
-
-  if (captainPriceEur !== null && captainPriceEur < 0) {
+  if (captainPriceEur < 0) {
     throw new Error("Captain price must be 0 or greater.");
   }
 
-  if (totalPriceEur !== reservationFeeEur + payOnBoardEur) {
-    throw new Error("Total price must equal reservation fee plus pay on board.");
-  }
+  const payOnBoardEur = captainPriceEur;
+  const totalPriceEur = reservationFeeEur + captainPriceEur;
 
   const supabase = await getAdminSupabaseClient();
   const { error } = await supabase

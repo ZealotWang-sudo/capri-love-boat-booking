@@ -23,9 +23,21 @@ create table if not exists public.tour_prices (
       total_price_eur = reservation_fee_eur + pay_on_board_eur
       and reservation_fee_eur > 0
       and pay_on_board_eur >= 0
-      and (captain_price_eur is null or captain_price_eur >= 0)
+      and captain_price_eur = pay_on_board_eur
     )
 );
+
+alter table public.tour_prices
+  drop constraint if exists tour_prices_positive_amounts_check;
+
+alter table public.tour_prices
+  add constraint tour_prices_positive_amounts_check
+  check (
+    total_price_eur = reservation_fee_eur + pay_on_board_eur
+    and reservation_fee_eur > 0
+    and pay_on_board_eur >= 0
+    and captain_price_eur = pay_on_board_eur
+  );
 
 create or replace function public.set_tour_prices_updated_at()
 returns trigger

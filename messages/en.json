@@ -199,6 +199,8 @@
     "totalPrice": "Total price",
     "reserveToday": "Reserve today",
     "payOnBoard": "Pay on board",
+    "currencyLabel": "Display currency",
+    "currencyOriginalEur": "Original EUR",
     "tourThreeHour": "3 hours",
     "tourThreeHourPrice": "€350",
     "tourThreeHourReserveToday": "€70",

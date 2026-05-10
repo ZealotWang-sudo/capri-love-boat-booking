@@ -199,6 +199,8 @@
     "totalPrice": "Prezzo totale",
     "reserveToday": "Prenota oggi",
     "payOnBoard": "Da pagare a bordo",
+    "currencyLabel": "Valuta visualizzata",
+    "currencyOriginalEur": "EUR originale",
     "tourThreeHour": "3 ore",
     "tourThreeHourPrice": "€350",
     "tourThreeHourReserveToday": "€70",

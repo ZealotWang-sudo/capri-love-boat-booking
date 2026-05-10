@@ -199,6 +199,8 @@
     "totalPrice": "总价",
     "reserveToday": "今日预订",
     "payOnBoard": "上船支付",
+    "currencyLabel": "显示货币",
+    "currencyOriginalEur": "欧元原价",
     "tourThreeHour": "3小时",
     "tourThreeHourPrice": "€350",
     "tourThreeHourReserveToday": "€70",

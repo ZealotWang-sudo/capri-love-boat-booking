@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import CustomerCancelBookingForm from "@/components/CustomerCancelBookingForm";
+import MeetUpPhotoGallery from "@/components/MeetUpPhotoGallery";
 import SiteHeader from "@/components/SiteHeader";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
@@ -45,6 +46,15 @@ const PAGE_TITLE_KEYS = {
   completed: "titleCompleted",
   confirmed: "titleConfirmed",
 };
+const MEETING_POINT_MAP_URL =
+  "https://www.google.com/maps/place/40°33'21.2%22N+14°14'24.8%22E/@40.5558895,14.2395912,63a,35y,70.31h,49.28t/data=!3m1!1e3!4m4!3m3!8m2!3d40.555894!4d14.240227?entry=ttu&g_ep=EgoyMDI2MDUwNi4wIKXMDSoASAFQAw%3D%3D";
+const MEET_UP_PHOTOS = [
+  "/meet-up-point/meet-up1.jpg",
+  "/meet-up-point/meet-up2.jpg",
+  "/meet-up-point/meet-up3.jpg",
+];
+const CAPTAIN_PHONE = "+39 339 665 0836";
+const CAPTAIN_PHONE_HREF = "tel:+393396650836";
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
@@ -80,13 +90,24 @@ function SummaryItem({ fullWidth = false, label, value }) {
   );
 }
 
-function TourLogisticsItem({ label, value }) {
+function TourLogisticsItem({ href, label, value }) {
   return (
     <div className="border-t border-stone-300 pt-4 first:border-t-0 first:pt-0">
       <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
         {label}
       </p>
-      <p className="mt-2 text-sm leading-6 text-stone-700">{value}</p>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 block text-sm leading-6 text-stone-700 underline decoration-stone-400 underline-offset-4 transition hover:text-stone-950"
+        >
+          {value}
+        </a>
+      ) : (
+        <p className="mt-2 text-sm leading-6 text-stone-700">{value}</p>
+      )}
     </div>
   );
 }
@@ -307,8 +328,25 @@ export default async function ManageBookingPage({ params, searchParams }) {
               </p>
               <div className="mt-5 space-y-4">
                 <TourLogisticsItem
+                  href={MEETING_POINT_MAP_URL}
                   label={t("departurePointTitle")}
                   value={t("departurePointText")}
+                />
+                <MeetUpPhotoGallery
+                  photos={MEET_UP_PHOTOS}
+                  labels={{
+                    close: t("meetUpPhotoClose"),
+                    next: t("meetUpPhotoNext"),
+                    open: t("meetUpPhotoOpen"),
+                    photoAlt: t("meetUpPhotoAlt"),
+                    previous: t("meetUpPhotoPrevious"),
+                    title: t("meetUpPhotosTitle"),
+                  }}
+                />
+                <TourLogisticsItem
+                  href={CAPTAIN_PHONE_HREF}
+                  label={t("captainPhoneTitle")}
+                  value={`${t("captainPhoneText")} ${CAPTAIN_PHONE}`}
                 />
                 <TourLogisticsItem
                   label={t("toiletTitle")}

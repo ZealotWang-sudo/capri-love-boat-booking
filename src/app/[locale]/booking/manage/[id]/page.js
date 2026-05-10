@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import CustomerCancelBookingForm from "@/components/CustomerCancelBookingForm";
+import MeetUpPhotoGallery from "@/components/MeetUpPhotoGallery";
 import SiteHeader from "@/components/SiteHeader";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
@@ -53,6 +53,8 @@ const MEET_UP_PHOTOS = [
   "/meet-up-point/meet-up2.jpg",
   "/meet-up-point/meet-up3.jpg",
 ];
+const CAPTAIN_PHONE = "+39 339 665 0836";
+const CAPTAIN_PHONE_HREF = "tel:+393396650836";
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
@@ -330,22 +332,22 @@ export default async function ManageBookingPage({ params, searchParams }) {
                   label={t("departurePointTitle")}
                   value={t("departurePointText")}
                 />
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {MEET_UP_PHOTOS.map((photoSrc, index) => (
-                    <div
-                      key={photoSrc}
-                      className="relative aspect-[4/3] overflow-hidden border border-stone-300 bg-stone-200"
-                    >
-                      <Image
-                        src={photoSrc}
-                        alt={`${t("departurePointTitle")} ${index + 1}`}
-                        fill
-                        sizes="(max-width: 640px) 100vw, 180px"
-                        className="object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <MeetUpPhotoGallery
+                  photos={MEET_UP_PHOTOS}
+                  labels={{
+                    close: t("meetUpPhotoClose"),
+                    next: t("meetUpPhotoNext"),
+                    open: t("meetUpPhotoOpen"),
+                    photoAlt: t("meetUpPhotoAlt"),
+                    previous: t("meetUpPhotoPrevious"),
+                    title: t("meetUpPhotosTitle"),
+                  }}
+                />
+                <TourLogisticsItem
+                  href={CAPTAIN_PHONE_HREF}
+                  label={t("captainPhoneTitle")}
+                  value={`${t("captainPhoneText")} ${CAPTAIN_PHONE}`}
+                />
                 <TourLogisticsItem
                   label={t("toiletTitle")}
                   value={t("toiletText")}

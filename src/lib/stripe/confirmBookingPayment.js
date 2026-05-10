@@ -1,6 +1,9 @@
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe/server";
+import { getSiteUrl, getStripe } from "@/lib/stripe/server";
+
+const BOOKING_EMAIL_SELECT =
+  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, customer_manage_token";
 
 function getPaymentIntentId(paymentIntent) {
   if (!paymentIntent) {
@@ -8,6 +11,14 @@ function getPaymentIntentId(paymentIntent) {
   }
 
   return typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
+}
+
+function getCustomerManageUrl(booking) {
+  if (!booking.customer_manage_token) {
+    return null;
+  }
+
+  return `${getSiteUrl()}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
 }
 
 export async function confirmBookingPaymentFromSession({
@@ -29,9 +40,7 @@ export async function confirmBookingPaymentFromSession({
   const supabase = createSupabaseServiceRoleServerClient();
   let query = supabase
     .from("bookings")
-    .select(
-      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status",
-    )
+    .select(BOOKING_EMAIL_SELECT)
     .eq("stripe_checkout_session_id", checkoutSession.id);
 
   if (bookingId) {
@@ -58,9 +67,7 @@ export async function confirmBookingPaymentFromSession({
 
     let metadataQuery = supabase
       .from("bookings")
-      .select(
-        "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status",
-      )
+      .select(BOOKING_EMAIL_SELECT)
       .eq("id", checkoutSession.metadata.booking_id);
 
     if (token) {
@@ -99,9 +106,7 @@ export async function confirmBookingPaymentFromSession({
     })
     .eq("id", bookingToConfirm.id)
     .neq("booking_status", "confirmed")
-    .select(
-      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status",
-    )
+    .select(BOOKING_EMAIL_SELECT)
     .maybeSingle();
 
   if (updateError) {
@@ -114,7 +119,10 @@ export async function confirmBookingPaymentFromSession({
   }
 
   const emailResult = await sendBookingEmail({
-    booking: updatedBooking,
+    booking: {
+      ...updatedBooking,
+      manage_url: getCustomerManageUrl(updatedBooking),
+    },
     eventType: "booking_confirmed",
     supabase,
   });

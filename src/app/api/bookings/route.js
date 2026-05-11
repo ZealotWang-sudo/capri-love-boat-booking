@@ -20,7 +20,7 @@ const REQUIRED_FIELDS = [
   "locale",
 ];
 
-const ALLOWED_LOCALES = new Set(["en", "zh", "it"]);
+const ALLOWED_LOCALES = new Set(["en", "zh", "it", "de", "fr"]);
 
 const TIME_NO_LONGER_AVAILABLE_MESSAGE =
   "This time is no longer available. Please choose another time.";

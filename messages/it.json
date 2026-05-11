@@ -330,6 +330,87 @@
     "tourFiveHour": "5 ore",
     "tourSpecialRequest": "Richiesta speciale"
   },
+  "Email": {
+    "labels": {
+      "cancellationReason": "Motivo della cancellazione",
+      "date": "Data",
+      "detailsTitle": "Dettagli prenotazione",
+      "greeting": "Ciao",
+      "guests": "Ospiti",
+      "manageBooking": "Gestisci prenotazione",
+      "name": "Nome",
+      "payOnBoard": "Da pagare a bordo",
+      "reservationFee": "Deposito",
+      "time": "Orario",
+      "totalPrice": "Prezzo totale",
+      "tour": "Tour"
+    },
+    "tourLabels": {
+      "two_hours": "2 ore",
+      "three_hours": "3 ore",
+      "four_hours": "4 ore",
+      "sunset_three_hours": "Tramonto 3 ore",
+      "five_hours": "5 ore"
+    },
+    "copy": {
+      "booking_received": {
+        "cta": "Gestisci richiesta",
+        "intro": "Grazie per la richiesta. Verificheremo la disponibilita del capitano e ti risponderemo al piu presto. La prenotazione non e ancora confermata.",
+        "subject": "Richiesta ricevuta"
+      },
+      "payment_pending": {
+        "cta": "Paga il deposito",
+        "intro": "Buone notizie, l'orario scelto e disponibile. Paga il deposito entro 24 ore per bloccarlo.",
+        "subject": "Capitano disponibile - blocca l'orario"
+      },
+      "booking_confirmed": {
+        "cta": "Vedi dettagli",
+        "intro": "Abbiamo ricevuto il deposito e la barca è riservata. Ecco i dettagli di partenza e della barca per il tuo tour confermato.",
+        "showTourLogistics": true,
+        "subject": "Prenotazione confermata"
+      },
+      "not_available": {
+        "cta": "Rivedi richiesta",
+        "intro": "Ci dispiace, il capitano non e disponibile per l'orario scelto. Se vuoi, possiamo aiutarti a trovare un'altra opzione.",
+        "subject": "Orario non disponibile"
+      },
+      "cancelled": {
+        "cta": "Vedi cancellazione",
+        "intro": "La richiesta di prenotazione e stata annullata. Se e stato indicato un motivo, lo trovi qui sotto.",
+        "subject": "Prenotazione annullata"
+      },
+      "completed": {
+        "cta": "Vedi dettagli tour",
+        "intro": "Grazie per aver trascorso la giornata con noi a Capri. Speriamo sia stata una splendida esperienza in mare. Se il tour ti è piaciuto, ci farebbe molto piacere ricevere una recensione.",
+        "subject": "Grazie per essere stati con noi"
+      }
+    },
+    "tourLogistics": {
+      "title": "Informazioni tour",
+      "items": [
+        {
+          "key": "departurePoint",
+          "label": "Punto di partenza",
+          "value": "Molo 21, Marina Grande / porto principale di Capri, a circa 5 minuti dall'area di arrivo di traghetti e aliscafi pubblici."
+        },
+        {
+          "key": "captainPhone",
+          "label": "Cellulare del capitano",
+          "value": "+39 339 665 0836"
+        },
+        {
+          "key": "toilet",
+          "label": "Toilette",
+          "value": "I bagni pubblici sono disponibili al molo di arrivo prima della partenza. La barca ha anche una toilette chimica per necessita di base."
+        },
+        {
+          "key": "boatModel",
+          "label": "Modello barca",
+          "value": "Aequa 7.50 di Fratelli Di Donna, un modello speciale con un'ampia area prendisole di 4 m × 2,60 m."
+        }
+      ]
+    }
+  },
   "Policy": {
     "eyebrow": "Politica di prenotazione",
     "title": "Informazioni chiare prima di prenotare",

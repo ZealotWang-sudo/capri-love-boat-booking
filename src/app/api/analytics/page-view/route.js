@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
 
-const ALLOWED_LOCALES = new Set(["en", "zh", "it"]);
+const ALLOWED_LOCALES = new Set(["en", "zh", "it", "de", "fr"]);
 const MAX_TEXT_LENGTH = 1000;
 
 function isPageViewsTableMissing(error) {

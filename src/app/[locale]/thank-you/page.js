@@ -46,9 +46,9 @@ export default async function ThankYouPage({ params }) {
             >
               {t("home")}
             </Link>
-            <SaveBookingSummaryButton labels={summaryLabels} />
+            <SaveBookingSummaryButton labels={summaryLabels} locale={locale} />
           </div>
-          <BookingRequestSummary labels={summaryLabels} />
+          <BookingRequestSummary labels={summaryLabels} locale={locale} />
        
         </div>
       </section>

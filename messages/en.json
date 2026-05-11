@@ -330,6 +330,87 @@
     "tourFiveHour": "5 hours",
     "tourSpecialRequest": "Special request"
   },
+  "Email": {
+    "labels": {
+      "cancellationReason": "Cancellation reason",
+      "date": "Date",
+      "detailsTitle": "Booking details",
+      "greeting": "Hello",
+      "guests": "Guests",
+      "manageBooking": "Manage booking",
+      "name": "Name",
+      "payOnBoard": "Pay on board",
+      "reservationFee": "Reservation fee",
+      "time": "Time",
+      "totalPrice": "Total price",
+      "tour": "Tour"
+    },
+    "tourLabels": {
+      "two_hours": "2 hours",
+      "three_hours": "3 hours",
+      "four_hours": "4 hours",
+      "sunset_three_hours": "Sunset 3 hours",
+      "five_hours": "5 hours"
+    },
+    "copy": {
+      "booking_received": {
+        "cta": "Manage request",
+        "intro": "Thank you for your request. We will check captain availability and get back to you shortly. Your booking is not confirmed yet.",
+        "subject": "Request received"
+      },
+      "payment_pending": {
+        "cta": "Pay reservation fee",
+        "intro": "Good news, your selected time is available. Please pay the reservation fee within 24 hours to secure it.",
+        "subject": "Captain available - reserve your time"
+      },
+      "booking_confirmed": {
+        "cta": "View booking details",
+        "intro": "Your reservation fee has been received and your boat is reserved. Here are the departure and boat details for your confirmed tour.",
+        "showTourLogistics": true,
+        "subject": "Booking confirmed"
+      },
+      "not_available": {
+        "cta": "Review request",
+        "intro": "We are sorry, the captain is not available for your selected time. We can help look for another option if you would like.",
+        "subject": "Selected time unavailable"
+      },
+      "cancelled": {
+        "cta": "View cancellation",
+        "intro": "Your booking request has been cancelled. If a reason was provided, it is shown below.",
+        "subject": "Booking cancelled"
+      },
+      "completed": {
+        "cta": "View trip details",
+        "intro": "Thank you for spending the day with us in Capri. We hope you had a beautiful time on the water. If you enjoyed the tour, we would be grateful for a review.",
+        "subject": "Thank you for joining us"
+      }
+    },
+    "tourLogistics": {
+      "title": "Tour information",
+      "items": [
+        {
+          "key": "departurePoint",
+          "label": "Departure point",
+          "value": "Molo 21, Marina Grande / Capri main port, about 5 minutes from the public ferry and hydrofoil arrival area."
+        },
+        {
+          "key": "captainPhone",
+          "label": "Captain's cell",
+          "value": "+39 339 665 0836"
+        },
+        {
+          "key": "toilet",
+          "label": "Toilet",
+          "value": "Public toilets are available at the arrival quay before departure. The boat also has a chemical toilet for basic needs."
+        },
+        {
+          "key": "boatModel",
+          "label": "Boat model",
+          "value": "Aequa 7.50 by Fratelli Di Donna, a special model with a large 4 m × 2.60 m sunbathing area."
+        }
+      ]
+    }
+  },
   "Policy": {
     "eyebrow": "Booking policy",
     "title": "Clear terms before you reserve",

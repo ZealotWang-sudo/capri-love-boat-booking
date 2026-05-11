@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { formatCustomerDate } from "@/lib/formatCustomerDate";
 
-export default function BookingRequestSummary({ labels }) {
+export default function BookingRequestSummary({ labels, locale }) {
   const [summary] = useState(() => {
     if (typeof window === "undefined") {
       return null;
@@ -32,7 +33,7 @@ export default function BookingRequestSummary({ labels }) {
     [labels.email, summary.email],
     [labels.phone, summary.phone],
     [labels.guests, summary.guestCount],
-    [labels.date, summary.requestedDate],
+    [labels.date, formatCustomerDate(summary.requestedDate, locale)],
     [labels.tour, summary.tourLabel],
     [labels.time, summary.timeLabel],
     [labels.totalPrice, summary.totalPrice],

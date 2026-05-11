@@ -330,6 +330,87 @@
     "tourFiveHour": "5小时",
     "tourSpecialRequest": "特殊请求"
   },
+  "Email": {
+    "labels": {
+      "cancellationReason": "取消原因",
+      "date": "日期",
+      "detailsTitle": "预约详情",
+      "greeting": "您好",
+      "guests": "人数",
+      "manageBooking": "管理预约",
+      "name": "姓名",
+      "payOnBoard": "船上支付",
+      "reservationFee": "预约订金",
+      "time": "时间",
+      "totalPrice": "总价",
+      "tour": "船游"
+    },
+    "tourLabels": {
+      "two_hours": "2小时",
+      "three_hours": "3小时",
+      "four_hours": "4小时",
+      "sunset_three_hours": "日落 3小时",
+      "five_hours": "5小时"
+    },
+    "copy": {
+      "booking_received": {
+        "cta": "管理预约请求",
+        "intro": "感谢您的预约请求。我们会先确认船长档期，并尽快回复您。当前预约尚未确认。",
+        "subject": "我们已收到您的预约请求"
+      },
+      "payment_pending": {
+        "cta": "支付预约订金",
+        "intro": "好消息，您选择的时间可以预约。请在 24 小时内支付预约订金以锁定该时间。",
+        "subject": "请锁定时间"
+      },
+      "booking_confirmed": {
+        "cta": "查看预约详情",
+        "intro": "我们已收到预约订金，船只已为您保留。以下是已确认行程的出发与船只信息。",
+        "showTourLogistics": true,
+        "subject": "预约已确认"
+      },
+      "not_available": {
+        "cta": "查看预约请求",
+        "intro": "很抱歉，您选择的时间船长暂时不可用。如您愿意，我们可以帮您寻找其他可选时间。",
+        "subject": "所选时间暂不可预约"
+      },
+      "cancelled": {
+        "cta": "查看取消详情",
+        "intro": "您的预约请求已取消。如有取消原因，会显示在下方。",
+        "subject": "预约已取消"
+      },
+      "completed": {
+        "cta": "查看行程详情",
+        "intro": "感谢您与我们一起在卡普里度过这一天。希望您享受了这次海上体验。如果您喜欢这次行程，我们会非常感谢您留下评价。",
+        "subject": "感谢您的加入"
+      }
+    },
+    "tourLogistics": {
+      "title": "行程信息",
+      "items": [
+        {
+          "key": "departurePoint",
+          "label": "出发地点",
+          "value": "Molo 21，Marina Grande / 卡普里主港，距离公共渡轮和水翼船抵达区域步行约 5 分钟。"
+        },
+        {
+          "key": "captainPhone",
+          "label": "船长电话",
+          "value": "+39 339 665 0836"
+        },
+        {
+          "key": "toilet",
+          "label": "洗手间",
+          "value": "出发前可使用抵达码头的公共洗手间。船上也配有化学厕所，可满足基本需要。"
+        },
+        {
+          "key": "boatModel",
+          "label": "船型",
+          "value": "Fratelli Di Donna 的 Aequa 7.50 特别船型，配有宽敞的 4 m × 2.60 m 日光浴区域。"
+        }
+      ]
+    }
+  },
   "Policy": {
     "eyebrow": "预约政策",
     "title": "预约前请了解的说明",

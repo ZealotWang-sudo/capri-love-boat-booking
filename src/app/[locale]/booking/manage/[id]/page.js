@@ -4,6 +4,7 @@ import CustomerCancelBookingForm from "@/components/CustomerCancelBookingForm";
 import MeetUpPhotoGallery from "@/components/MeetUpPhotoGallery";
 import SiteHeader from "@/components/SiteHeader";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
+import { formatCustomerDate } from "@/lib/formatCustomerDate";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
 import { buildPageMetadata } from "@/lib/seo";
 import { confirmBookingPaymentFromSession } from "@/lib/stripe/confirmBookingPayment";
@@ -245,7 +246,10 @@ export default async function ManageBookingPage({ params, searchParams }) {
           </h2>
           <div className="mt-5 grid gap-x-6 sm:grid-cols-2">
             <SummaryItem label={t("name")} value={booking.customer_name} />
-            <SummaryItem label={t("date")} value={booking.requested_date} />
+            <SummaryItem
+              label={t("date")}
+              value={formatCustomerDate(booking.requested_date, locale)}
+            />
             <SummaryItem
               label={t("time")}
               value={booking.time_window || booking.time_slot}

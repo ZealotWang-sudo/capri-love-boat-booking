@@ -9,7 +9,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const ADMIN_EMAIL = "wangkexin-personal@outlook.com";
 const LANGUAGE_LABELS = {
+  de: "German",
   en: "English",
+  fr: "French",
   it: "Italian",
   zh: "Chinese",
 };
@@ -38,6 +40,7 @@ function getPreviewBooking(locale, eventType) {
     ...PREVIEW_BOOKING,
     cancellation_reason: needsReason ? PREVIEW_BOOKING.cancellation_reason : "",
     locale,
+    manage_url: `https://capriloveboat.com/${locale}/booking/manage/example?token=preview`,
   };
 }
 
@@ -112,8 +115,8 @@ export default async function AdminEmailPreviewPage() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
               These previews are generated from the same helper used for live
-              transactional emails. Edit the copy in the email helper and this
-              page updates automatically.
+              transactional emails. Edit the copy in the message JSON files and
+              this page updates automatically.
             </p>
           </div>
           <Link

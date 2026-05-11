@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatCustomerDate } from "@/lib/formatCustomerDate";
 
 function getStoredSummary() {
   if (typeof window === "undefined") {
@@ -20,14 +21,14 @@ function getStoredSummary() {
   }
 }
 
-function buildSummaryText(summary, labels) {
+function buildSummaryText(summary, labels, locale) {
   const rows = [
     [labels.reference, summary.referenceCode],
     [labels.name, summary.customerName],
     [labels.email, summary.email],
     [labels.phone, summary.phone],
     [labels.guests, summary.guestCount],
-    [labels.date, summary.requestedDate],
+    [labels.date, formatCustomerDate(summary.requestedDate, locale)],
     [labels.tour, summary.tourLabel],
     [labels.time, summary.timeLabel],
     [labels.totalPrice, summary.totalPrice],
@@ -43,7 +44,7 @@ function buildSummaryText(summary, labels) {
   ].join("\n");
 }
 
-export default function SaveBookingSummaryButton({ labels }) {
+export default function SaveBookingSummaryButton({ labels, locale }) {
   const [summary] = useState(getStoredSummary);
 
   if (!summary) {
@@ -51,7 +52,7 @@ export default function SaveBookingSummaryButton({ labels }) {
   }
 
   function handleDownload() {
-    const text = buildSummaryText(summary, labels);
+    const text = buildSummaryText(summary, labels, locale);
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

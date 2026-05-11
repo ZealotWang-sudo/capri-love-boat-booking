@@ -150,6 +150,16 @@ function formatReferenceCode(id) {
   return id ? `CAPRI-${id.slice(0, 8).toUpperCase()}` : "—";
 }
 
+function formatItalianDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? "")) {
+    return formatValue(value);
+  }
+
+  const [year, month, day] = value.split("-");
+
+  return `${day}/${month}/${year}`;
+}
+
 function formatBookingStatus(value) {
   return value === "available" ? "payment_pending" : formatValue(value);
 }
@@ -219,10 +229,10 @@ function buildCaptainMessage(booking) {
 
   if (!isPaidBooking) {
     return [
-      "Ciao Capitano, abbiamo una nuova richiesta di prenotazione da verificare.",
+      "Ciao, abbiamo una nuova richiesta di prenotazione da verificare.",
       "",
       `Tour: ${formatCaptainTourType(booking.tour_type)}`,
-      `Data: ${formatValue(booking.requested_date)}`,
+      `Data: ${formatItalianDate(booking.requested_date)}`,
       `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
       `Ospiti: ${formatValue(booking.guest_count)}`,
       "",
@@ -231,17 +241,15 @@ function buildCaptainMessage(booking) {
   }
 
   return [
-    "Ciao Capitano, la quota di prenotazione è stata pagata e questa prenotazione è confermata.",
+    "Ciao, la quota di prenotazione è stata pagata e questa prenotazione è confermata.",
     "",
     `Riferimento: ${formatReferenceCode(booking.id)}`,
     `Cliente: ${formatValue(booking.customer_name)}`,
     `Telefono: ${formatValue(booking.phone)}`,
     `Email: ${formatValue(booking.email)}`,
-    `Lingua cliente: ${formatValue(booking.locale)}`,
-    `Metodo di contatto: ${formatValue(booking.contact_method)}`,
     "",
     `Tour: ${formatCaptainTourType(booking.tour_type)}`,
-    `Data: ${formatValue(booking.requested_date)}`,
+    `Data: ${formatItalianDate(booking.requested_date)}`,
     `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
     `Ospiti: ${formatValue(booking.guest_count)}`,
     "",

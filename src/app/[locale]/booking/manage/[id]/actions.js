@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
 import { createSupabasePublicServerClient } from "@/lib/supabase/server";
 
-const ALLOWED_LOCALES = new Set(["en", "zh", "it"]);
+const ALLOWED_LOCALES = new Set(["en", "zh", "it", "de", "fr"]);
 
 function getFormText(formData, fieldName) {
   const value = formData.get(fieldName);

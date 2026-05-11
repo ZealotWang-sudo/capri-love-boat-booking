@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import FaqAccordion from "@/components/FaqAccordion";
 import SiteHeader from "@/components/SiteHeader";
+import { buildPageMetadata } from "@/lib/seo";
 
 const FAQ_ITEM_KEYS = [
   "bookingConfirmation",
@@ -17,6 +18,12 @@ const FAQ_ITEM_KEYS = [
   "meetingPoint",
   "whatToBring",
 ];
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+
+  return buildPageMetadata("faq", locale);
+}
 
 export default async function FaqPage({ params }) {
   const { locale } = await params;

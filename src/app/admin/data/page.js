@@ -20,7 +20,7 @@ const TOUR_LABELS = {
   two_hours: "2 hours",
   special_request: "Special request",
 };
-const LOCALES = ["en", "zh", "it"];
+const LOCALES = ["en", "zh", "it", "de", "fr"];
 function getMonthStart(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }

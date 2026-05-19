@@ -37,6 +37,9 @@ export default function BookingRequestSummary({ labels, locale }) {
     [labels.tour, summary.tourLabel],
     [labels.time, summary.timeLabel],
     [labels.totalPrice, summary.totalPrice],
+    [labels.originalReservationFee, summary.promoCode ? summary.originalReservationFee : ""],
+    [labels.promoCode, summary.promoCode],
+    [labels.promoDiscount, summary.promoDiscount],
     [labels.reserveToday, summary.reserveToday],
     [labels.payOnBoard, summary.payOnBoard],
   ].filter(([, value]) => value);

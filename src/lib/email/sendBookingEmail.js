@@ -98,6 +98,19 @@ function formatTourType(tourType, locale) {
 
 function getBookingDetails(booking, locale) {
   const labels = getEmailLabels(locale);
+  const promoDiscountEur = booking.promo_discount_eur ?? 0;
+  const reservationRows =
+    promoDiscountEur > 0
+      ? [
+          [
+            labels.originalReservationFee,
+            formatEuro(booking.original_reservation_fee_eur),
+          ],
+          [labels.promoCode, formatValue(booking.promo_code)],
+          [labels.promoDiscount, `-${formatEuro(promoDiscountEur)}`],
+          [labels.reservationFee, formatEuro(booking.final_reservation_fee_eur)],
+        ]
+      : [[labels.reservationFee, formatEuro(booking.reservation_fee_eur)]];
 
   return [
     [labels.name, formatValue(booking.customer_name)],
@@ -106,7 +119,7 @@ function getBookingDetails(booking, locale) {
     [labels.tour, formatTourType(booking.tour_type, locale)],
     [labels.guests, formatValue(booking.guest_count)],
     [labels.totalPrice, formatEuro(booking.total_price_eur)],
-    [labels.reservationFee, formatEuro(booking.reservation_fee_eur)],
+    ...reservationRows,
     [labels.payOnBoard, formatEuro(booking.pay_on_board_eur)],
   ];
 }

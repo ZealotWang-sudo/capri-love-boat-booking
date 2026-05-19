@@ -123,6 +123,10 @@ function formatEuro(value) {
   return typeof value === "number" ? `€${value}` : "-";
 }
 
+function formatDiscount(value) {
+  return typeof value === "number" && value > 0 ? `-€${value}` : "—";
+}
+
 function getWhatsappHref(phone) {
   if (!phone) {
     return null;
@@ -304,8 +308,26 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   value={formatEuro(booking.total_price_eur)}
                 />
                 <DetailItem
-                  label="Deposit"
-                  value={formatEuro(booking.reservation_fee_eur)}
+                  label="Original reservation fee"
+                  value={formatEuro(
+                    booking.original_reservation_fee_eur ??
+                      booking.reservation_fee_eur,
+                  )}
+                />
+                <DetailItem
+                  label="Promo code used"
+                  value={booking.promo_code}
+                />
+                <DetailItem
+                  label="Promo discount"
+                  value={formatDiscount(booking.promo_discount_eur)}
+                />
+                <DetailItem
+                  label="Final reservation fee paid"
+                  value={formatEuro(
+                    booking.final_reservation_fee_eur ??
+                      booking.reservation_fee_eur,
+                  )}
                 />
                 <DetailItem
                   label="Pay on site"

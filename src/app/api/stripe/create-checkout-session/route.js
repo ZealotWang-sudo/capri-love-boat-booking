@@ -40,7 +40,7 @@ export async function POST(request) {
   const { data: booking, error } = await supabase
     .from("bookings")
     .select(
-      "id, locale, customer_name, email, requested_date, tour_type, time_window, reservation_fee_eur, booking_status, customer_manage_token",
+      "id, locale, customer_name, email, requested_date, tour_type, time_window, reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token",
     )
     .eq("id", bookingId)
     .eq("customer_manage_token", token)
@@ -63,10 +63,10 @@ export async function POST(request) {
     return jsonError("This booking is not ready for payment.", 409);
   }
 
-  if (
-    !Number.isInteger(booking.reservation_fee_eur) ||
-    booking.reservation_fee_eur <= 0
-  ) {
+  const checkoutReservationFeeEur =
+    booking.final_reservation_fee_eur ?? booking.reservation_fee_eur;
+
+  if (!Number.isInteger(checkoutReservationFeeEur) || checkoutReservationFeeEur <= 0) {
     return jsonError("Invalid reservation fee.", 400);
   }
 
@@ -95,7 +95,7 @@ export async function POST(request) {
             description: paymentDescription,
             metadata: stripeMetadata,
           },
-          unit_amount: booking.reservation_fee_eur * 100,
+          unit_amount: checkoutReservationFeeEur * 100,
         },
         quantity: 1,
       },

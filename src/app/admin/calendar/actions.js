@@ -54,6 +54,21 @@ function getRedirectPath(formData) {
   return "/admin/calendar";
 }
 
+function appendCalendarNotice(path, params = {}) {
+  const [pathname, query = ""] = path.split("?");
+  const searchParams = new URLSearchParams(query);
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  });
+
+  const nextQuery = searchParams.toString();
+
+  return nextQuery ? `${pathname}?${nextQuery}` : pathname;
+}
+
 async function getAdminSupabaseClient() {
   const user = await getAdminUser("/admin/calendar");
 
@@ -66,11 +81,20 @@ async function getAdminSupabaseClient() {
 
 export async function markTimeSlotUnavailable(formData) {
   const date = getFormText(formData, "date");
-  const timeSlots = getValidTimeSlots(formData);
   const reason = getFormText(formData, "reason");
   const redirectPath = getRedirectPath(formData);
+  let timeSlots;
 
-  assertValidDate(date);
+  try {
+    timeSlots = getValidTimeSlots(formData);
+    assertValidDate(date);
+  } catch {
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Could not mark time slot unavailable.",
+      }),
+    );
+  }
 
   const { supabase, user } = await getAdminSupabaseClient();
   const { error } = await supabase.from("admin_unavailable_slots").upsert(
@@ -85,20 +109,33 @@ export async function markTimeSlotUnavailable(formData) {
 
   if (error) {
     console.error("[admin calendar] Could not mark slot unavailable", error.message);
-    throw new Error("Could not mark time slot unavailable.");
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Could not mark time slot unavailable.",
+      }),
+    );
   }
 
   revalidatePath("/admin/calendar");
   revalidatePath("/admin");
-  redirect(redirectPath);
+  redirect(appendCalendarNotice(redirectPath, { updated: "unavailable" }));
 }
 
 export async function markTimeSlotAvailable(formData) {
   const date = getFormText(formData, "date");
-  const timeSlots = getValidTimeSlots(formData);
   const redirectPath = getRedirectPath(formData);
+  let timeSlots;
 
-  assertValidDate(date);
+  try {
+    timeSlots = getValidTimeSlots(formData);
+    assertValidDate(date);
+  } catch {
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Could not make time slot available.",
+      }),
+    );
+  }
 
   const { supabase } = await getAdminSupabaseClient();
   const { error } = await supabase
@@ -109,10 +146,14 @@ export async function markTimeSlotAvailable(formData) {
 
   if (error) {
     console.error("[admin calendar] Could not make slot available", error.message);
-    throw new Error("Could not make time slot available.");
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Could not make time slot available.",
+      }),
+    );
   }
 
   revalidatePath("/admin/calendar");
   revalidatePath("/admin");
-  redirect(redirectPath);
+  redirect(appendCalendarNotice(redirectPath, { updated: "available" }));
 }

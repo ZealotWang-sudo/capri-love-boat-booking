@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "node:crypto";
-import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import {
+  createSupabasePublicServerClient,
+  createSupabaseServiceRoleServerClient,
+} from "@/lib/supabase/server";
 import { isUnavailableSlotsTableMissing } from "@/lib/adminUnavailableSlots";
 import {
   ACTIVE_BOOKING_STATUSES,
@@ -9,6 +12,7 @@ import {
   isValidTimeSlotForTour,
 } from "@/lib/bookingAvailability";
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
+import { validatePromoCodeForReservation } from "@/lib/promoCodes";
 import { getActiveTourPriceByType } from "@/lib/tourPrices";
 
 const REQUIRED_FIELDS = [
@@ -91,7 +95,7 @@ export async function POST(request) {
   const locale = getText(body.locale);
 
   if (!ALLOWED_LOCALES.has(locale)) {
-    return jsonError("Invalid locale. Expected en, zh, or it.");
+    return jsonError("Invalid locale. Expected en, zh, it, de, or fr.");
   }
 
   const guestCount = Number(body.guest_count);
@@ -128,6 +132,31 @@ export async function POST(request) {
     return jsonError("Invalid or inactive tour_type.");
   }
 
+  const originalReservationFeeEur = tourPrice.reservation_fee_eur;
+  const promoCodeInput = getOptionalText(body.promo_code);
+  const promoResult = promoCodeInput
+    ? await validatePromoCodeForReservation({
+        code: promoCodeInput,
+        originalReservationFeeEur,
+        supabase: createSupabaseServiceRoleServerClient(),
+      })
+    : {
+        finalReservationFeeEur: originalReservationFeeEur,
+        promoCode: null,
+        promoDiscountEur: 0,
+        valid: true,
+      };
+
+  if (promoResult.error) {
+    return jsonError("Could not validate promo code.", 500, {
+      message: promoResult.error.message,
+    });
+  }
+
+  if (!promoResult.valid) {
+    return jsonError(promoResult.message, promoResult.status);
+  }
+
   const bookingId = randomUUID();
   const customerManageToken = randomBytes(32).toString("base64url");
   const customerManageUrl = createCustomerManageUrl({
@@ -149,8 +178,12 @@ export async function POST(request) {
     time_slot: timeSlot,
     time_window: getDisplayTimeForTimeSlot(timeSlot) || getOptionalText(body.time_window),
     total_price_eur: tourPrice.total_price_eur,
-    reservation_fee_eur: tourPrice.reservation_fee_eur,
+    reservation_fee_eur: originalReservationFeeEur,
     pay_on_board_eur: tourPrice.pay_on_board_eur,
+    promo_code: promoResult.promoCode,
+    promo_discount_eur: promoResult.promoDiscountEur,
+    original_reservation_fee_eur: originalReservationFeeEur,
+    final_reservation_fee_eur: promoResult.finalReservationFeeEur,
     message: getOptionalText(body.message),
     booking_status: "requested",
     customer_manage_token: customerManageToken,

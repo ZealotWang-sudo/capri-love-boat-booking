@@ -5,7 +5,7 @@ import MeetUpPhotoGallery from "@/components/MeetUpPhotoGallery";
 import SiteHeader from "@/components/SiteHeader";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { formatCustomerDate } from "@/lib/formatCustomerDate";
-import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { buildPageMetadata } from "@/lib/seo";
 import { confirmBookingPaymentFromSession } from "@/lib/stripe/confirmBookingPayment";
 
@@ -56,6 +56,8 @@ const MEET_UP_PHOTOS = [
 ];
 const CAPTAIN_PHONE = "+39 339 665 0836";
 const CAPTAIN_PHONE_HREF = "tel:+393396650836";
+const CUSTOMER_MANAGED_BOOKING_SELECT =
+  "id, locale, customer_name, email, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_cancelled_at, customer_cancel_reason";
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
@@ -114,16 +116,16 @@ function TourLogisticsItem({ href, label, value }) {
 }
 
 async function getManagedBooking({ bookingId, token }) {
-  if (!bookingId || !token) {
+  if (!bookingId || !token || token.length < 32) {
     return null;
   }
 
-  const supabase = createSupabasePublicServerClient();
+  const supabase = createSupabaseServiceRoleServerClient();
   const { data, error } = await supabase
-    .rpc("get_customer_managed_booking", {
-      p_booking_id: bookingId,
-      p_manage_token: token,
-    })
+    .from("bookings")
+    .select(CUSTOMER_MANAGED_BOOKING_SELECT)
+    .eq("id", bookingId)
+    .eq("customer_manage_token", token)
     .maybeSingle();
 
   if (error) {
@@ -211,6 +213,9 @@ export default async function ManageBookingPage({ params, searchParams }) {
   const nextStepKey = NEXT_STEP_KEYS[booking.booking_status];
   const pageTitleKey = PAGE_TITLE_KEYS[booking.booking_status] ?? "title";
   const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY);
+  const hasPromoDiscount = (booking.promo_discount_eur ?? 0) > 0;
+  const finalReservationFee =
+    booking.final_reservation_fee_eur ?? booking.reservation_fee_eur;
 
   return (
     <main className="min-h-screen bg-[#f3eee7] text-stone-950">
@@ -260,9 +265,18 @@ export default async function ManageBookingPage({ params, searchParams }) {
               label={t("totalPrice")}
               value={formatEuro(booking.total_price_eur)}
             />
+            {hasPromoDiscount ? (
+              <>
+                <SummaryItem label={t("promoCode")} value={booking.promo_code} />
+                <SummaryItem
+                  label={t("promoDiscount")}
+                  value={`-${formatEuro(booking.promo_discount_eur)}`}
+                />
+              </>
+            ) : null}
             <SummaryItem
               label={t("reservationFee")}
-              value={formatEuro(booking.reservation_fee_eur)}
+              value={formatEuro(finalReservationFee)}
             />
             <SummaryItem
               label={t("payOnBoard")}

@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import AdminRealtimeRefresh from "@/components/admin/AdminRealtimeRefresh";
 import AdminActionForm from "./AdminActionForm";
 import AdminHeader from "./AdminHeader";
+import AdminNotice from "./AdminNotice";
 import AdminBookingDetails from "./AdminBookingDetails";
 import { getAdminUser, isAllowedAdmin } from "./auth";
 import UnauthorizedAdmin from "./UnauthorizedAdmin";
@@ -170,6 +171,12 @@ function getSearchQuery(searchParams) {
   return typeof query === "string" ? query.trim() : "";
 }
 
+function getNoticeText(searchParams, key) {
+  const value = searchParams?.[key];
+
+  return typeof value === "string" ? value : "";
+}
+
 function normalizeSearchValue(value) {
   return String(value ?? "").toLowerCase();
 }
@@ -254,7 +261,7 @@ function buildCaptainMessage(booking) {
     `Ospiti: ${formatValue(booking.guest_count)}`,
     "",
     `Prezzo totale: ${formatEuro(booking.total_price_eur)}`,
-    `Quota di prenotazione pagata: ${formatEuro(booking.reservation_fee_eur)}`,
+    `Quota di prenotazione pagata: ${formatEuro(booking.final_reservation_fee_eur ?? booking.reservation_fee_eur)}`,
     `Saldo da incassare a bordo: ${formatEuro(booking.pay_on_board_eur)}`,
     "",
     "Messaggio del cliente:",
@@ -606,11 +613,20 @@ export default async function AdminPage({ searchParams }) {
 
   const queryParams = await searchParams;
   const searchQuery = getSearchQuery(queryParams);
+  const updatedAction = getNoticeText(queryParams, "updated");
+  const successNotice =
+    updatedAction || getNoticeText(queryParams, "deleted")
+      ? getNoticeText(queryParams, "deleted")
+        ? "Booking deleted."
+        : "Booking updated successfully."
+      : getNoticeText(queryParams, "refunded")
+        ? "Stripe refund started and booking payment status was updated."
+        : "";
   const supabase = await createSupabaseServerClient();
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
-      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, payment_status, captain_status, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
+      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
     )
     .order("created_at", { ascending: false })
     .limit(searchQuery ? 200 : 50);
@@ -629,6 +645,8 @@ export default async function AdminPage({ searchParams }) {
           title="Booking requests"
           userEmail={user.email}
         />
+
+        {successNotice ? <AdminNotice>{successNotice}</AdminNotice> : null}
 
         {error ? (
           <div className="mt-8 border border-red-900/30 bg-red-50 p-5 text-sm text-red-900">

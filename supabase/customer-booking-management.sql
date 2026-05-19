@@ -37,6 +37,10 @@ returns table (
   total_price_eur integer,
   reservation_fee_eur integer,
   pay_on_board_eur integer,
+  promo_code text,
+  promo_discount_eur integer,
+  original_reservation_fee_eur integer,
+  final_reservation_fee_eur integer,
   booking_status text,
   customer_cancelled_at timestamptz,
   customer_cancel_reason text
@@ -58,6 +62,10 @@ as $$
     bookings.total_price_eur,
     bookings.reservation_fee_eur,
     bookings.pay_on_board_eur,
+    bookings.promo_code,
+    bookings.promo_discount_eur,
+    bookings.original_reservation_fee_eur,
+    bookings.final_reservation_fee_eur,
     bookings.booking_status,
     bookings.customer_cancelled_at,
     bookings.customer_cancel_reason
@@ -87,6 +95,10 @@ returns table (
   total_price_eur integer,
   reservation_fee_eur integer,
   pay_on_board_eur integer,
+  promo_code text,
+  promo_discount_eur integer,
+  original_reservation_fee_eur integer,
+  final_reservation_fee_eur integer,
   booking_status text,
   customer_cancelled_at timestamptz,
   customer_cancel_reason text
@@ -123,6 +135,10 @@ as $$
     bookings.total_price_eur,
     bookings.reservation_fee_eur,
     bookings.pay_on_board_eur,
+    bookings.promo_code,
+    bookings.promo_discount_eur,
+    bookings.original_reservation_fee_eur,
+    bookings.final_reservation_fee_eur,
     bookings.booking_status,
     bookings.customer_cancelled_at,
     bookings.customer_cancel_reason;

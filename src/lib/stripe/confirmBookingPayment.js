@@ -3,7 +3,7 @@ import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/server";
 
 const BOOKING_EMAIL_SELECT =
-  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, customer_manage_token";
+  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token";
 
 function getPaymentIntentId(paymentIntent) {
   if (!paymentIntent) {

@@ -30,7 +30,17 @@ export default function AdminStatusActionButton({
         variantClasses,
       ].join(" ")}
     >
-      {pending ? "Updating..." : children}
+      {pending ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <span
+            aria-hidden="true"
+            className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
+          />
+          Updating...
+        </span>
+      ) : (
+        children
+      )}
     </button>
   );
 }

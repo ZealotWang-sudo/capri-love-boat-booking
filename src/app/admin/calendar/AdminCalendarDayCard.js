@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AdminSubmitButton from "../AdminSubmitButton";
 import { getDisplayTimeForTimeSlot } from "@/lib/bookingAvailability";
 import {
   markTimeSlotAvailable,
@@ -87,16 +88,16 @@ function WholeDayAction({ date, isFullyUnavailable, month, periodStates }) {
       {timeSlots.map((timeSlot) => (
         <input key={timeSlot} type="hidden" name="timeSlot" value={timeSlot} />
       ))}
-      <button
-        type="submit"
+      <AdminSubmitButton
+        pendingLabel={isFullyUnavailable ? "Making available..." : "Blocking..."}
         className={`w-[300px] border  px-3 py-3 text-[0.62rem] font-medium uppercase tracking-[0.14em] transition ${
           isFullyUnavailable
             ? "border-stone-400 text-stone-700 hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
             : "border-stone-950 bg-stone-950 text-[#f3eee7] hover:bg-transparent hover:text-stone-950"
-        }`}
+        } disabled:cursor-wait disabled:opacity-60`}
       >
         {label}
-      </button>
+      </AdminSubmitButton>
     </form>
   );
 }
@@ -109,12 +110,12 @@ function UnavailableSlotAction({ date, month, period }) {
         <input key={timeSlot} type="hidden" name="timeSlot" value={timeSlot} />
       ))}
       <input type="hidden" name="month" value={month} />
-      <button
-        type="submit"
-        className="border border-stone-400 px-2.5 py-1.5 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
+      <AdminSubmitButton
+        pendingLabel="Updating..."
+        className="border border-stone-400 px-2.5 py-1.5 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7] disabled:cursor-wait disabled:opacity-60"
       >
         Make available
-      </button>
+      </AdminSubmitButton>
     </form>
   );
 }
@@ -132,12 +133,12 @@ function AvailableSlotAction({ date, month, period }) {
         placeholder="Optional reason"
         className="w-full border border-stone-300 bg-[#fbf8f3] px-2.5 py-2 text-xs outline-none focus:border-stone-950"
       />
-      <button
-        type="submit"
-        className="border w-[200px] border-stone-950 bg-stone-950 px-2.5 py-2 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950"
+      <AdminSubmitButton
+        pendingLabel="Blocking..."
+        className="w-[200px] border border-stone-950 bg-stone-950 px-2.5 py-2 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60"
       >
         Mark unavailable
-      </button>
+      </AdminSubmitButton>
     </form>
   );
 }

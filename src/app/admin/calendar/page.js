@@ -8,6 +8,7 @@ import {
   getBookingInterval,
 } from "@/lib/bookingAvailability";
 import AdminHeader from "../AdminHeader";
+import AdminNotice from "../AdminNotice";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
 import AdminCalendarDayCard from "./AdminCalendarDayCard";
@@ -112,6 +113,12 @@ function getMonthFromSearch(searchParams) {
   return /^\d{4}-\d{2}$/.test(requestedMonth ?? "")
     ? requestedMonth
     : getCurrentMonth();
+}
+
+function getNoticeText(searchParams, key) {
+  const value = searchParams?.[key];
+
+  return typeof value === "string" ? value : "";
 }
 
 function addMonths(month, offset) {
@@ -270,12 +277,25 @@ export default async function AdminCalendarPage({ searchParams }) {
   const bookings = bookingRows ?? [];
   const unavailableSlotsByDate = groupUnavailableSlots(unavailableRows ?? []);
   const dates = getCalendarDates(monthRange, todayDate);
+  const updatedNotice = getNoticeText(resolvedSearchParams, "updated");
+  const successNotice =
+    updatedNotice === "available"
+      ? "Time slot is available again."
+      : updatedNotice === "unavailable"
+        ? "Time slot marked unavailable."
+        : "";
+  const errorNotice = getNoticeText(resolvedSearchParams, "error");
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
       <AdminRealtimeRefresh />
       <section className="mx-auto max-w-7xl">
         <AdminHeader active="calendar" title="Calendar" userEmail={user.email} />
+
+        {successNotice ? <AdminNotice>{successNotice}</AdminNotice> : null}
+        {errorNotice ? (
+          <AdminNotice tone="error">{errorNotice}</AdminNotice>
+        ) : null}
 
         <div className="mt-8 flex flex-col justify-between gap-4 border border-stone-300 bg-[#fbf8f3] p-5 sm:flex-row sm:items-center">
           <div>

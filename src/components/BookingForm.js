@@ -262,6 +262,11 @@ export default function BookingForm({ locale, labels }) {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState("EUR");
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoStatus, setPromoStatus] = useState("");
+  const [promoError, setPromoError] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
   const [exchangeRates, setExchangeRates] = useState(getInitialExchangeRates);
   const [calendarMonth, setCalendarMonth] = useState("");
   const [availability, setAvailability] = useState({
@@ -353,12 +358,23 @@ export default function BookingForm({ locale, labels }) {
     [exchangeRates, locale, selectedCurrency],
   );
   const showOriginalEur = selectedCurrency !== "EUR";
+  const reducedTotalPriceEur =
+    selectedTourOption && appliedPromo
+      ? selectedTourOption.totalPriceEur - appliedPromo.promoDiscountEur
+      : null;
   const handleCalendarMonthChange = useCallback((month) => {
     setCalendarMonth(month);
   }, []);
 
+  function clearAppliedPromo() {
+    setAppliedPromo(null);
+    setPromoStatus("");
+    setPromoError("");
+  }
+
   function selectTour(tourValue, { clearDate = true } = {}) {
     setSelectedTour(tourValue);
+    clearAppliedPromo();
     if (clearDate) {
       setSelectedDate("");
     }
@@ -497,6 +513,51 @@ export default function BookingForm({ locale, labels }) {
     };
   }, [exchangeRates, selectedCurrency]);
 
+  async function handleApplyPromoCode() {
+    const code = promoCodeInput.trim();
+
+    if (!code || !selectedTourOption) {
+      return;
+    }
+
+    setPromoLoading(true);
+    setPromoError("");
+    setPromoStatus("");
+
+    try {
+      const response = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          original_reservation_fee_eur: selectedTourOption.reservationFeeEur,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setAppliedPromo(null);
+        setPromoError(data?.error || labels.promoInvalid);
+        return;
+      }
+
+      setAppliedPromo({
+        code: data.code,
+        finalReservationFeeEur: data.finalReservationFeeEur,
+        promoDiscountEur: data.promoDiscountEur,
+      });
+      setPromoCodeInput(data.code);
+      setPromoStatus(labels.promoApplied);
+    } catch {
+      setAppliedPromo(null);
+      setPromoError(labels.promoInvalid);
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -562,6 +623,7 @@ export default function BookingForm({ locale, labels }) {
           tour_type: selectedTourOption?.value,
           time_slot: timeSlot,
           time_window: selectedTimeSlot?.window,
+          promo_code: appliedPromo?.code,
           message,
         }),
       });
@@ -596,7 +658,14 @@ export default function BookingForm({ locale, labels }) {
           tourLabel: selectedTourOption?.label,
           timeLabel: selectedTimeSlot?.label,
           totalPrice: selectedTourOption?.price,
-          reserveToday: selectedTourOption?.reserveToday,
+          originalReservationFee: selectedTourOption?.reserveToday,
+          promoCode: appliedPromo?.code,
+          promoDiscount: appliedPromo?.promoDiscountEur
+            ? `-€${appliedPromo.promoDiscountEur}`
+            : "",
+          reserveToday: appliedPromo
+            ? `€${appliedPromo.finalReservationFeeEur}`
+            : selectedTourOption?.reserveToday,
           payOnBoard: selectedTourOption?.payOnBoard,
           message,
         }),
@@ -857,49 +926,117 @@ export default function BookingForm({ locale, labels }) {
         </div>
         {selectedTourOption ? (
           <div className="mt-3 border border-stone-300 bg-[#f3eee7]/40 p-4">
-            <div className="flex items-center justify-between gap-4 border-b border-stone-300 pb-3">
-              <span className="text-sm leading-6 text-stone-600">
-                {labels.totalPrice}
-              </span>
-              <span className="text-right text-xl font-light">
-                {displayPrice(
-                  selectedTourOption.totalPriceEur,
-                  selectedTourOption.price,
-                )}
-                {showOriginalEur ? (
-                  <span className="block text-xs font-normal text-stone-500">
-                    {labels.currencyOriginalEur}: {selectedTourOption.price}
+            {appliedPromo ? (
+              <>
+                <div className="flex items-center justify-between gap-4 border-b border-stone-300 pb-3">
+                  <span className="text-sm leading-6 text-stone-600">
+                    {labels.originalPrice}
                   </span>
-                ) : null}
-              </span>
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-4 text-sm leading-6 text-stone-600">
-              <span>{labels.reserveToday}</span>
-              <span className="text-right">
-                {displayPrice(
-                  selectedTourOption.reservationFeeEur,
-                  selectedTourOption.reserveToday,
-                )}
-                {showOriginalEur ? (
-                  <span className="block text-xs text-stone-500">
-                    {selectedTourOption.reserveToday}
+                  <span className="text-right text-xl font-light">
+                    {displayPrice(
+                      selectedTourOption.totalPriceEur,
+                      selectedTourOption.price,
+                    )}
+                    {showOriginalEur ? (
+                      <span className="block text-xs font-normal text-stone-500">
+                        {labels.currencyOriginalEur}: {selectedTourOption.price}
+                      </span>
+                    ) : null}
                   </span>
-                ) : null}
-              </span>
-            </div>
-            <div className="mt-2 flex items-center justify-between gap-4 text-sm leading-6 text-stone-600">
-              <span>{labels.payOnBoard}</span>
-              <span className="text-right">
-                {displayPrice(
-                  selectedTourOption.payOnBoardEur,
-                  selectedTourOption.payOnBoard,
-                )}
-                {showOriginalEur ? (
-                  <span className="block text-xs text-stone-500">
-                    {selectedTourOption.payOnBoard}
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-4 text-sm leading-6 text-emerald-800">
+                  <span>{labels.reducedPrice}</span>
+                  <span className="text-right text-xl font-light">
+                    {displayPrice(
+                      reducedTotalPriceEur,
+                      `€${reducedTotalPriceEur}`,
+                    )}
+                    {showOriginalEur ? (
+                      <span className="block text-xs text-emerald-700">
+                        €{reducedTotalPriceEur}
+                      </span>
+                    ) : null}
                   </span>
-                ) : null}
-              </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-4 border-b border-stone-300 pb-3">
+                  <span className="text-sm leading-6 text-stone-600">
+                    {labels.totalPrice}
+                  </span>
+                  <span className="text-right text-xl font-light">
+                    {displayPrice(
+                      selectedTourOption.totalPriceEur,
+                      selectedTourOption.price,
+                    )}
+                    {showOriginalEur ? (
+                      <span className="block text-xs font-normal text-stone-500">
+                        {labels.currencyOriginalEur}: {selectedTourOption.price}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-4 text-sm leading-6 text-stone-600">
+                  <span>{labels.reserveToday}</span>
+                  <span className="text-right">
+                    {displayPrice(
+                      selectedTourOption.reservationFeeEur,
+                      selectedTourOption.reserveToday,
+                    )}
+                    {showOriginalEur ? (
+                      <span className="block text-xs text-stone-500">
+                        {selectedTourOption.reserveToday}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-4 text-sm leading-6 text-stone-600">
+                  <span>{labels.payOnBoard}</span>
+                  <span className="text-right">
+                    {displayPrice(
+                      selectedTourOption.payOnBoardEur,
+                      selectedTourOption.payOnBoard,
+                    )}
+                    {showOriginalEur ? (
+                      <span className="block text-xs text-stone-500">
+                        {selectedTourOption.payOnBoard}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="mt-4 border-t border-stone-300 pt-4">
+              <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+                {labels.promoCode}
+              </label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  name="promoCode"
+                  value={promoCodeInput}
+                  onChange={(event) => {
+                    setPromoCodeInput(event.target.value);
+                    clearAppliedPromo();
+                  }}
+                  placeholder={labels.promoCodePlaceholder}
+                  className="min-w-0 flex-1 border border-stone-300 bg-transparent px-3 py-2 text-sm uppercase outline-none transition focus:border-stone-950"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromoCode}
+                  disabled={!selectedTourOption || !promoCodeInput.trim() || promoLoading}
+                  className="border border-stone-950 bg-stone-950 px-4 py-2 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {promoLoading ? labels.promoApplying : labels.promoApply}
+                </button>
+              </div>
+              {promoStatus ? (
+                <p className="mt-2 text-sm text-emerald-800">{promoStatus}</p>
+              ) : null}
+              {promoError ? (
+                <p className="mt-2 text-sm text-red-900">{promoError}</p>
+              ) : null}
             </div>
           </div>
         ) : (

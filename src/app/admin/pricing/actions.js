@@ -10,6 +10,13 @@ function getFormText(formData, fieldName) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function getPricingRedirectPath(params = {}) {
+  const searchParams = new URLSearchParams(params);
+  const query = searchParams.toString();
+
+  return query ? `/admin/pricing?${query}` : "/admin/pricing";
+}
+
 function getFormInteger(formData, fieldName) {
   const value = getFormText(formData, fieldName);
 
@@ -38,25 +45,40 @@ async function getAdminSupabaseClient() {
 
 export async function updateTourPrice(formData) {
   const id = getFormText(formData, "id");
-  const reservationFeeEur = getFormInteger(formData, "reservation_fee_eur");
-  const captainPriceEur = getFormInteger(formData, "captain_price_eur");
   const notes = getFormText(formData, "notes");
   const isActive = getFormText(formData, "is_active") === "true";
+  let reservationFeeEur;
+  let captainPriceEur;
+
+  try {
+    reservationFeeEur = getFormInteger(formData, "reservation_fee_eur");
+    captainPriceEur = getFormInteger(formData, "captain_price_eur");
+  } catch {
+    redirect(getPricingRedirectPath({ error: "Price values must be whole euros." }));
+  }
 
   if (!id) {
-    throw new Error("Missing tour price id.");
+    redirect(getPricingRedirectPath({ error: "Missing tour price id." }));
   }
 
   if (reservationFeeEur === null || captainPriceEur === null) {
-    throw new Error("Reservation fee and captain price are required.");
+    redirect(
+      getPricingRedirectPath({
+        error: "Reservation fee and captain price are required.",
+      }),
+    );
   }
 
   if (reservationFeeEur <= 0) {
-    throw new Error("Reservation fee must be greater than 0.");
+    redirect(
+      getPricingRedirectPath({ error: "Reservation fee must be greater than 0." }),
+    );
   }
 
   if (captainPriceEur < 0) {
-    throw new Error("Captain price must be 0 or greater.");
+    redirect(
+      getPricingRedirectPath({ error: "Captain price must be 0 or greater." }),
+    );
   }
 
   const payOnBoardEur = captainPriceEur;
@@ -77,7 +99,7 @@ export async function updateTourPrice(formData) {
 
   if (error) {
     console.error("[admin pricing] Could not update tour price", error.message);
-    throw new Error("Could not update tour price.");
+    redirect(getPricingRedirectPath({ error: "Could not update tour price." }));
   }
 
   revalidatePath("/admin/pricing");
@@ -85,5 +107,7 @@ export async function updateTourPrice(formData) {
   revalidatePath("/en/book");
   revalidatePath("/zh/book");
   revalidatePath("/it/book");
-  redirect("/admin/pricing");
+  revalidatePath("/de/book");
+  revalidatePath("/fr/book");
+  redirect(getPricingRedirectPath({ updated: "1" }));
 }

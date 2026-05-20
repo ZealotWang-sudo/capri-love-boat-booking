@@ -54,6 +54,13 @@ const BOOKING_STATUS_UPDATES = {
   },
 };
 
+function getAdminRedirectPath(params = {}) {
+  const searchParams = new URLSearchParams(params);
+  const query = searchParams.toString();
+
+  return query ? `/admin?${query}` : "/admin";
+}
+
 function getFormText(formData, fieldName) {
   const value = formData.get(fieldName);
   return typeof value === "string" ? value.trim() : "";
@@ -164,7 +171,7 @@ export async function updateBookingOperationalStatus(formData) {
     .update(updatePayload)
     .eq("id", bookingId)
     .select(
-      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, booking_status, customer_manage_token, cancellation_reason",
+      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token, cancellation_reason",
     )
     .single();
 
@@ -198,7 +205,7 @@ export async function updateBookingOperationalStatus(formData) {
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect(getAdminRedirectPath({ updated: statusAction }));
 }
 
 export async function deleteClosedBooking(formData) {
@@ -227,7 +234,7 @@ export async function deleteClosedBooking(formData) {
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect(getAdminRedirectPath({ deleted: "1" }));
 }
 
 export async function refundCapturedBookingPayment(formData) {
@@ -241,7 +248,7 @@ export async function refundCapturedBookingPayment(formData) {
   const { data: booking, error } = await supabase
     .from("bookings")
     .select(
-      "id, payment_status, reservation_fee_eur, stripe_checkout_session_id, stripe_payment_intent_id",
+      "id, payment_status, reservation_fee_eur, final_reservation_fee_eur, stripe_checkout_session_id, stripe_payment_intent_id",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -314,5 +321,5 @@ export async function refundCapturedBookingPayment(formData) {
   }
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect(getAdminRedirectPath({ refunded: "1" }));
 }

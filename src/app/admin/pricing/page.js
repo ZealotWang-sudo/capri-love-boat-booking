@@ -1,11 +1,18 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { TOUR_PRICE_SELECT, isTourPricesTableMissing } from "@/lib/tourPrices";
 import AdminHeader from "../AdminHeader";
+import AdminNotice from "../AdminNotice";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
 import TourPriceForm from "./TourPriceForm";
 
-export default async function AdminPricingPage() {
+function getNoticeText(searchParams, key) {
+  const value = searchParams?.[key];
+
+  return typeof value === "string" ? value : "";
+}
+
+export default async function AdminPricingPage({ searchParams }) {
   const user = await getAdminUser("/admin/pricing");
 
   if (!isAllowedAdmin(user)) {
@@ -18,6 +25,11 @@ export default async function AdminPricingPage() {
     .select(TOUR_PRICE_SELECT)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
+  const resolvedSearchParams = await searchParams;
+  const successNotice = getNoticeText(resolvedSearchParams, "updated")
+    ? "Price updated successfully."
+    : "";
+  const errorNotice = getNoticeText(resolvedSearchParams, "error");
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
@@ -28,6 +40,11 @@ export default async function AdminPricingPage() {
           Manual prices are used for new booking requests only. Existing bookings
           keep their saved price snapshot.
         </section>
+
+        {successNotice ? <AdminNotice>{successNotice}</AdminNotice> : null}
+        {errorNotice ? (
+          <AdminNotice tone="error">{errorNotice}</AdminNotice>
+        ) : null}
 
         {error ? (
           <div className="mt-8 border border-red-900/30 bg-red-50 p-5 text-sm leading-7 text-red-900">

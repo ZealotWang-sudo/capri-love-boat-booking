@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import AdminSubmitButton from "../AdminSubmitButton";
 import { formatEuro } from "@/lib/tourPrices";
 import { updateTourPrice } from "./actions";
 
@@ -139,13 +140,13 @@ export default function TourPriceForm({ tourPrice }) {
       </label>
 
       <div className="mt-5 flex justify-end">
-        <button
-          type="submit"
+        <AdminSubmitButton
           disabled={!hasChanges || !pricing.isValid}
+          pendingLabel="Saving price..."
           className="border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-stone-950 disabled:hover:text-[#f3eee7]"
         >
           Save price
-        </button>
+        </AdminSubmitButton>
       </div>
     </form>
   );

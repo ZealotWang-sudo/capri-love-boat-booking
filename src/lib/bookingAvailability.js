@@ -5,6 +5,10 @@ export const ACTIVE_BOOKING_STATUSES = new Set([
   "confirmed",
   "available", // Legacy rows from the earlier admin flow should still block.
 ]);
+const NON_BLOCKING_PAYMENT_STATUSES = new Set([
+  "failed",
+  "released",
+]);
 
 export const TOUR_DURATIONS_MINUTES = {
   two_hours: 120,
@@ -140,6 +144,13 @@ export function isActiveBlockingStatus(bookingStatus) {
   return ACTIVE_BOOKING_STATUSES.has(bookingStatus);
 }
 
+export function isActiveBlockingBooking(booking) {
+  return (
+    isActiveBlockingStatus(booking.booking_status) &&
+    !NON_BLOCKING_PAYMENT_STATUSES.has(booking.payment_status)
+  );
+}
+
 export function getValidTimeSlotsForTour(tourType) {
   return TOUR_TIME_SLOTS[tourType] ?? [];
 }
@@ -185,7 +196,7 @@ export function intervalsOverlap(firstInterval, secondInterval) {
 export function bookingOverlapsSelection(existingBooking, requestedSelection) {
   if (
     existingBooking.requested_date !== requestedSelection.requested_date ||
-    !isActiveBlockingStatus(existingBooking.booking_status)
+    !isActiveBlockingBooking(existingBooking)
   ) {
     return false;
   }

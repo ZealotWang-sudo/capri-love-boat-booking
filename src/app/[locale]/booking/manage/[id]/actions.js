@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
-import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import {
+  createSupabasePublicServerClient,
+  createSupabaseServiceRoleServerClient,
+} from "@/lib/supabase/server";
+import { releaseAuthorizedBookingPayment } from "@/lib/stripe/adminBookingPayments";
 
 const ALLOWED_LOCALES = new Set(["en", "zh", "it", "de", "fr"]);
 
@@ -33,6 +37,46 @@ export async function cancelCustomerBooking(formData) {
 
   if (!bookingId || !token) {
     redirect(`/${locale}/booking/manage/${bookingId || "invalid"}?cancelError=1`);
+  }
+
+  const serviceSupabase = createSupabaseServiceRoleServerClient();
+  const { data: booking, error: bookingError } = await serviceSupabase
+    .from("bookings")
+    .select("booking_status, payment_status")
+    .eq("id", bookingId)
+    .eq("customer_manage_token", token)
+    .maybeSingle();
+
+  if (bookingError) {
+    console.error("[customer booking cancel] Could not load booking", {
+      bookingId,
+      message: bookingError.message,
+    });
+    redirect(getManagePath({ bookingId, locale, token }, { cancelError: "1" }));
+  }
+
+  if (
+    booking?.booking_status === "checking_with_captain" &&
+    booking.payment_status === "authorized"
+  ) {
+    try {
+      await releaseAuthorizedBookingPayment({
+        bookingId,
+        cancelledBy: "customer",
+        cancellationReason: customerCancelReason,
+        cancellationType: "customer_requested",
+        manageToken: token,
+        outcome: "cancelled",
+      });
+    } catch (error) {
+      console.error("[customer booking cancel] Could not release authorization", {
+        bookingId,
+        message: error.message,
+      });
+      redirect(getManagePath({ bookingId, locale, token }, { cancelError: "1" }));
+    }
+
+    redirect(getManagePath({ bookingId, locale, token }, { cancelled: "1" }));
   }
 
   const supabase = createSupabasePublicServerClient();

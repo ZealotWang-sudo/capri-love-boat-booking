@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "node:crypto";
-import {
-  createSupabasePublicServerClient,
-  createSupabaseServiceRoleServerClient,
-} from "@/lib/supabase/server";
+import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { isUnavailableSlotsTableMissing } from "@/lib/adminUnavailableSlots";
 import {
   ACTIVE_BOOKING_STATUSES,
@@ -11,8 +8,8 @@ import {
   getDisplayTimeForTimeSlot,
   isValidTimeSlotForTour,
 } from "@/lib/bookingAvailability";
-import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
 import { validatePromoCodeForReservation } from "@/lib/promoCodes";
+import { createReservationCheckoutSession } from "@/lib/stripe/createReservationCheckoutSession";
 import { getActiveTourPriceByType } from "@/lib/tourPrices";
 
 const REQUIRED_FIELDS = [
@@ -118,7 +115,7 @@ export async function POST(request) {
     return jsonError("Invalid time_slot for selected tour_type.");
   }
 
-  const supabase = createSupabasePublicServerClient();
+  const supabase = createSupabaseServiceRoleServerClient();
   const { data: tourPrice, error: tourPriceError } =
     await getActiveTourPriceByType(supabase, tourType);
 
@@ -138,7 +135,7 @@ export async function POST(request) {
     ? await validatePromoCodeForReservation({
         code: promoCodeInput,
         originalReservationFeeEur,
-        supabase: createSupabaseServiceRoleServerClient(),
+        supabase,
       })
     : {
         finalReservationFeeEur: originalReservationFeeEur,
@@ -187,13 +184,15 @@ export async function POST(request) {
     message: getOptionalText(body.message),
     booking_status: "requested",
     customer_manage_token: customerManageToken,
-    payment_status: "unpaid",
+    payment_status: "authorization_pending",
     captain_status: "pending",
   };
 
   const { data: existingBookings, error: availabilityError } = await supabase
     .from("bookings")
-    .select("requested_date, tour_type, time_slot, time_window, booking_status")
+    .select(
+      "requested_date, tour_type, time_slot, time_window, booking_status, payment_status",
+    )
     .in("booking_status", Array.from(ACTIVE_BOOKING_STATUSES))
     .eq("requested_date", requestedDate);
 
@@ -236,18 +235,44 @@ export async function POST(request) {
     });
   }
 
-  await sendBookingEmail({
-    booking: {
-      ...bookingRequest,
-      manage_url: customerManageUrl,
-    },
-    checkDuplicate: false,
-    eventType: "booking_received",
-    supabase,
-  });
+  let checkoutSession;
+
+  try {
+    checkoutSession = await createReservationCheckoutSession({
+      booking: bookingRequest,
+      captureMethod: "manual",
+      token: customerManageToken,
+    });
+  } catch (error) {
+    console.error("[bookings API] Could not create Stripe checkout", error.message);
+
+    return jsonError("Could not create checkout session.", 500, {
+      message: error.message,
+    });
+  }
+
+  const { error: checkoutUpdateError } = await supabase
+    .from("bookings")
+    .update({
+      stripe_checkout_session_id: checkoutSession.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", bookingId)
+    .eq("payment_status", "authorization_pending");
+
+  if (checkoutUpdateError) {
+    return jsonError("Could not save checkout session.", 500, {
+      message: checkoutUpdateError.message,
+    });
+  }
 
   return NextResponse.json(
-    { success: true, bookingId },
+    {
+      success: true,
+      bookingId,
+      checkoutUrl: checkoutSession.url,
+      manageUrl: customerManageUrl,
+    },
     { status: 201 },
   );
 }

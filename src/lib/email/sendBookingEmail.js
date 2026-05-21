@@ -26,6 +26,7 @@ const EMAIL_EVENTS_BY_STATUS = {
 export const SUPPORTED_EMAIL_LOCALES = ["en", "zh", "it", "de", "fr"];
 export const BOOKING_EMAIL_EVENTS = [
   { eventType: "booking_received", label: "Booking received" },
+  { eventType: "booking_authorized", label: "Booking authorized" },
   { eventType: "payment_pending", label: "Payment pending" },
   { eventType: "booking_confirmed", label: "Booking confirmed" },
   { eventType: "not_available", label: "Captain not available" },
@@ -102,10 +103,6 @@ function getBookingDetails(booking, locale) {
   const reservationRows =
     promoDiscountEur > 0
       ? [
-          [
-            labels.originalReservationFee,
-            formatEuro(booking.original_reservation_fee_eur),
-          ],
           [labels.promoCode, formatValue(booking.promo_code)],
           [labels.promoDiscount, `-${formatEuro(promoDiscountEur)}`],
           [labels.reservationFee, formatEuro(booking.final_reservation_fee_eur)],

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
-import { getSiteUrl, getStripe } from "@/lib/stripe/server";
+import { createReservationCheckoutSession } from "@/lib/stripe/createReservationCheckoutSession";
 
 function jsonError(message, status = 400, details) {
   console.error("[stripe checkout]", message, details ?? "");
@@ -10,14 +10,6 @@ function jsonError(message, status = 400, details) {
 
 function getText(value) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function formatTourType(value) {
-  return value ? value.replaceAll("_", " ") : "Capri boat tour";
-}
-
-function formatReferenceCode(id) {
-  return id ? `CAPRI-${id.slice(0, 8).toUpperCase()}` : "CAPRI";
 }
 
 export async function POST(request) {
@@ -40,7 +32,7 @@ export async function POST(request) {
   const { data: booking, error } = await supabase
     .from("bookings")
     .select(
-      "id, locale, customer_name, email, requested_date, tour_type, time_window, reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token",
+      "id, locale, customer_name, email, requested_date, tour_type, time_window, reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, customer_manage_token",
     )
     .eq("id", bookingId)
     .eq("customer_manage_token", token)
@@ -59,61 +51,33 @@ export async function POST(request) {
     return jsonError("Invalid booking link.", 404);
   }
 
-  if (booking.booking_status !== "payment_pending") {
+  const isLegacyPayment = booking.booking_status === "payment_pending";
+  const isAuthorizationRetry =
+    booking.booking_status === "requested" &&
+    booking.payment_status === "authorization_pending";
+
+  if (!isLegacyPayment && !isAuthorizationRetry) {
     return jsonError("This booking is not ready for payment.", 409);
   }
 
-  const checkoutReservationFeeEur =
-    booking.final_reservation_fee_eur ?? booking.reservation_fee_eur;
+  let session;
 
-  if (!Number.isInteger(checkoutReservationFeeEur) || checkoutReservationFeeEur <= 0) {
-    return jsonError("Invalid reservation fee.", 400);
+  try {
+    session = await createReservationCheckoutSession({
+      booking,
+      captureMethod: isLegacyPayment ? "automatic" : "manual",
+      token,
+    });
+  } catch (error) {
+    return jsonError(error.message || "Could not create Stripe checkout session.");
   }
-
-  const stripe = getStripe();
-  const siteUrl = getSiteUrl();
-  const referenceCode = formatReferenceCode(booking.id);
-  const managePath = `/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(token)}`;
-  const successUrl = `${siteUrl}${managePath}&payment=success&session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${siteUrl}${managePath}&payment=cancelled`;
-  const paymentDescription = `${referenceCode} · ${formatTourType(booking.tour_type)} · ${booking.requested_date} · ${booking.time_window}`;
-  const stripeMetadata = {
-    booking_id: booking.id,
-    booking_reference: referenceCode,
-    requested_date: booking.requested_date,
-    tour_type: booking.tour_type,
-  };
-  const session = await stripe.checkout.sessions.create({
-    client_reference_id: referenceCode,
-    customer_email: booking.email,
-    line_items: [
-      {
-        price_data: {
-          currency: "eur",
-          product_data: {
-            name: `${referenceCode} reservation fee`,
-            description: paymentDescription,
-            metadata: stripeMetadata,
-          },
-          unit_amount: checkoutReservationFeeEur * 100,
-        },
-        quantity: 1,
-      },
-    ],
-    metadata: stripeMetadata,
-    payment_intent_data: {
-      description: paymentDescription,
-      metadata: stripeMetadata,
-    },
-    mode: "payment",
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-  });
 
   const { error: updateError } = await supabase
     .from("bookings")
     .update({
-      payment_status: "payment_link_sent",
+      payment_status: isLegacyPayment
+        ? "payment_link_sent"
+        : "authorization_pending",
       stripe_checkout_session_id: session.id,
       updated_at: new Date().toISOString(),
     })

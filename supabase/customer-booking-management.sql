@@ -20,6 +20,9 @@ create unique index if not exists bookings_customer_manage_token_unique
 create index if not exists bookings_customer_manage_lookup_idx
   on public.bookings (id, customer_manage_token);
 
+drop function if exists public.get_customer_managed_booking(uuid, text);
+drop function if exists public.customer_cancel_booking(uuid, text, text);
+
 create or replace function public.get_customer_managed_booking(
   p_booking_id uuid,
   p_manage_token text
@@ -112,6 +115,10 @@ as $$
     booking_status = 'cancelled',
     customer_cancelled_at = now(),
     customer_cancel_reason = nullif(trim(p_cancel_reason), ''),
+    payment_status = case
+      when bookings.payment_status = 'authorization_pending' then 'failed'
+      else bookings.payment_status
+    end,
     updated_at = now()
   where bookings.id = p_booking_id
     and bookings.customer_manage_token = p_manage_token
@@ -122,6 +129,7 @@ as $$
       'checking_with_captain',
       'payment_pending'
     )
+    and coalesce(bookings.payment_status, 'unpaid') <> 'authorized'
   returning
     bookings.id,
     bookings.locale,

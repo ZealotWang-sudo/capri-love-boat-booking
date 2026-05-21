@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabasePublicServerClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import {
   getManualBlockedTimeSlots,
   groupUnavailableSlotsByDate,
@@ -9,6 +9,7 @@ import {
   ACTIVE_BOOKING_STATUSES,
   getBlockedTimeSlots,
   getValidTimeSlotsForTour,
+  isActiveBlockingBooking,
 } from "@/lib/bookingAvailability";
 import { getActiveTourPrices } from "@/lib/tourPrices";
 
@@ -158,7 +159,7 @@ export async function GET(request) {
     return jsonError("Expected valid date=YYYY-MM-DD or month=YYYY-MM.");
   }
 
-  const supabase = createSupabasePublicServerClient();
+  const supabase = createSupabaseServiceRoleServerClient();
   const { data: activeTourPrices, error: activeTourPricesError } =
     await getActiveTourPrices(supabase);
 
@@ -178,7 +179,9 @@ export async function GET(request) {
 
   const { data: existingBookings, error } = await supabase
     .from("bookings")
-    .select("requested_date, tour_type, time_slot, time_window, booking_status")
+    .select(
+      "requested_date, tour_type, time_slot, time_window, booking_status, payment_status",
+    )
     .in("booking_status", Array.from(ACTIVE_BOOKING_STATUSES))
     .gte("requested_date", range.startDate)
     .lte("requested_date", range.endDate);
@@ -211,7 +214,7 @@ export async function GET(request) {
   const availability = buildAvailability({
     activeTourTypes,
     dates,
-    existingBookings: existingBookings ?? [],
+    existingBookings: (existingBookings ?? []).filter(isActiveBlockingBooking),
     tourType,
     unavailableSlots: unavailableSlotsError ? [] : unavailableSlots,
   });

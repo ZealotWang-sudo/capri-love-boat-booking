@@ -10,7 +10,7 @@ const STATUS_ACTIONS = [
     label: "Contact captain",
     confirmMessage: "Mark this booking as checking with captain?",
     confirmTitle: "Update booking status?",
-    showWhen: { booking_status: "requested" },
+    showWhen: { booking_status: "requested", payment_status: "unpaid" },
   },
   {
     value: "captain_available",
@@ -21,7 +21,24 @@ const STATUS_ACTIONS = [
     showWhen: {
       booking_status: "checking_with_captain",
       captain_status: "pending",
+      payment_status: "unpaid",
     },
+  },
+  {
+    actionType: "capture",
+    id: "capture_authorized_payment",
+    label: "Captain available — capture payment",
+    confirmMessage:
+      "Capture the authorized reservation fee and confirm this booking?",
+    confirmTitle: "Capture payment and confirm?",
+    showWhen: {
+      booking_status: "checking_with_captain",
+      captain_status: "pending",
+      payment_status: "authorized",
+    },
+    variant: "primary",
+    warningNotice:
+      "This captures the Stripe authorization. The booking will only be marked confirmed after Stripe capture succeeds.",
   },
   {
     value: "captain_not_available",
@@ -34,8 +51,34 @@ const STATUS_ACTIONS = [
     reasonLabel: "Reason",
     reasonPlaceholder: "Tell the customer why this time is not available.",
     reasonRequired: true,
-    showWhen: { booking_status: "checking_with_captain" },
+    showWhen: {
+      booking_status: "checking_with_captain",
+      payment_status: "unpaid",
+    },
     variant: "danger",
+  },
+  {
+    actionType: "release",
+    id: "release_not_available",
+    label: "Captain not available — release authorization",
+    confirmLabel: "Release authorization",
+    confirmMessage:
+      "Release the authorized reservation fee and mark the captain as not available?",
+    confirmTitle: "Release authorization?",
+    cancellationTypeDefault: "captain_unavailable",
+    cancellationTypeFieldName: "cancellationType",
+    reasonFieldName: "cancellationReason",
+    reasonLabel: "Reason",
+    reasonPlaceholder: "Tell the customer why this time is not available.",
+    reasonRequired: true,
+    releaseOutcome: "not_available",
+    showWhen: {
+      booking_status: "checking_with_captain",
+      payment_status: "authorized",
+    },
+    variant: "danger",
+    warningNotice:
+      "This releases the Stripe authorization first. The customer is not charged.",
   },
   {
     value: "confirmed",
@@ -55,6 +98,7 @@ const STATUS_ACTIONS = [
   {
     value: "cancelled",
     label: "Cancel request",
+    cancellationTypeDefault: "admin_decision",
     cancellationTypeFieldName: "cancellationType",
     cancellationTypeLabel: "Cancellation type",
     confirmMessage: "Cancel this booking request?",
@@ -62,12 +106,35 @@ const STATUS_ACTIONS = [
     reasonFieldName: "cancellationReason",
     reasonLabel: "Reason for cancellation",
     reasonPlaceholder: "Optional note to include in the customer email.",
-    showWhenStatuses: ["requested", "checking_with_captain", "payment_pending"],
+    showWhenStatuses: ["requested", "payment_pending"],
     variant: "danger",
+  },
+  {
+    actionType: "release",
+    id: "release_cancelled",
+    label: "Cancel request — release authorization",
+    cancellationTypeFieldName: "cancellationType",
+    cancellationTypeLabel: "Cancellation type",
+    confirmLabel: "Release and cancel",
+    confirmMessage:
+      "Release the authorized reservation fee and cancel this request?",
+    confirmTitle: "Cancel authorized request?",
+    reasonFieldName: "cancellationReason",
+    reasonLabel: "Reason for cancellation",
+    reasonPlaceholder: "Optional note to include in the customer email.",
+    releaseOutcome: "cancelled",
+    showWhen: {
+      booking_status: "checking_with_captain",
+      payment_status: "authorized",
+    },
+    variant: "danger",
+    warningNotice:
+      "This releases the Stripe authorization first. The customer is not charged.",
   },
   {
     value: "cancelled",
     label: "Cancel booking",
+    cancellationTypeDefault: "admin_decision",
     cancellationTypeFieldName: "cancellationType",
     cancellationTypeLabel: "Cancellation type",
     confirmLabel: "Cancel booking",
@@ -78,7 +145,7 @@ const STATUS_ACTIONS = [
     reasonLabel: "Reason for cancellation",
     reasonPlaceholder: "Optional note to include in the customer email.",
     refundWarning:
-      "Reservation fee has already been paid. Use the refund button separately if you also need to return the payment.",
+      "Reservation fee has already been paid. Cancelling this booking will automatically start a Stripe refund before the customer email is sent.",
     showWhen: { booking_status: "confirmed" },
     variant: "danger",
   },
@@ -103,6 +170,7 @@ const STATUS_ACTIONS = [
       "Permanently delete this closed booking from the admin list? This cannot be undone.",
     confirmTitle: "Delete this booking?",
     showWhenStatuses: ["completed", "cancelled", "not_available", "expired"],
+    showWhenPaymentStatuses: ["authorization_pending", "failed"],
     variant: "danger",
   },
 ];
@@ -171,6 +239,7 @@ function StatusActionForm({ action, booking }) {
       reasonLabel={action.reasonLabel}
       reasonPlaceholder={action.reasonPlaceholder}
       reasonRequired={action.reasonRequired}
+      releaseOutcome={action.releaseOutcome}
       statusAction={action.value}
       variant={action.variant}
       warningNotice={
@@ -185,6 +254,13 @@ function StatusActionForm({ action, booking }) {
 
 function shouldShowStatusAction(action, booking) {
   if (
+    booking.payment_status === "authorization_pending" &&
+    action.actionType !== "delete"
+  ) {
+    return false;
+  }
+
+  if (
     action.requiresStripePaymentRecord &&
     !booking.stripe_payment_intent_id &&
     !booking.stripe_checkout_session_id
@@ -193,9 +269,11 @@ function shouldShowStatusAction(action, booking) {
   }
 
   if (!action.showWhen) {
-    return action.showWhenStatuses
-      ? action.showWhenStatuses.includes(booking.booking_status)
-      : true;
+    return Boolean(
+      action.showWhenStatuses?.includes(booking.booking_status) ||
+        action.showWhenPaymentStatuses?.includes(booking.payment_status) ||
+        (!action.showWhenStatuses && !action.showWhenPaymentStatuses),
+    );
   }
 
   return Object.entries(action.showWhen).every(
@@ -323,7 +401,7 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   value={formatDiscount(booking.promo_discount_eur)}
                 />
                 <DetailItem
-                  label="Final reservation fee paid"
+                  label="Final reservation fee"
                   value={formatEuro(
                     booking.final_reservation_fee_eur ??
                       booking.reservation_fee_eur,
@@ -422,7 +500,7 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {availableActions.map((action) => (
                     <StatusActionForm
-                      key={action.value ?? action.actionType}
+                      key={action.id ?? action.value ?? action.actionType}
                       action={action}
                       booking={booking}
                     />

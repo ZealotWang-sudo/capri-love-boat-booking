@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
-import { confirmBookingPaymentFromSession } from "@/lib/stripe/confirmBookingPayment";
+import {
+  expireCheckoutSession,
+  handleCheckoutSessionCompleted,
+} from "@/lib/stripe/confirmBookingPayment";
 import { getStripe } from "@/lib/stripe/server";
 
 async function handleCheckoutCompleted(session) {
-  await confirmBookingPaymentFromSession({ session });
+  await handleCheckoutSessionCompleted({ session });
+}
+
+async function handleCheckoutExpired(session) {
+  await expireCheckoutSession({ session });
 }
 
 export async function POST(request) {
@@ -46,6 +53,8 @@ export async function POST(request) {
   try {
     if (event.type === "checkout.session.completed") {
       await handleCheckoutCompleted(event.data.object);
+    } else if (event.type === "checkout.session.expired") {
+      await handleCheckoutExpired(event.data.object);
     }
   } catch (error) {
     console.error("[stripe webhook] Handler failed", error.message);

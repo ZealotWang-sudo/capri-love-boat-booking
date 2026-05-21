@@ -420,7 +420,8 @@
         {
           "key": "departurePoint",
           "label": "Point de départ",
-          "value": "Molo 21, Marina Grande / port principal de Capri, à environ 5 minutes de la zone d'arrivée des ferries publics et hydroptères."
+          "value": "Molo 21, Marina Grande / port principal de Capri, à environ 5 minutes de la zone d'arrivée des ferries publics et hydroptères.",
+          "note": "Touchez l'adresse ci-dessus pour ouvrir le lieu dans Google Maps ou une autre application de cartes. Pour voir l'itinéraire avec photos jusqu'au point de rendez-vous, utilisez le bouton en haut de cet e-mail."
         },
         {
           "key": "captainPhone",

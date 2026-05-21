@@ -19,7 +19,8 @@ alter table public.bookings
       'authorized',
       'captured',
       'released',
-      'refunded'
+      'refunded',
+      'failed'
     )
   );
 

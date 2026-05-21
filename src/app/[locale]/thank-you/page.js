@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import BookingRequestSummary from "@/components/BookingRequestSummary";
-import SaveBookingSummaryButton from "@/components/SaveBookingSummaryButton";
+import ManageBookingLink from "@/components/ManageBookingLink";
 import SiteHeader from "@/components/SiteHeader";
 
 export default async function ThankYouPage({ params }) {
@@ -26,7 +26,7 @@ export default async function ThankYouPage({ params }) {
     promoDiscount: t("summaryPromoDiscount"),
     payOnBoard: t("summaryPayOnBoard"),
     message: t("summaryMessage"),
-    saveToComputer: t("saveToComputer"),
+    manageBookingPage: t("manageBookingPage"),
   };
 
   return (
@@ -49,7 +49,7 @@ export default async function ThankYouPage({ params }) {
             >
               {t("home")}
             </Link>
-            <SaveBookingSummaryButton labels={summaryLabels} locale={locale} />
+            <ManageBookingLink labels={summaryLabels} />
           </div>
           <BookingRequestSummary labels={summaryLabels} locale={locale} />
        

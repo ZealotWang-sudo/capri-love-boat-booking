@@ -6,6 +6,7 @@ import {
   BOOKING_SCHEDULE_PERIODS,
   TIME_SLOT_WINDOWS,
   getBookingInterval,
+  isActiveBlockingBooking,
 } from "@/lib/bookingAvailability";
 import AdminHeader from "../AdminHeader";
 import AdminNotice from "../AdminNotice";
@@ -158,7 +159,7 @@ function getTimeSlotStartMinutes(timeSlot) {
 }
 
 function bookingOccupiesTimeSlot(booking, date, timeSlot) {
-  if (booking.requested_date !== date) {
+  if (booking.requested_date !== date || !isActiveBlockingBooking(booking)) {
     return false;
   }
 
@@ -262,7 +263,7 @@ export default async function AdminCalendarPage({ searchParams }) {
   const { data: bookingRows, error: bookingsError } = await supabase
     .from("bookings")
     .select(
-      "id, customer_name, requested_date, tour_type, time_slot, time_window, booking_status",
+      "id, customer_name, requested_date, tour_type, time_slot, time_window, booking_status, payment_status",
     )
     .in("booking_status", Array.from(ACTIVE_BOOKING_STATUSES))
     .gte("requested_date", rangeStartDate)

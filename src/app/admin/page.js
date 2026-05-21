@@ -87,9 +87,20 @@ const BOOKING_GROUPS = [
     },
   },
   {
+    id: "incomplete_checkout",
+    title: "Incomplete checkout - temporary hold",
+    description:
+      "These customers started Stripe Checkout. The slot is held for up to 30 minutes and is deleted automatically if checkout expires.",
+    statuses: ["requested", "expired"],
+    defaultOpen: false,
+    sort(bookings) {
+      return sortByDateDesc(bookings, "updated_at");
+    },
+  },
+  {
     id: "closed",
     title: "Closed / cancelled",
-    statuses: ["cancelled", "not_available", "expired"],
+    statuses: ["cancelled", "not_available"],
     defaultOpen: false,
     sort(bookings) {
       return sortByDateDesc(bookings, "updated_at");
@@ -298,7 +309,8 @@ function StatusBadges({ booking }) {
 function getPrimaryStatusAction(booking) {
   if (
     CLOSED_BOOKING_STATUSES.has(booking.booking_status) ||
-    booking.booking_status === "completed"
+    booking.booking_status === "completed" ||
+    booking.payment_status === "authorization_pending"
   ) {
     return null;
   }
@@ -307,6 +319,17 @@ function getPrimaryStatusAction(booking) {
     booking.booking_status === "checking_with_captain" &&
     booking.captain_status === "pending"
   ) {
+    if (booking.payment_status === "authorized") {
+      return {
+        actionType: "capture",
+        label: "Captain available — capture payment",
+        confirmMessage:
+          "Capture the authorized reservation fee and confirm this booking?",
+        confirmTitle: "Capture payment and confirm?",
+        variant: "primary",
+      };
+    }
+
     return {
       value: "captain_available",
       label: "Captain available",
@@ -428,6 +451,13 @@ function BookingDetailsButton({ booking }) {
 function getBookingGroupId(booking) {
   const bookingStatus = booking.booking_status;
 
+  if (
+    booking.payment_status === "authorization_pending" ||
+    (bookingStatus === "expired" && booking.payment_status === "failed")
+  ) {
+    return "incomplete_checkout";
+  }
+
   if (bookingStatus === "available") {
     return "waiting_for_customer";
   }
@@ -547,6 +577,11 @@ function BookingGroup({ group }) {
       <summary className="cursor-pointer list-none border-b border-stone-300 px-4 py-4 text-sm font-medium uppercase tracking-[0.18em] text-stone-950 marker:hidden">
         {group.title} ({group.bookings.length})
       </summary>
+      {group.description ? (
+        <p className="border-b border-stone-300 px-4 py-3 text-sm leading-6 text-stone-600">
+          {group.description}
+        </p>
+      ) : null}
       {group.bookings.length > 0 ? (
         <div>
           <div className="space-y-4 p-4 lg:hidden">

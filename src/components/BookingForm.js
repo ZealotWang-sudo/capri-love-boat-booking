@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import currencyData from "currency-codes/data";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import PhoneInput from "@/components/PhoneInput";
@@ -246,7 +245,6 @@ function CurrencyDropdown({ label, onChange, options, value }) {
 }
 
 export default function BookingForm({ locale, labels }) {
-  const router = useRouter();
   const formRef = useRef(null);
   const policyAcceptedRef = useRef(false);
   const policyScrollRef = useRef(null);
@@ -283,6 +281,13 @@ export default function BookingForm({ locale, labels }) {
     (option) => option.value === selectedTour,
   );
   const availabilityTourType = selectedTour;
+  const availabilityPending = Boolean(
+    selectedTour &&
+      (!calendarMonth ||
+        availabilityLoading ||
+        availability.month !== calendarMonth ||
+        availability.tourType !== availabilityTourType),
+  );
   const blockedTimeSlots = useMemo(() => {
     if (!selectedDate) {
       return new Set();
@@ -363,6 +368,7 @@ export default function BookingForm({ locale, labels }) {
       ? selectedTourOption.totalPriceEur - appliedPromo.promoDiscountEur
       : null;
   const handleCalendarMonthChange = useCallback((month) => {
+    setAvailabilityLoading(true);
     setCalendarMonth(month);
   }, []);
 
@@ -642,14 +648,22 @@ export default function BookingForm({ locale, labels }) {
       }
 
       const data = await response.json();
+      if (!data.checkoutUrl) {
+        setSubmitError(labels.submitError);
+        setIsSubmitting(false);
+        return;
+      }
+
       const referenceCode = data.bookingId
         ? `CAPRI-${data.bookingId.slice(0, 8).toUpperCase()}`
         : "";
+      const manageUrl = typeof data.manageUrl === "string" ? data.manageUrl : "";
 
       window.sessionStorage.setItem(
         "bookingRequestSummary",
         JSON.stringify({
           referenceCode,
+          manageUrl,
           customerName,
           email,
           phone,
@@ -670,7 +684,7 @@ export default function BookingForm({ locale, labels }) {
           message,
         }),
       );
-      router.push(`/${locale}/thank-you`);
+      window.location.assign(data.checkoutUrl);
     } catch {
       setSubmitError(labels.submitError);
       setIsSubmitting(false);
@@ -829,11 +843,14 @@ export default function BookingForm({ locale, labels }) {
             key={selectedTour}
             alternativeAvailableDates={alternativeAvailableDates}
             fullyBookedDates={fullyBookedDates}
+            isLoading={availabilityPending}
             label={labels.stepChooseDate}
             labels={labels.calendar}
+            loadingLabel={labels.availabilityLoading}
             error={dateError}
             onMonthChange={handleCalendarMonthChange}
             onSelect={(date) => {
+              setAvailabilityLoading(true);
               setDateError(false);
               setSelectedDate(date);
               setSelectedTime("");
@@ -865,9 +882,12 @@ export default function BookingForm({ locale, labels }) {
                       : timeSlot.label
                   }
                   checked={selectedTime === timeSlot.value}
-                  disabled={blocked}
+                  disabled={availabilityPending || blocked}
                   required
-                  onChange={() => setSelectedTime(timeSlot.value)}
+                  onChange={() => {
+                    setAvailabilityLoading(true);
+                    setSelectedTime(timeSlot.value);
+                  }}
                 />
               );
             })}
@@ -878,7 +898,7 @@ export default function BookingForm({ locale, labels }) {
           </p>
         )}
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          {availabilityLoading
+          {availabilityPending
             ? labels.availabilityLoading
             : labels.timeConfirmationNote}
         </p>
@@ -1056,9 +1076,15 @@ export default function BookingForm({ locale, labels }) {
         />
       </div>
 
+      {labels.note ? (
+        <p className="border-l border-stone-950 bg-[#f3eee7]/60 px-4 py-3 text-sm leading-6 text-stone-700">
+          {labels.note}
+        </p>
+      ) : null}
+
       <button
         type="submit"
-        disabled={isSubmitting || labels.tourOptions.length === 0}
+        disabled={isSubmitting || availabilityPending || labels.tourOptions.length === 0}
         className="w-full border border-stone-950 bg-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60 disabled:hover:bg-stone-950 disabled:hover:text-[#f3eee7]"
       >
         {isSubmitting ? labels.submitting : labels.submit}

@@ -33,10 +33,12 @@ alter table public.bookings
   check (
     payment_status in (
       'unpaid',
+      'authorization_pending',
+      'authorized',
       'payment_link_sent',
       'captured',
-      'refunded',
       'released',
+      'refunded',
       'failed'
     )
   );
@@ -83,4 +85,4 @@ alter table public.bookings
   );
 
 grant select, update on public.bookings to authenticated;
-grant select, update on public.bookings to service_role;
+grant select, insert, update, delete on public.bookings to service_role;

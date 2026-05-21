@@ -5,8 +5,10 @@ import AdminDropdownSelect from "./AdminDropdownSelect";
 import AdminStatusActionButton from "./AdminStatusActionButton";
 import AdminWarningModal from "./AdminWarningModal";
 import {
+  captureAuthorizedBookingPaymentAction,
   deleteClosedBooking,
   refundCapturedBookingPayment,
+  releaseAuthorizedBookingPaymentAction,
   updateBookingOperationalStatus,
 } from "./actions";
 
@@ -17,6 +19,14 @@ function getServerAction(actionType) {
 
   if (actionType === "refund") {
     return refundCapturedBookingPayment;
+  }
+
+  if (actionType === "capture") {
+    return captureAuthorizedBookingPaymentAction;
+  }
+
+  if (actionType === "release") {
+    return releaseAuthorizedBookingPaymentAction;
   }
 
   return updateBookingOperationalStatus;
@@ -37,6 +47,7 @@ export default function AdminActionForm({
   reasonLabel,
   reasonPlaceholder,
   reasonRequired = false,
+  releaseOutcome,
   statusAction,
   variant,
   warningNotice,
@@ -49,6 +60,9 @@ export default function AdminActionForm({
       <input type="hidden" name="bookingId" value={bookingId} />
       {statusAction ? (
         <input type="hidden" name="statusAction" value={statusAction} />
+      ) : null}
+      {releaseOutcome ? (
+        <input type="hidden" name="releaseOutcome" value={releaseOutcome} />
       ) : null}
       {cancellationTypeDefault ? (
         <input

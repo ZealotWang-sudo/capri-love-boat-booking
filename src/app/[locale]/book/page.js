@@ -136,6 +136,7 @@ export default async function BookingPage({ params }) {
     currencyLabel: t("currencyLabel"),
     currencyOriginalEur: t("currencyOriginalEur"),
     message: t("message"),
+    note: t("note"),
     submit: t("submit"),
     submitting: t("submitting"),
     submitError: t("submitError"),
@@ -175,9 +176,6 @@ export default async function BookingPage({ params }) {
           <p className="mt-6 text-lg font-light leading-8 text-stone-600">
             {t("subtitle")}
           </p>
-          <div className="mt-10 border-l border-stone-950 pl-5 text-sm leading-7 text-stone-600">
-            {t("note")}
-          </div>
           <div className="mt-10 border border-stone-300 bg-[#fbf8f3]">
             <div className="relative aspect-[16/10] overflow-hidden bg-stone-200">
               <Image

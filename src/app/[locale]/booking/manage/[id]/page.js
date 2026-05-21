@@ -7,7 +7,7 @@ import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { formatCustomerDate } from "@/lib/formatCustomerDate";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { buildPageMetadata } from "@/lib/seo";
-import { confirmBookingPaymentFromSession } from "@/lib/stripe/confirmBookingPayment";
+import { handleCheckoutSessionCompleted } from "@/lib/stripe/confirmBookingPayment";
 
 const CANCELLABLE_STATUSES = new Set([
   "requested",
@@ -57,7 +57,7 @@ const MEET_UP_PHOTOS = [
 const CAPTAIN_PHONE = "+39 339 665 0836";
 const CAPTAIN_PHONE_HREF = "tel:+393396650836";
 const CUSTOMER_MANAGED_BOOKING_SELECT =
-  "id, locale, customer_name, email, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_cancelled_at, customer_cancel_reason";
+  "id, locale, customer_name, email, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, customer_cancelled_at, customer_cancel_reason";
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
@@ -142,7 +142,7 @@ async function confirmReturnedStripePayment({ bookingId, sessionId, token }) {
   }
 
   try {
-    await confirmBookingPaymentFromSession({
+    await handleCheckoutSessionCompleted({
       bookingId,
       sessionId,
       token,
@@ -296,7 +296,8 @@ export default async function ManageBookingPage({ params, searchParams }) {
             </section>
           ) : null}
 
-          {booking.booking_status === "payment_pending" ? (
+          {booking.booking_status === "payment_pending" ||
+          booking.payment_status === "authorization_pending" ? (
             <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
                 {t("paymentTitle")}
@@ -328,13 +329,46 @@ export default async function ManageBookingPage({ params, searchParams }) {
             </div>
           ) : null}
 
-          {booking.booking_status === "confirmed" ? (
+          {booking.payment_status === "authorized" ? (
             <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
                 {t("paymentTitle")}
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                {t("reservationFeeReceived")}
+                {t("paymentAuthorized")}
+              </p>
+            </div>
+          ) : null}
+
+          {booking.payment_status === "captured" ? (
+            <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {t("paymentTitle")}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                {t("paymentCaptured")}
+              </p>
+            </div>
+          ) : null}
+
+          {booking.payment_status === "released" ? (
+            <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {t("paymentTitle")}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                {t("paymentReleased")}
+              </p>
+            </div>
+          ) : null}
+
+          {booking.payment_status === "refunded" ? (
+            <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {t("paymentTitle")}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                {t("paymentRefunded")}
               </p>
             </div>
           ) : null}

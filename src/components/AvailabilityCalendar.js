@@ -42,6 +42,8 @@ export default function AvailabilityCalendar({
   label,
   labels,
   error,
+  isLoading = false,
+  loadingLabel,
   onMonthChange,
   onSelect,
   partiallyBookedDates = [],
@@ -91,6 +93,10 @@ export default function AvailabilityCalendar({
   }
 
   function handleSelect(date) {
+    if (isLoading) {
+      return;
+    }
+
     const dateKey = formatDateKey(date);
 
     setSelectedDate(dateKey);
@@ -139,6 +145,15 @@ export default function AvailabilityCalendar({
             {labels.next}
           </button>
         </div>
+
+        <div className="relative" aria-busy={isLoading} aria-live="polite">
+        {isLoading ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#f3eee7]/80 backdrop-blur-[1px]">
+            <p className="border border-stone-300 bg-[#fbf8f3] px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-700 shadow-sm">
+              {loadingLabel || labels.loading}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap gap-5 border-b border-stone-300 pb-4 text-xs uppercase tracking-[0.16em] text-stone-500">
           <span className="flex items-center gap-2">
@@ -220,7 +235,7 @@ export default function AvailabilityCalendar({
                 key={dateKey}
                 type="button"
                 onClick={() => handleSelect(date)}
-                disabled={disabled}
+                disabled={isLoading || disabled}
                 className={[
                   "flex min-h-16 flex-col items-start justify-start border-b-4 p-2 text-left transition",
                   selected
@@ -235,6 +250,7 @@ export default function AvailabilityCalendar({
                             ? "border-x-orange-200 border-t-orange-200 border-b-orange-500 bg-orange-50/80 text-stone-950 shadow-sm"
                             : "border-x-stone-300 border-t-stone-300 border-b-emerald-600 bg-[#fbf8f3] text-stone-950 shadow-sm",
                   isToday ? "ring-2 ring-stone-950 ring-offset-2" : "",
+                  isLoading ? "cursor-wait opacity-60 shadow-none" : "",
                 ].join(" ")}
                 aria-label={`${dateKey} ${statusLabel}${
                   isToday ? ` ${labels.today}` : ""
@@ -249,6 +265,7 @@ export default function AvailabilityCalendar({
               </button>
             );
           })}
+        </div>
         </div>
       </div>
 

@@ -420,7 +420,8 @@
         {
           "key": "departurePoint",
           "label": "Punto di partenza",
-          "value": "Molo 21, Marina Grande / porto principale di Capri, a circa 5 minuti dall'area di arrivo di traghetti e aliscafi pubblici."
+          "value": "Molo 21, Marina Grande / porto principale di Capri, a circa 5 minuti dall'area di arrivo di traghetti e aliscafi pubblici.",
+          "note": "Tocca l'indirizzo qui sopra per aprire la posizione su Google Maps o in un'altra app di mappe. Per le indicazioni con foto al punto d'incontro, usa il pulsante in alto in questa email."
         },
         {
           "key": "captainPhone",

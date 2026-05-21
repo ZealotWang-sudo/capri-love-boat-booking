@@ -222,6 +222,28 @@ function DetailItem({ label, value }) {
   );
 }
 
+function DetailLink({ href, label }) {
+  if (!href) {
+    return <DetailItem label={label} value={null} />;
+  }
+
+  return (
+    <div>
+      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+        {label}
+      </p>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-1 block break-all text-sm text-stone-950 underline decoration-stone-400 underline-offset-4 hover:text-stone-600"
+      >
+        {href}
+      </a>
+    </div>
+  );
+}
+
 function StatusActionForm({ action, booking }) {
   return (
     <AdminActionForm
@@ -374,6 +396,10 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                 <DetailItem
                   label="Contact method"
                   value={booking.contact_method}
+                />
+                <DetailLink
+                  href={booking.manage_url}
+                  label="Manage booking"
                 />
               </section>
 

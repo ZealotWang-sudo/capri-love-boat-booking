@@ -169,11 +169,13 @@ function buildTextEmail({ booking, copy, locale }) {
   const tourLogistics = copy.showTourLogistics ? getTourLogistics(locale) : null;
   const tourLogisticsText = tourLogistics
     ? `\n\n${tourLogistics.title}\n${tourLogistics.items
-        .map((item) =>
-          item.href
+        .map((item) => {
+          const line = item.href
             ? `${item.label}: ${item.value} (${item.href})`
-            : `${item.label}: ${item.value}`,
-        )
+            : `${item.label}: ${item.value}`;
+
+          return item.note ? `${line}\n${item.note}` : line;
+        })
         .join("\n")}`
     : "";
 
@@ -241,6 +243,11 @@ function buildHtmlEmail({ booking, copy, locale }) {
                         ? `<a href="${escapeHtml(item.href)}" style="color:#313131;text-decoration:underline;text-underline-offset:3px;">${escapeHtml(item.value)}</a>`
                         : escapeHtml(item.value)
                     }</p>
+                    ${
+                      item.note
+                        ? `<p style="margin:6px 0 0;color:#555;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:19px;">${escapeHtml(item.note)}</p>`
+                        : ""
+                    }
                   </div>
                 `,
               )

@@ -5,6 +5,7 @@ import AdminActionForm from "./AdminActionForm";
 import AdminHeader from "./AdminHeader";
 import AdminNotice from "./AdminNotice";
 import AdminBookingDetails from "./AdminBookingDetails";
+import { buildCaptainMessage } from "@/lib/admin/captainMessages";
 import { getAdminUser, isAllowedAdmin } from "./auth";
 import UnauthorizedAdmin from "./UnauthorizedAdmin";
 
@@ -15,14 +16,6 @@ const TOUR_LABELS = {
   five_hours: "5 hours",
   two_hours: "2 hours",
   special_request: "Special request",
-};
-const CAPTAIN_TOUR_LABELS = {
-  three_hours: "3 ore",
-  four_hours: "4 ore",
-  sunset_three_hours: "Sunset 3 ore",
-  five_hours: "5 ore",
-  two_hours: "2 ore",
-  special_request: "Richiesta speciale",
 };
 const PRIMARY_STATUS_ACTIONS = {
   requested: {
@@ -146,30 +139,22 @@ function formatValue(value) {
   return value || "—";
 }
 
-function formatEuro(value) {
-  return typeof value === "number" ? `€${value}` : "—";
-}
-
 function formatTourType(value) {
   return TOUR_LABELS[value] ?? formatValue(value);
-}
-
-function formatCaptainTourType(value) {
-  return CAPTAIN_TOUR_LABELS[value] ?? formatValue(value);
 }
 
 function formatReferenceCode(id) {
   return id ? `CAPRI-${id.slice(0, 8).toUpperCase()}` : "—";
 }
 
-function formatItalianDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? "")) {
-    return formatValue(value);
+function getCustomerManageUrl(booking) {
+  if (!booking.customer_manage_token) {
+    return null;
   }
 
-  const [year, month, day] = value.split("-");
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "";
 
-  return `${day}/${month}/${year}`;
+  return `${siteUrl}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
 }
 
 function formatBookingStatus(value) {
@@ -214,6 +199,7 @@ function bookingMatchesSearch(booking, searchQuery) {
     formatBookingStatus(booking.booking_status),
     booking.payment_status,
     booking.captain_status,
+    booking.customer_manage_token,
     booking.stripe_checkout_session_id,
     booking.stripe_payment_intent_id,
     booking.message,
@@ -236,48 +222,6 @@ function getWhatsappHref(phone) {
   }
 
   return `https://wa.me/${digits}`;
-}
-
-function buildCaptainMessage(booking) {
-  const customerMessage = booking.message?.trim();
-  const isPaidBooking =
-    booking.payment_status === "captured" ||
-    booking.booking_status === "confirmed" ||
-    booking.booking_status === "completed";
-
-  if (!isPaidBooking) {
-    return [
-      "Ciao, abbiamo una nuova richiesta di prenotazione da verificare.",
-      "",
-      `Tour: ${formatCaptainTourType(booking.tour_type)}`,
-      `Data: ${formatItalianDate(booking.requested_date)}`,
-      `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
-      `Ospiti: ${formatValue(booking.guest_count)}`,
-      "",
-      "Puoi confermare se sei disponibile per questo orario?",
-    ].join("\n");
-  }
-
-  return [
-    "Ciao, la quota di prenotazione è stata pagata e questa prenotazione è confermata.",
-    "",
-    `Riferimento: ${formatReferenceCode(booking.id)}`,
-    `Cliente: ${formatValue(booking.customer_name)}`,
-    `Telefono: ${formatValue(booking.phone)}`,
-    `Email: ${formatValue(booking.email)}`,
-    "",
-    `Tour: ${formatCaptainTourType(booking.tour_type)}`,
-    `Data: ${formatItalianDate(booking.requested_date)}`,
-    `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
-    `Ospiti: ${formatValue(booking.guest_count)}`,
-    "",
-    `Prezzo totale: ${formatEuro(booking.total_price_eur)}`,
-    `Quota di prenotazione pagata: ${formatEuro(booking.final_reservation_fee_eur ?? booking.reservation_fee_eur)}`,
-    `Saldo da incassare a bordo: ${formatEuro(booking.pay_on_board_eur)}`,
-    "",
-    "Messaggio del cliente:",
-    customerMessage || "Nessun messaggio.",
-  ].join("\n");
 }
 
 function StatusBadge({ label, value }) {
@@ -436,6 +380,7 @@ function BookingDetailsButton({ booking }) {
   const bookingWithTourLabel = {
     ...booking,
     booking_status_display: formatBookingStatus(booking.booking_status),
+    manage_url: getCustomerManageUrl(booking),
     reference_code: formatReferenceCode(booking.id),
     tour_label: formatTourType(booking.tour_type),
   };
@@ -661,7 +606,7 @@ export default async function AdminPage({ searchParams }) {
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
-      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
+      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
     )
     .order("created_at", { ascending: false })
     .limit(searchQuery ? 200 : 50);

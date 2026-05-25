@@ -29,6 +29,9 @@ const GENDER_PREFERENCE_LABEL_KEYS = {
   male_only: "genderPreference.male_only",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata({ params }) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Shared" });

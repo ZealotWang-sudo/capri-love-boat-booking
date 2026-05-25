@@ -35,6 +35,9 @@ const TOUR_LABEL_KEYS = {
   two_hours: "tourLabels.two_hours",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata({ params }) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Shared" });

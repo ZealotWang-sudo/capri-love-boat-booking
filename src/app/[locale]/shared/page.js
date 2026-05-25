@@ -11,6 +11,7 @@ import {
   MAX_BOAT_CAPACITY,
 } from "@/lib/sharedBoat";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
+import { expireOverdueSharedJoinRequestsForBooking } from "@/lib/stripe/sharedJoinRequests";
 
 const SHARED_LIST_SELECT =
   "id, requested_date, time_slot, time_window, tour_type, guest_count, booking_status, payment_status, is_shared_open, shared_status, shared_open_seats, shared_gender_preference, shared_public_token";
@@ -60,7 +61,7 @@ async function getOpenSharedBookings() {
     .eq("booking_status", "confirmed")
     .eq("payment_status", "captured")
     .eq("is_shared_open", true)
-    .eq("shared_status", "open")
+    .in("shared_status", ["open", "active_request"])
     .not("shared_public_token", "is", null)
     .order("requested_date", { ascending: true });
 
@@ -69,7 +70,31 @@ async function getOpenSharedBookings() {
     return [];
   }
 
-  const bookingIds = (bookings ?? []).map((booking) => booking.id);
+  const refreshedBookings = [];
+
+  for (const booking of bookings ?? []) {
+    if (booking.shared_status !== "active_request") {
+      refreshedBookings.push(booking);
+      continue;
+    }
+
+    try {
+      const result = await expireOverdueSharedJoinRequestsForBooking({
+        bookingId: booking.id,
+      });
+      refreshedBookings.push(
+        result.expired > 0 ? { ...booking, shared_status: "open" } : booking,
+      );
+    } catch (expiryError) {
+      console.error("[shared listing] Could not expire overdue join request", {
+        bookingId: booking.id,
+        message: expiryError.message,
+      });
+      refreshedBookings.push(booking);
+    }
+  }
+
+  const bookingIds = refreshedBookings.map((booking) => booking.id);
   let bookingIdsWithActiveRequests = new Set();
 
   if (bookingIds.length > 0) {
@@ -92,8 +117,9 @@ async function getOpenSharedBookings() {
     }
   }
 
-  return (bookings ?? []).filter(
+  return refreshedBookings.filter(
     (booking) =>
+      booking.shared_status === "open" &&
       !bookingIdsWithActiveRequests.has(booking.id) &&
       !isWithinJoinRequestCutoff(booking) &&
       getSharedJoinCapacity(booking) > 0,

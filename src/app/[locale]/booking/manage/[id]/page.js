@@ -312,16 +312,14 @@ export default async function ManageBookingPage({ params, searchParams }) {
 
   const canCancel = CANCELLABLE_STATUSES.has(booking.booking_status);
   const sharedJoinRequests = await getSharedJoinRequests(booking.id);
-  const visibleSharedJoinRequests = sharedRejected
-    ? []
-    : sharedJoinRequests.filter((request) =>
-        [
-          "accepted",
-          "authorized_pending_host_decision",
-          "connected",
-          "sent_to_main_booker",
-        ].includes(request.status),
-      );
+  const visibleSharedJoinRequests = sharedJoinRequests.filter((request) =>
+    [
+      "accepted",
+      "authorized_pending_host_decision",
+      "connected",
+      "sent_to_main_booker",
+    ].includes(request.status),
+  );
   const tourLabelKey = TOUR_LABEL_KEYS[booking.tour_type];
   const tourLabel = tourLabelKey ? t(tourLabelKey) : formatValue(booking.tour_type);
   const isAuthorizationPending =
@@ -357,8 +355,7 @@ export default async function ManageBookingPage({ params, searchParams }) {
   const showSharedConnected =
     booking.is_shared_open &&
     (booking.shared_status === "connected" ||
-      connectedSharedRequestExists ||
-      sharedAccepted);
+      connectedSharedRequestExists);
   const showSharedClosed =
     booking.is_shared_open &&
     !showSharedConnected &&
@@ -587,7 +584,6 @@ export default async function ManageBookingPage({ params, searchParams }) {
                       key={request.id}
                       bookingStatus={booking.booking_status}
                       bookingId={booking.id}
-                      decisionCompleted={sharedAccepted || sharedRejected}
                       labels={{
                         acceptButton: t("sharedRequestAcceptButton"),
                         acceptPendingButton: t("sharedRequestAcceptPendingButton"),

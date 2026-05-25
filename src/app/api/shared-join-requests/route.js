@@ -12,7 +12,10 @@ import {
   SHARED_GENDER_COMPOSITIONS,
 } from "@/lib/sharedBoat";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
-import { createSharedJoinRequestCheckoutSession } from "@/lib/stripe/sharedJoinRequests";
+import {
+  createSharedJoinRequestCheckoutSession,
+  expireOverdueSharedJoinRequestsForBooking,
+} from "@/lib/stripe/sharedJoinRequests";
 import { getActiveTourPriceByType } from "@/lib/tourPrices";
 
 const ALLOWED_LOCALES = new Set(["en", "zh", "it", "de", "fr"]);
@@ -145,6 +148,21 @@ export async function POST(request) {
     booking = await getSharedBooking({ supabase, token });
   } catch {
     return jsonError("Shared boat is not available.", 500, "generic");
+  }
+
+  if (booking?.shared_status === "active_request") {
+    try {
+      await expireOverdueSharedJoinRequestsForBooking({
+        bookingId: booking.id,
+        siteUrl: new URL(request.url).origin,
+      });
+      booking = await getSharedBooking({ supabase, token });
+    } catch (error) {
+      console.error(
+        "[shared join request API] Could not expire overdue join requests",
+        error.message,
+      );
+    }
   }
 
   if (

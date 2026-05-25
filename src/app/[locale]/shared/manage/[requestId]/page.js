@@ -263,16 +263,17 @@ function TourLogisticsItem({ href, label, value }) {
 
 async function confirmReturnedStripePayment({ sessionId }) {
   if (!sessionId) {
-    return;
+    return null;
   }
 
   try {
-    await handleSharedJoinCheckoutSessionCompleted({ sessionId });
+    return await handleSharedJoinCheckoutSessionCompleted({ sessionId });
   } catch (error) {
     console.error("[shared request manage] Could not confirm Stripe return", {
       message: error.message,
       sessionId,
     });
+    return null;
   }
 }
 
@@ -344,9 +345,10 @@ export default async function SharedRequestManagePage({ params, searchParams }) 
   const bookingManage = await getTranslations("BookingManage");
   const shared = await getTranslations("Shared");
   const copy = getCopy(locale);
+  let checkoutResult = null;
 
   if (paymentStatus === "success") {
-    await confirmReturnedStripePayment({ sessionId: stripeSessionId });
+    checkoutResult = await confirmReturnedStripePayment({ sessionId: stripeSessionId });
   }
 
   const managedRequest = await getManagedSharedRequest({ requestId, token });
@@ -430,7 +432,7 @@ export default async function SharedRequestManagePage({ params, searchParams }) 
         </div>
 
         <div className="bg-[#fbf8f3] p-6 shadow-sm sm:p-10">
-          {paymentStatus === "success" ? (
+          {checkoutResult?.authorized ? (
             <div className="mb-6 border border-emerald-900/30 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
               {copy.paymentSuccess}
             </div>

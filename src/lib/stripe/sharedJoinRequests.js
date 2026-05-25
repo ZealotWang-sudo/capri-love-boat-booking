@@ -15,11 +15,11 @@ import { formatBookingReferenceCode } from "@/lib/stripe/createReservationChecko
 import { getSiteUrl, getStripe } from "@/lib/stripe/server";
 
 const SHARED_JOIN_REQUEST_SELECT =
-  "id, booking_id, locale, customer_name, email, phone, whatsapp, wechat, preferred_contact_method, guest_count, gender_composition, customer_manage_token, shared_request_fee_eur, payment_status, status, stripe_checkout_session_id, stripe_payment_intent_id";
+  "id, booking_id, locale, customer_name, email, phone, whatsapp, wechat, preferred_contact_method, guest_count, gender_composition, customer_manage_token, shared_request_fee_eur, payment_status, status, stripe_checkout_session_id, stripe_payment_intent_id, host_response_deadline_at";
 const SHARED_BOOKING_SELECT =
   "id, locale, customer_name, email, phone, customer_manage_token, shared_public_token, requested_date, time_slot, time_window, tour_type, booking_status, payment_status, is_shared_open, shared_status";
 const HOST_SHARED_JOIN_REQUEST_SELECT =
-  "id, booking_id, locale, customer_name, email, phone, whatsapp, wechat, preferred_contact_method, guest_count, gender_composition, customer_manage_token, shared_request_fee_eur, payment_status, status, stripe_payment_intent_id";
+  "id, booking_id, locale, customer_name, email, phone, whatsapp, wechat, preferred_contact_method, guest_count, gender_composition, customer_manage_token, shared_request_fee_eur, payment_status, status, stripe_payment_intent_id, host_response_deadline_at";
 const SHARED_JOIN_CANCELLATION_REQUEST_SELECT =
   "id, booking_id, locale, customer_name, email, phone, whatsapp, wechat, preferred_contact_method, guest_count, gender_composition, customer_manage_token, shared_request_fee_eur, payment_status, status, stripe_checkout_session_id, stripe_payment_intent_id";
 const ADMIN_CONNECTED_SHARED_BOOKING_SELECT =
@@ -77,6 +77,18 @@ function isPaymentIntentAuthorized(paymentIntent) {
   );
 }
 
+function isHostDecisionExpired(request, now = new Date()) {
+  if (
+    request?.status !== "authorized_pending_host_decision" ||
+    request.payment_status !== "authorized" ||
+    !request.host_response_deadline_at
+  ) {
+    return false;
+  }
+
+  return new Date(request.host_response_deadline_at).getTime() <= now.getTime();
+}
+
 function getSharedLinkPath({ booking, sessionQuery }) {
   return `/${booking.locale}/shared/${booking.shared_public_token}${sessionQuery}`;
 }
@@ -89,6 +101,21 @@ function getSharedManagePath({ request, sessionQuery = "" }) {
 
 function getAbsoluteUrl(path, siteUrl) {
   return `${(siteUrl || getSiteUrl()).replace(/\/$/, "")}${path}`;
+}
+
+async function sendSharedJoinEmailWithLog(options) {
+  const result = await sendSharedJoinEmail(options);
+
+  if (!result.sent) {
+    console.error("[shared join email] Email was not sent", {
+      eventType: options.eventType,
+      reason: result.reason,
+      requestId: options.request?.id,
+      to: options.to,
+    });
+  }
+
+  return result;
 }
 
 export async function createSharedJoinRequestCheckoutSession({
@@ -235,6 +262,100 @@ async function releaseSharedJoinAuthorization({
   return { handled: true, released: true, reason };
 }
 
+async function reopenBookingAfterReleasedRequest({ bookingId, supabase }) {
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      shared_status: "open",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", bookingId)
+    .eq("shared_status", "active_request");
+
+  if (error) {
+    console.error("[shared join authorization] Could not reopen shared booking", {
+      bookingId,
+      message: error.message,
+    });
+    throw new Error("Could not reopen shared booking.");
+  }
+}
+
+export async function expireOverdueSharedJoinRequestsForBooking({
+  bookingId,
+  siteUrl,
+} = {}) {
+  if (!bookingId) {
+    return { expired: 0 };
+  }
+
+  const supabase = createSupabaseServiceRoleServerClient();
+  const now = new Date().toISOString();
+  const { data: overdueRequests, error } = await supabase
+    .from("shared_join_requests")
+    .select(SHARED_JOIN_REQUEST_SELECT)
+    .eq("booking_id", bookingId)
+    .eq("status", "authorized_pending_host_decision")
+    .eq("payment_status", "authorized")
+    .lt("host_response_deadline_at", now);
+
+  if (error) {
+    console.error("[shared join expiry] Could not load overdue requests", {
+      bookingId,
+      message: error.message,
+    });
+    throw new Error("Could not load overdue shared join requests.");
+  }
+
+  if (!overdueRequests?.length) {
+    return { expired: 0 };
+  }
+
+  const booking = await getParentBooking({ bookingId, supabase });
+  let expired = 0;
+
+  for (const request of overdueRequests) {
+    const paymentIntent = await getPaymentIntent(request.stripe_payment_intent_id);
+    const result = await releaseSharedJoinAuthorization({
+      joinRequest: request,
+      paymentIntent,
+      reason: "host response deadline expired",
+      supabase,
+    });
+
+    if (result.released) {
+      expired += 1;
+      if (booking) {
+        try {
+          await sendSharedJoinEmailWithLog({
+            booking,
+            eventType: "rejected_guest",
+            managePath: getSharedGuestManagePath(request),
+            request: {
+              ...request,
+              payment_status: "released",
+              status: "released",
+            },
+            siteUrl,
+            to: request.email,
+          });
+        } catch (emailError) {
+          console.error("[shared join expiry] Expiry email failed", {
+            message: emailError.message,
+            requestId: request.id,
+          });
+        }
+      }
+    }
+  }
+
+  if (expired > 0) {
+    await reopenBookingAfterReleasedRequest({ bookingId, supabase });
+  }
+
+  return { expired };
+}
+
 async function getParentBooking({ bookingId, supabase }) {
   const { data, error } = await supabase
     .from("bookings")
@@ -296,6 +417,11 @@ async function getHostManagedSharedRequest({
     throw new Error("Shared join request not found.");
   }
 
+  if (isHostDecisionExpired(joinRequest)) {
+    await expireOverdueSharedJoinRequestsForBooking({ bookingId: booking.id });
+    throw new Error("Shared join request host response deadline has expired.");
+  }
+
   return { booking, joinRequest };
 }
 
@@ -312,6 +438,8 @@ async function markSharedJoinRequestAccepted({ bookingId, joinRequest, paymentIn
       updated_at: now,
     })
     .eq("id", joinRequest.id)
+    .eq("status", "authorized_pending_host_decision")
+    .eq("payment_status", "authorized")
     .select(HOST_SHARED_JOIN_REQUEST_SELECT)
     .maybeSingle();
 
@@ -323,13 +451,20 @@ async function markSharedJoinRequestAccepted({ bookingId, joinRequest, paymentIn
     throw new Error("Could not mark shared join request accepted.");
   }
 
-  const { error: updateBookingError } = await supabase
+  if (!updatedRequest) {
+    throw new Error("Shared join request status changed before acceptance.");
+  }
+
+  const { data: updatedBooking, error: updateBookingError } = await supabase
     .from("bookings")
     .update({
       shared_status: "connected",
       updated_at: now,
     })
-    .eq("id", bookingId);
+    .eq("id", bookingId)
+    .eq("shared_status", "active_request")
+    .select("id")
+    .maybeSingle();
 
   if (updateBookingError) {
     console.error(
@@ -339,12 +474,48 @@ async function markSharedJoinRequestAccepted({ bookingId, joinRequest, paymentIn
     throw new Error("Could not update shared booking.");
   }
 
+  if (!updatedBooking) {
+    throw new Error("Shared booking status changed before acceptance.");
+  }
+
   return updatedRequest;
+}
+
+async function markCapturedJoinRequestRefundedAfterFailure({
+  joinRequest,
+  paymentIntentId,
+  reason,
+}) {
+  await refundCapturedPaymentIntent({
+    idempotencyKey: `shared-join-${joinRequest.id}-capture-compensation-refund`,
+    metadata: {
+      refund_source: "shared_accept_state_update_failed",
+      shared_join_request_id: joinRequest.id,
+    },
+    paymentIntentId,
+  });
+
+  const supabase = createSupabaseServiceRoleServerClient();
+  await supabase
+    .from("shared_join_requests")
+    .update({
+      payment_status: "refunded",
+      status: "released",
+      stripe_payment_intent_id: paymentIntentId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", joinRequest.id);
+
+  console.error("[shared join host decision] Refunded captured request after failure", {
+    message: reason,
+    paymentIntentId,
+    requestId: joinRequest.id,
+  });
 }
 
 async function sendSharedJoinAuthorizationEmails({ booking, request, siteUrl }) {
   await Promise.allSettled([
-    sendSharedJoinEmail({
+    sendSharedJoinEmailWithLog({
       booking,
       eventType: "authorized_guest",
       managePath: getSharedGuestManagePath(request),
@@ -352,7 +523,7 @@ async function sendSharedJoinAuthorizationEmails({ booking, request, siteUrl }) 
       siteUrl,
       to: request.email,
     }),
-    sendSharedJoinEmail({
+    sendSharedJoinEmailWithLog({
       booking,
       eventType: "authorized_host",
       managePath: getSharedHostManagePath(booking),
@@ -371,7 +542,7 @@ async function sendSharedJoinDecisionEmails({
 }) {
   if (decision === "accepted") {
     await Promise.allSettled([
-      sendSharedJoinEmail({
+      sendSharedJoinEmailWithLog({
         booking,
         eventType: "accepted_guest",
         managePath: getSharedGuestManagePath(request),
@@ -379,7 +550,7 @@ async function sendSharedJoinDecisionEmails({
         siteUrl,
         to: request.email,
       }),
-      sendSharedJoinEmail({
+      sendSharedJoinEmailWithLog({
         booking,
         eventType: "accepted_host",
         managePath: getSharedHostManagePath(booking),
@@ -391,7 +562,7 @@ async function sendSharedJoinDecisionEmails({
     return;
   }
 
-  await sendSharedJoinEmail({
+  await sendSharedJoinEmailWithLog({
     booking,
     eventType: "rejected_guest",
     managePath: getSharedGuestManagePath(request),
@@ -543,7 +714,7 @@ export async function settleSharedJoinRequestsForBookingCancellation({
 
     if (updatedRequest) {
       settledRequests.push(updatedRequest);
-      await sendSharedJoinEmail({
+      await sendSharedJoinEmailWithLog({
         booking,
         eventType: "cancelled_guest",
         managePath: getSharedGuestManagePath(updatedRequest),
@@ -704,7 +875,7 @@ async function sendAdminSecondaryCancellationEmails({
   siteUrl,
 }) {
   await Promise.allSettled([
-    sendSharedJoinEmail({
+    sendSharedJoinEmailWithLog({
       booking,
       eventType: "admin_cancelled_secondary_guest",
       managePath: getSharedGuestManagePath(request),
@@ -712,7 +883,7 @@ async function sendAdminSecondaryCancellationEmails({
       siteUrl,
       to: request.email,
     }),
-    sendSharedJoinEmail({
+    sendSharedJoinEmailWithLog({
       booking,
       eventType: "admin_cancelled_secondary_host",
       managePath: getSharedHostManagePath(booking),
@@ -833,8 +1004,12 @@ export async function cancelAcceptedSharedJoinRequestFromAdmin({
     throw new Error("Could not reopen shared booking after refund.");
   }
 
+  if (!updatedBooking) {
+    throw new Error("Secondary was refunded, but the shared booking was not reopened.");
+  }
+
   await sendAdminSecondaryCancellationEmails({
-    booking: updatedBooking ?? booking,
+    booking: updatedBooking,
     request: updatedRequest,
     siteUrl,
   });
@@ -904,6 +1079,7 @@ export async function cancelPrimaryAndPromoteSharedJoinRequestFromAdmin({
   const { data: updatedRequest, error: requestUpdateError } = await supabase
     .from("shared_join_requests")
     .update({
+      payment_status: "captured",
       status: "promoted_to_primary",
       stripe_payment_intent_id: promotedPaymentIntentId,
       updated_at: now,
@@ -925,16 +1101,45 @@ export async function cancelPrimaryAndPromoteSharedJoinRequestFromAdmin({
     throw new Error("Secondary was promoted, but request status was not updated.");
   }
 
+  let promotedRequest = updatedRequest;
+
+  if (!promotedRequest) {
+    const { data: repairedRequest, error: repairRequestError } = await supabase
+      .from("shared_join_requests")
+      .update({
+        payment_status: "captured",
+        status: "promoted_to_primary",
+        stripe_payment_intent_id: promotedPaymentIntentId,
+        updated_at: now,
+      })
+      .eq("id", request.id)
+      .select(ADMIN_CONNECTED_SHARED_REQUEST_SELECT)
+      .maybeSingle();
+
+    if (repairRequestError || !repairedRequest) {
+      console.error(
+        "[admin shared cancellation] Could not repair promoted request status",
+        {
+          message: repairRequestError?.message,
+          requestId: request.id,
+        },
+      );
+      throw new Error("Secondary was promoted, but request status changed.");
+    }
+
+    promotedRequest = repairedRequest;
+  }
+
   await sendAdminPrimaryPromotionEmails({
     cancellationReason,
     originalBooking: booking,
     promotedBooking,
-    request: updatedRequest ?? request,
+    request: promotedRequest,
     siteUrl,
     supabase,
   });
 
-  return { booking: promotedBooking, request: updatedRequest };
+  return { booking: promotedBooking, request: promotedRequest };
 }
 
 export async function acceptSharedJoinRequestForHost({
@@ -986,13 +1191,32 @@ export async function acceptSharedJoinRequestForHost({
   const capturedPaymentIntent =
     paymentIntent.status === "succeeded"
       ? paymentIntent
-      : await getStripe().paymentIntents.capture(paymentIntent.id);
+      : await getStripe().paymentIntents.capture(
+          paymentIntent.id,
+          {},
+          {
+            idempotencyKey: `shared-join-${joinRequest.id}-host-accept-capture`,
+          },
+        );
 
-  const acceptedRequest = await markSharedJoinRequestAccepted({
-    bookingId,
-    joinRequest,
-    paymentIntent: capturedPaymentIntent,
-  });
+  let acceptedRequest;
+
+  try {
+    acceptedRequest = await markSharedJoinRequestAccepted({
+      bookingId,
+      joinRequest,
+      paymentIntent: capturedPaymentIntent,
+    });
+  } catch (error) {
+    await markCapturedJoinRequestRefundedAfterFailure({
+      joinRequest,
+      paymentIntentId: capturedPaymentIntent.id,
+      reason: error.message,
+    });
+    await reopenBookingAfterReleasedRequest({ bookingId, supabase });
+    throw error;
+  }
+
   await sendSharedJoinDecisionEmails({
     booking,
     decision: "accepted",
@@ -1026,7 +1250,13 @@ export async function rejectSharedJoinRequestForHost({
   const paymentIntent = await getPaymentIntent(joinRequest.stripe_payment_intent_id);
 
   if (isPaymentIntentAuthorized(paymentIntent)) {
-    await getStripe().paymentIntents.cancel(paymentIntent.id);
+    await getStripe().paymentIntents.cancel(
+      paymentIntent.id,
+      {},
+      {
+        idempotencyKey: `shared-join-${joinRequest.id}-host-reject-release`,
+      },
+    );
   }
 
   const now = new Date().toISOString();
@@ -1041,6 +1271,8 @@ export async function rejectSharedJoinRequestForHost({
       updated_at: now,
     })
     .eq("id", joinRequest.id)
+    .eq("status", "authorized_pending_host_decision")
+    .eq("payment_status", "authorized")
     .select(HOST_SHARED_JOIN_REQUEST_SELECT)
     .maybeSingle();
 
@@ -1050,6 +1282,10 @@ export async function rejectSharedJoinRequestForHost({
       updateRequestError.message,
     );
     throw new Error("Could not reject shared join request.");
+  }
+
+  if (!updatedRequest) {
+    throw new Error("Shared join request status changed before rejection.");
   }
 
   const { error: updateBookingError } = await supabase
@@ -1105,6 +1341,44 @@ export async function handleSharedJoinCheckoutSessionCompleted({
   }
 
   if (ACTIVE_SHARED_JOIN_REQUEST_STATUSES.includes(joinRequest.status)) {
+    if (isHostDecisionExpired(joinRequest)) {
+      const paymentIntent = await getPaymentIntent(
+        joinRequest.stripe_payment_intent_id || checkoutSession.payment_intent,
+      );
+
+      await releaseSharedJoinAuthorization({
+        joinRequest,
+        paymentIntent,
+        reason: "host response deadline expired",
+        supabase,
+      });
+      await reopenBookingAfterReleasedRequest({
+        bookingId: joinRequest.booking_id,
+        supabase,
+      });
+
+      return { handled: true, released: true, reason: "host response deadline expired" };
+    }
+
+    if (joinRequest.status === "authorized_pending_host_decision") {
+      const { error: repairError } = await supabase
+        .from("bookings")
+        .update({
+          shared_status: "active_request",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", joinRequest.booking_id)
+        .eq("shared_status", "open");
+
+      if (repairError) {
+        console.error(
+          "[shared join authorization] Could not repair parent booking status",
+          repairError.message,
+        );
+        throw new Error("Could not repair shared booking status.");
+      }
+    }
+
     return { handled: true, authorized: false, reason: "request already active" };
   }
 

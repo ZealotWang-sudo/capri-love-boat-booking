@@ -73,6 +73,7 @@ export default function CopySharedLinkButton({ label, labels = {}, path }) {
   return (
     <>
       <input
+        aria-label={label}
         readOnly
         value={url}
         className="mt-4 w-full border border-stone-300 bg-[#fbf8f3] px-4 py-3 text-sm text-stone-950 outline-none"

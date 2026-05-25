@@ -12,7 +12,10 @@ import {
   MAX_BOAT_CAPACITY,
 } from "@/lib/sharedBoat";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
-import { handleSharedJoinCheckoutSessionCompleted } from "@/lib/stripe/sharedJoinRequests";
+import {
+  expireOverdueSharedJoinRequestsForBooking,
+  handleSharedJoinCheckoutSessionCompleted,
+} from "@/lib/stripe/sharedJoinRequests";
 import { getActiveTourPriceByType } from "@/lib/tourPrices";
 
 const SHARED_BOOKING_SELECT =
@@ -288,6 +291,7 @@ export default async function SharedBoatPage({ params, searchParams }) {
   const policyT = await getTranslations("Policy");
   const common = await getTranslations("Common");
   const cleanToken = getText(token);
+  const sharedInvitePath = `/shared/${cleanToken}`;
   const joinStatus = getText(query?.join);
   const stripeSessionId = getText(query?.session_id);
   let checkoutResult = null;
@@ -305,13 +309,26 @@ export default async function SharedBoatPage({ params, searchParams }) {
     }
   }
 
-  const booking = await getSharedBooking(cleanToken);
+  let booking = await getSharedBooking(cleanToken);
+
+  if (booking?.shared_status === "active_request") {
+    try {
+      await expireOverdueSharedJoinRequestsForBooking({ bookingId: booking.id });
+      booking = await getSharedBooking(cleanToken);
+    } catch (error) {
+      console.error("[shared booking page] Could not expire overdue join requests", {
+        bookingId: booking.id,
+        message: error.message,
+      });
+    }
+  }
+
   const validBooking = isValidSharedBooking(booking, cleanToken);
 
   if (!validBooking) {
     return (
       <main className="min-h-screen bg-[#f3eee7] text-stone-950">
-        <SiteHeader brand={common("brand")} locale={locale} path="/shared" />
+        <SiteHeader brand={common("brand")} locale={locale} path={sharedInvitePath} />
         <section className="mx-auto max-w-3xl px-5 py-20 text-center sm:px-8">
           <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
             {t("eyebrow")}
@@ -399,7 +416,7 @@ export default async function SharedBoatPage({ params, searchParams }) {
 
   return (
     <main className="min-h-screen bg-[#f3eee7] text-stone-950">
-      <SiteHeader brand={common("brand")} locale={locale} path="/shared" />
+      <SiteHeader brand={common("brand")} locale={locale} path={sharedInvitePath} />
       <section className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:py-24">
         <div className="border-t border-stone-300 pt-8">
           <Link
@@ -441,7 +458,7 @@ export default async function SharedBoatPage({ params, searchParams }) {
             />
             <DetailItem
               label={t("openSeats")}
-              value={booking.shared_open_seats}
+              value={maxJoinGuests}
             />
             <DetailItem
               label={t("maxCapacity")}

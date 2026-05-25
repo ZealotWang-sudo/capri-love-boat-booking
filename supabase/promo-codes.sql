@@ -68,6 +68,7 @@ alter table public.promo_codes enable row level security;
 drop policy if exists "Admin can read promo codes" on public.promo_codes;
 drop policy if exists "Admin can insert promo codes" on public.promo_codes;
 drop policy if exists "Admin can update promo codes" on public.promo_codes;
+drop policy if exists "Admin can delete promo codes" on public.promo_codes;
 
 create policy "Admin can read promo codes"
   on public.promo_codes
@@ -88,5 +89,11 @@ create policy "Admin can update promo codes"
   using ((auth.jwt() ->> 'email') = 'wangkexin-personal@outlook.com')
   with check ((auth.jwt() ->> 'email') = 'wangkexin-personal@outlook.com');
 
-grant select, insert, update on public.promo_codes to authenticated;
+create policy "Admin can delete promo codes"
+  on public.promo_codes
+  for delete
+  to authenticated
+  using ((auth.jwt() ->> 'email') = 'wangkexin-personal@outlook.com');
+
+grant select, insert, update, delete on public.promo_codes to authenticated;
 grant all on public.promo_codes to service_role;

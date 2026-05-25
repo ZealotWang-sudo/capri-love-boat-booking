@@ -1,3 +1,4 @@
+import AdminClock from "./AdminClock";
 import AdminNav from "./AdminNav";
 
 export default function AdminHeader({ active, title, userEmail }) {
@@ -13,6 +14,7 @@ export default function AdminHeader({ active, title, userEmail }) {
         <p className="mt-3 text-sm text-stone-600">Signed in as {userEmail}</p>
       </div>
       <div className="flex flex-col items-start gap-3 lg:items-end">
+        <AdminClock />
         <AdminNav active={active} />
         <form action="/admin/logout" method="post">
           <button

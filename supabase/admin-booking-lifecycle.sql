@@ -5,7 +5,9 @@ alter table public.bookings
   add column if not exists cancelled_at timestamptz,
   add column if not exists cancelled_by text,
   add column if not exists cancellation_type text,
-  add column if not exists cancellation_reason text;
+  add column if not exists cancellation_reason text,
+  add column if not exists captain_message_copied_at timestamptz,
+  add column if not exists captain_message_copied_type text;
 
 alter table public.bookings
   drop constraint if exists bookings_booking_status_check;
@@ -81,6 +83,20 @@ alter table public.bookings
       'admin_decision',
       'duplicate_or_test',
       'other'
+    )
+  );
+
+alter table public.bookings
+  drop constraint if exists bookings_captain_message_copied_type_check;
+
+alter table public.bookings
+  add constraint bookings_captain_message_copied_type_check
+  check (
+    captain_message_copied_type is null
+    or captain_message_copied_type in (
+      'time_confirmation',
+      'final_confirmation',
+      'cancellation'
     )
   );
 

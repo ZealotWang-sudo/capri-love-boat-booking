@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MIN_SHARED_REQUEST_FEE_EUR } from "@/lib/sharedBoat";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { validatePromoCodeForReservation } from "@/lib/promoCodes";
 
@@ -23,6 +24,9 @@ export async function POST(request) {
 
   const code = getText(body?.code);
   const originalReservationFeeEur = Number(body?.original_reservation_fee_eur);
+  const pricingContext = getText(body?.pricing_context);
+  const minimumReservationFeeEur =
+    pricingContext === "shared_join_request" ? MIN_SHARED_REQUEST_FEE_EUR : undefined;
 
   if (!code) {
     return jsonError("Invalid promo code.");
@@ -38,6 +42,7 @@ export async function POST(request) {
   const supabase = createSupabaseServiceRoleServerClient();
   const result = await validatePromoCodeForReservation({
     code,
+    minimumReservationFeeEur,
     originalReservationFeeEur,
     supabase,
   });

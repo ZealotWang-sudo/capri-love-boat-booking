@@ -1,11 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import currencyData from "currency-codes/data";
+import { Info } from "lucide-react";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
+import FormDropdown from "@/components/FormDropdown";
 import PhoneInput from "@/components/PhoneInput";
 import PolicyContent from "@/components/PolicyContent";
 import StyledCheckbox from "@/components/StyledCheckbox";
+import {
+  getEarliestOnlineBookingDate,
+  isOnlineBookingDateAllowed,
+} from "@/lib/bookingCutoff";
 
 const COMMON_CURRENCY_CODES = [
   "EUR",
@@ -41,6 +48,7 @@ const CURRENCY_OPTIONS = currencyData
   });
 const CURRENCY_CACHE_KEY = "capriLoveBoatCurrencyRatesEur";
 const CURRENCY_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const MAX_BOAT_CAPACITY = 6;
 
 const FALLBACK_ALTERNATIVE_TOUR_COPY = {
   en: {
@@ -256,9 +264,15 @@ export default function BookingForm({ locale, labels }) {
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
   const [policyScrolledToEnd, setPolicyScrolledToEnd] = useState(false);
   const [tourInfoOpen, setTourInfoOpen] = useState(false);
+  const [sharedInfoOpen, setSharedInfoOpen] = useState(false);
+  const [sharedInfoSeen, setSharedInfoSeen] = useState(false);
   const [selectedTour, setSelectedTour] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [guestCountInput, setGuestCountInput] = useState("2");
+  const [isSharedOpen, setIsSharedOpen] = useState(false);
+  const [sharedOpenSeats, setSharedOpenSeats] = useState(1);
+  const [sharedGenderPreference, setSharedGenderPreference] = useState("any");
   const [selectedCurrency, setSelectedCurrency] = useState("EUR");
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
@@ -277,9 +291,28 @@ export default function BookingForm({ locale, labels }) {
     tourType: "",
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const earliestOnlineBookingDate = useMemo(
+    () => getEarliestOnlineBookingDate(),
+    [],
+  );
   const selectedTourOption = labels.tourOptions.find(
     (option) => option.value === selectedTour,
   );
+  const guestCountNumber = Number(guestCountInput);
+  const isGuestCountInteger = Number.isInteger(guestCountNumber);
+  const hasValidGuestCount =
+    isGuestCountInteger && guestCountNumber >= 1 && guestCountNumber <= MAX_BOAT_CAPACITY;
+  const sharedSeatCapacity =
+    hasValidGuestCount
+      ? Math.max(0, MAX_BOAT_CAPACITY - guestCountNumber)
+      : 0;
+  const sharingUnavailableByCapacity = guestCountNumber === MAX_BOAT_CAPACITY;
+  const sharingToggleDisabled = !hasValidGuestCount || sharingUnavailableByCapacity;
+  const sharedSeatOptions = Array.from(
+    { length: sharedSeatCapacity },
+    (_, index) => sharedSeatCapacity - index,
+  );
+  const canSubmitSharedOpen = isSharedOpen && sharedSeatCapacity > 0;
   const availabilityTourType = selectedTour;
   const availabilityPending = Boolean(
     selectedTour &&
@@ -389,6 +422,25 @@ export default function BookingForm({ locale, labels }) {
     setSubmitError("");
   }
 
+  function handleGuestCountChange(event) {
+    const nextGuestCountInput = event.target.value;
+    const nextGuestCount = Number(nextGuestCountInput);
+    const nextSeatCapacity =
+      Number.isInteger(nextGuestCount) && nextGuestCount >= 1
+        ? Math.max(0, MAX_BOAT_CAPACITY - nextGuestCount)
+        : 0;
+
+    setGuestCountInput(nextGuestCountInput);
+
+    if (nextSeatCapacity <= 0) {
+      setIsSharedOpen(false);
+    }
+
+    if (nextSeatCapacity > 0 && isSharedOpen) {
+      setSharedOpenSeats(nextSeatCapacity);
+    }
+  }
+
   function handlePolicyScroll(event) {
     const element = event.currentTarget;
     const distanceFromBottom =
@@ -475,6 +527,24 @@ export default function BookingForm({ locale, labels }) {
 
     return () => cancelAnimationFrame(frame);
   }, [policyModalOpen]);
+
+  useEffect(() => {
+    if (!sharedInfoOpen) {
+      return undefined;
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setSharedInfoOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [sharedInfoOpen]);
 
   useEffect(() => {
     if (selectedCurrency === "EUR" || exchangeRates[selectedCurrency]) {
@@ -600,6 +670,12 @@ export default function BookingForm({ locale, labels }) {
       return;
     }
 
+    if (!isOnlineBookingDateAllowed(requestedDate)) {
+      setDateError(true);
+      setSubmitError(labels.bookingCutoffError);
+      return;
+    }
+
     const timeSlot = formData.get("time")?.toString();
     const selectedTimeSlot = selectedTourOption?.timeSlots.find(
       (slot) => slot.value === timeSlot,
@@ -608,6 +684,7 @@ export default function BookingForm({ locale, labels }) {
     const phone = formData.get("phone")?.toString().trim();
     const guestCount = Number(formData.get("guests"));
     const message = formData.get("message")?.toString().trim();
+    const submitSharedOpen = canSubmitSharedOpen;
 
     setSubmitError("");
     setIsSubmitting(true);
@@ -631,6 +708,13 @@ export default function BookingForm({ locale, labels }) {
           time_window: selectedTimeSlot?.window,
           promo_code: appliedPromo?.code,
           message,
+          is_shared_open: submitSharedOpen,
+          ...(submitSharedOpen
+            ? {
+                shared_open_seats: sharedOpenSeats,
+                shared_gender_preference: sharedGenderPreference,
+              }
+            : {}),
         }),
       });
 
@@ -754,10 +838,145 @@ export default function BookingForm({ locale, labels }) {
             min="1"
             max="6"
             required
+            value={guestCountInput}
+            onChange={handleGuestCountChange}
             className="mt-3 w-full border border-stone-300 bg-transparent px-4 py-4 outline-none transition focus:border-stone-950"
           />
         </div>
       </div>
+
+      <section className="border-t border-stone-300 pt-6">
+        <div className="grid grid-cols-[1fr_auto] items-stretch gap-3">
+          <StyledCheckbox
+            name="isSharedOpen"
+            value="true"
+            label={labels.sharedToggle}
+            checked={isSharedOpen}
+            disabled={sharingToggleDisabled}
+            onChange={(event) => {
+              const nextSharedOpen =
+                event.target.checked && !sharingToggleDisabled;
+
+              setIsSharedOpen(nextSharedOpen);
+
+              if (nextSharedOpen) {
+                setSharedOpenSeats(sharedSeatCapacity);
+              }
+
+              if (nextSharedOpen && !sharedInfoSeen) {
+                setSharedInfoSeen(true);
+                setSharedInfoOpen(true);
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setSharedInfoSeen(true);
+              setSharedInfoOpen(true);
+            }}
+            className="flex min-h-16 w-16 items-center justify-center border border-stone-300 text-sm font-medium text-stone-600 transition hover:border-stone-950 hover:text-stone-950"
+            aria-label={labels.sharedInfoButton}
+          >
+            <Info aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
+        {sharingUnavailableByCapacity ? (
+          <p className="mt-3 text-sm leading-6 text-stone-600">
+            {labels.sharedCapacityUnavailable}
+          </p>
+        ) : null}
+        {isSharedOpen ? (
+          <div className="mt-4 grid gap-4 border border-stone-300 bg-[#f3eee7]/40 p-4 sm:grid-cols-2">
+            <FormDropdown
+              name="shared_open_seats"
+              label={labels.sharedOpenSeats}
+              value={sharedOpenSeats}
+              onChange={(nextValue) => setSharedOpenSeats(Number(nextValue))}
+              options={sharedSeatOptions.map((seatCount) => ({
+                label: String(seatCount),
+                value: seatCount,
+              }))}
+            />
+            <div>
+              <FormDropdown
+                name="shared_gender_preference"
+                label={labels.sharedGenderPreference}
+                value={sharedGenderPreference}
+                onChange={setSharedGenderPreference}
+                options={labels.sharedGenderPreferenceOptions}
+              />
+              {/* <p className="mt-3 text-sm leading-6 text-stone-600">
+                {labels.sharedGenderPreferenceHelper}
+              </p> */}
+            </div>
+            <div className="sm:col-span-2">
+              <Link
+                href={`/${locale}/shared`}
+                className="inline-flex items-center gap-1 border border-stone-400 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
+              >
+                <span>{labels.sharedBrowseButton}</span>
+                <span aria-hidden="true" className="text-base leading-none">
+                  &gt;
+                </span>
+              </Link>
+            </div>
+          </div>
+        ) : null}
+        {sharedInfoOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 px-5 py-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shared-info-title"
+          >
+            <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden border border-stone-950 bg-[#fbf8f3] shadow-xl">
+              <div className="shrink-0 border-b border-stone-300 p-6 sm:p-8">
+                <div className="flex items-start justify-between gap-4">
+                  <h2
+                    id="shared-info-title"
+                    className="text-2xl font-light tracking-[-0.03em]"
+                  >
+                    {labels.sharedInfoTitle}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setSharedInfoOpen(false)}
+                    className="border border-stone-300 px-3 py-2 text-xs uppercase tracking-[0.18em] text-stone-600 transition hover:border-stone-950 hover:text-stone-950"
+                    aria-label={labels.sharedInfoClose}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6 text-sm leading-7 text-stone-700 sm:p-8">
+                <p>{labels.sharedInfoBodyOne}</p>
+                <p>{labels.sharedInfoBodyTwo}</p>
+                <p>{labels.sharedInfoBodyThree}</p>
+                <div className="border-l border-stone-950 pl-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                    {labels.sharedInfoImportantTitle}
+                  </p>
+                  <div className="mt-3 space-y-4">
+                    <p>{labels.sharedInfoImportantOne}</p>
+                    <p>{labels.sharedInfoImportantTwo}</p>
+                    <p>{labels.sharedInfoImportantThree}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="shrink-0 border-t border-stone-300 p-6 sm:p-8">
+                <button
+                  type="button"
+                  onClick={() => setSharedInfoOpen(false)}
+                  className="w-full border border-stone-950 bg-stone-950 px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950"
+                >
+                  {labels.sharedInfoClose}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </section>
 
       <section className="border-t border-stone-300 pt-6">
         <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
@@ -847,6 +1066,7 @@ export default function BookingForm({ locale, labels }) {
             label={labels.stepChooseDate}
             labels={labels.calendar}
             loadingLabel={labels.availabilityLoading}
+            minSelectableDate={earliestOnlineBookingDate}
             error={dateError}
             onMonthChange={handleCalendarMonthChange}
             onSelect={(date) => {

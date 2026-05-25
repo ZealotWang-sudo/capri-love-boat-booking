@@ -3,13 +3,27 @@ import {
   expireCheckoutSession,
   handleCheckoutSessionCompleted,
 } from "@/lib/stripe/confirmBookingPayment";
+import {
+  expireSharedJoinCheckoutSession,
+  handleSharedJoinCheckoutSessionCompleted,
+} from "@/lib/stripe/sharedJoinRequests";
 import { getStripe } from "@/lib/stripe/server";
 
 async function handleCheckoutCompleted(session) {
+  if (session.metadata?.type === "shared_join_request") {
+    await handleSharedJoinCheckoutSessionCompleted({ session });
+    return;
+  }
+
   await handleCheckoutSessionCompleted({ session });
 }
 
 async function handleCheckoutExpired(session) {
+  if (session.metadata?.type === "shared_join_request") {
+    await expireSharedJoinCheckoutSession({ session });
+    return;
+  }
+
   await expireCheckoutSession({ session });
 }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import AutoImageCarousel from "@/components/AutoImageCarousel";
+import HomeScrollReveal from "@/components/HomeScrollReveal";
 import RouteMap from "@/components/RouteMap.jsx";
 import SectionLink from "@/components/SectionLink";
 import SiteHeader from "@/components/SiteHeader";
@@ -36,17 +37,6 @@ function OnBoardIcon({ type }) {
         <path d="M9 9h6" />
         <path d="M9 13h6" />
         <path d="M9 17h6" />
-      </svg>
-    );
-  }
-
-  if (type === "fuel") {
-    return (
-      <svg {...iconProps}>
-        <path d="M7 21V4h8v17" />
-        <path d="M7 9h8" />
-        <path d="M15 7h2l2 2v8a2 2 0 0 0 2 2" />
-        <path d="M5 21h12" />
       </svg>
     );
   }
@@ -93,57 +83,48 @@ export default async function HomePage({ params }) {
     {
       icon: "softDrinks",
       titleKey: "includedSoftDrinksTitle",
-      textKey: "includedSoftDrinksText",
-    },
-    {
-      icon: "wine",
-      titleKey: "includedWineTitle",
-      textKey: "includedWineText",
     },
     {
       icon: "towel",
       titleKey: "includedTowelsTitle",
-      textKey: "includedTowelsText",
     },
     {
-      icon: "fuel",
-      titleKey: "includedFuelTitle",
-      textKey: "includedFuelText",
+      icon: "wine",
+      titleKey: "includedWineTitle",
     },
     {
       icon: "snorkeling",
       titleKey: "includedSnorkelingTitle",
-      textKey: "includedSnorkelingText",
     },
   ];
   const onBoardImages = [
     {
       altKey: "highlightOneTitle",
-      src: "/carousel/Capri%20Island%20Mar%2020%202026.jpeg",
+      src: "/carousel/carousel-1.jpeg",
     },
     {
       altKey: "highlightTwoTitle",
-      src: "/carousel/Capri%20Island%20Photo%20Mar%2024%202026.JPG",
+      src: "/carousel/carousel-2.JPG",
     },
     {
       altKey: "highlightThreeTitle",
-      src: "/carousel/WhatsApp%20Image%202026-05-05%20at%2023.31.39%20%281%29.jpeg",
+      src: "/carousel/carousel-3.jpeg",
     },
     {
       altKey: "highlightOneTitle",
-      src: "/carousel/Capri%20Island%20Photo%20Mar%2020%202026.jpg",
+      src: "/carousel/carousel-4.jpg",
     },
     {
       altKey: "highlightTwoTitle",
-      src: "/carousel/Sailing%20Boat%20Capri%20Island%20Mar%2018%202026.jpg",
+      src: "/carousel/carousel-5.jpg",
     },
     {
       altKey: "highlightThreeTitle",
-      src: "/carousel/47821191a8226f988bfe3517762d5b0f.jpg",
+      src: "/carousel/carousel-6.jpg",
     },
     {
       altKey: "routeMarkerTen",
-      src: "/carousel/Faro%20Lighthouse%20Capri%20Mar%2024%202026.jpg",
+      src: "/carousel/carousel-7.jpg",
     },
   ];
 
@@ -241,6 +222,7 @@ export default async function HomePage({ params }) {
 
   return (
     <main className="min-h-screen bg-[#f3eee7] text-stone-950">
+      <HomeScrollReveal />
       <section className="relative min-h-screen overflow-hidden text-white">
         <div className="absolute inset-0 bg-stone-950">
           <video
@@ -264,11 +246,14 @@ export default async function HomePage({ params }) {
         <SiteHeader brand={common("brand")} locale={locale} />
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100vh-80px)] max-w-7xl items-end px-10 pb-14 sm:pb-24">
-          <div className="max-w-4xl min-w-0">
+          <div
+            className="max-w-4xl min-w-0 is-visible"
+            data-scroll-reveal="fade"
+          >
             <p className="text-[11px] uppercase tracking-[0.28em] text-white/75 sm:text-xs sm:tracking-[0.35em]">
               {t("eyebrow")}
             </p>
-            <h1 className="mt-6 max-w-full break-words text-4xl font-light leading-[1.02] tracking-[-0.04em] sm:text-7xl sm:leading-[0.95] lg:text-8xl">
+            <h1 className="mt-6 max-w-full break-words text-4xl font-extralight leading-[1.05] tracking-[-0.045em] sm:text-7xl sm:leading-[0.98] lg:text-[5.7rem]">
               {t("title")}
             </h1>
             <p className="mt-7 max-w-2xl text-base font-light leading-8 text-white/80 sm:mt-8 sm:text-xl">
@@ -294,7 +279,7 @@ export default async function HomePage({ params }) {
 
       <section className="border-b border-stone-300/70 py-24 sm:py-32" id="tour">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <div>
+          <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
               {t("whyEyebrow")}
             </p>
@@ -305,10 +290,12 @@ export default async function HomePage({ params }) {
               {t("whySubtitle")}
             </p>
             <div className="mt-16 grid gap-10 md:grid-cols-3">
-              {whyCards.map(([titleKey, textKey]) => (
+              {whyCards.map(([titleKey, textKey], index) => (
                 <article
                   key={titleKey}
                   className="border-t border-stone-300 pt-6"
+                  data-scroll-reveal
+                  style={{ "--reveal-delay": `${index * 90}ms` }}
                 >
                   <h3 className="text-xl font-normal">{t(titleKey)}</h3>
                   <p className="mt-4 text-sm leading-7 text-stone-600">
@@ -321,6 +308,7 @@ export default async function HomePage({ params }) {
           <nav
             aria-label="Page sections"
             className="mx-auto mt-20 grid max-w-5xl gap-3 sm:grid-cols-4 sm:gap-5"
+            data-scroll-reveal
           >
             {sectionNavLinks.map(({ href, label }) => (
               <SectionLink
@@ -342,17 +330,21 @@ export default async function HomePage({ params }) {
         <AutoImageCarousel images={onBoardCarouselImages} />
 
         <div className="mx-auto max-w-7xl px-5 pt-20 sm:px-8 sm:pt-28">
-          <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
-            {t("highlightsEyebrow")}
-          </p>
-          <h2 className="mt-6 max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
-            {t("highlightsTitle")}
-          </h2>
+          <div data-scroll-reveal>
+            <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
+              {t("highlightsEyebrow")}
+            </p>
+            <h2 className="mt-6 max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
+              {t("highlightsTitle")}
+            </h2>
+          </div>
           <div className="mt-16 grid gap-12 md:grid-cols-3">
             {highlights.map(({ titleKey, textKey }, index) => (
               <article
                 key={titleKey}
                 className="border-t border-stone-300 pt-8"
+                data-scroll-reveal
+                style={{ "--reveal-delay": `${index * 90}ms` }}
               >
                 <p className="text-xs uppercase tracking-[0.26em] text-stone-500">
                   0{index + 1}
@@ -363,15 +355,17 @@ export default async function HomePage({ params }) {
             ))}
           </div>
 
-          <RouteMap
-            eyebrow={t("routeEyebrow")}
-            listLabel={t("routeListLabel")}
-            mapUnavailable={t("routeMapUnavailable")}
-            markerContent={routeMarkerContent}
-            routeStopLabel={t("routeStopLabel")}
-            subtitle={t("routeSubtitle")}
-            title={t("routeTitle")}
-          />
+          <div data-scroll-reveal>
+            <RouteMap
+              eyebrow={t("routeEyebrow")}
+              listLabel={t("routeListLabel")}
+              mapUnavailable={t("routeMapUnavailable")}
+              markerContent={routeMarkerContent}
+              routeStopLabel={t("routeStopLabel")}
+              subtitle={t("routeSubtitle")}
+              title={t("routeTitle")}
+            />
+          </div>
         </div>
       </section>
 
@@ -379,32 +373,34 @@ export default async function HomePage({ params }) {
         className="border-b border-stone-300/70 bg-[#f3eee7] py-24 sm:py-32"
         id="included"
       >
-        <div className="mx-auto max-w-6xl px-5 text-center sm:px-8">
+        <div
+          className="mx-auto max-w-6xl px-5 text-center sm:px-8"
+          data-scroll-reveal
+        >
           <div className="mx-auto max-w-2xl">
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
               {t("includedEyebrow")}
             </p>
-            <h2 className="mt-5 text-3xl font-light leading-tight tracking-[-0.03em] sm:text-5xl">
+            <h2 className="mt-4 text-3xl font-light leading-tight tracking-[-0.03em] sm:text-5xl">
               {t("onBoardTitle")}
             </h2>
-            <p className="mt-5 text-sm leading-7 text-stone-600 sm:text-base">
+            <p className="mx-auto mt-5 max-w-xl text-sm leading-6 text-stone-700">
               {t("includedSubtitle")}
             </p>
           </div>
 
-          <div className="mt-12 grid gap-8 sm:grid-cols-5">
-            {includedItems.map(({ icon, textKey, titleKey }) => (
+          <div className="mx-auto mt-12 grid max-w-3xl grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
+            {includedItems.map(({ icon, titleKey }, index) => (
               <article
                 key={titleKey}
                 className="text-center text-stone-950"
+                data-scroll-reveal
+                style={{ "--reveal-delay": `${index * 70}ms` }}
               >
                 <OnBoardIcon type={icon} />
-                <h3 className="mt-4 text-xs font-medium uppercase tracking-[0.18em]">
+                <h3 className="mx-auto mt-4 max-w-[9rem] text-sm font-normal leading-5">
                   {t(titleKey)}
                 </h3>
-                <p className="mt-3 text-xs leading-6 text-stone-600">
-                  {t(textKey)}
-                </p>
               </article>
             ))}
           </div>
@@ -416,7 +412,7 @@ export default async function HomePage({ params }) {
         id="booking-steps"
       >
         <div className="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
+          <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-[0.35em] text-white/45">
               {t("howEyebrow")}
             </p>
@@ -429,6 +425,8 @@ export default async function HomePage({ params }) {
               <article
                 key={titleKey}
                 className="grid gap-6 border-t border-white/15 pt-8 sm:grid-cols-[120px_1fr]"
+                data-scroll-reveal
+                style={{ "--reveal-delay": `${index * 90}ms` }}
               >
                 <p className="text-xs uppercase tracking-[0.26em] text-white/45">
                   {t("stepLabel")} 0{index + 1}
@@ -448,7 +446,7 @@ export default async function HomePage({ params }) {
         id="faq"
       >
         <div className="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
+          <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
               {t("faqEyebrow")}
             </p>
@@ -457,10 +455,12 @@ export default async function HomePage({ params }) {
             </h2>
           </div>
           <div className="space-y-8">
-            {faqs.map(([questionKey, answerKey]) => (
+            {faqs.map(([questionKey, answerKey], index) => (
               <article
                 key={questionKey}
                 className="border-t border-stone-300 pt-8"
+                data-scroll-reveal
+                style={{ "--reveal-delay": `${index * 80}ms` }}
               >
                 <h3 className="text-xl font-normal">{t(questionKey)}</h3>
                 <p className="mt-4 leading-7 text-stone-600">{t(answerKey)}</p>
@@ -469,6 +469,7 @@ export default async function HomePage({ params }) {
             <Link
               href={`/${locale}/faq`}
               className="inline-block border border-stone-950 px-8 py-4 text-xs font-medium uppercase tracking-[0.22em] text-stone-950 transition hover:bg-stone-950 hover:text-[#f3eee7]"
+              data-scroll-reveal
             >
               {t("faqFullButton")}
             </Link>
@@ -477,7 +478,7 @@ export default async function HomePage({ params }) {
       </section>
 
       <section className="px-5 py-24 sm:px-8 sm:py-32" id="request">
-        <div className="mx-auto max-w-4xl text-center">
+        <div className="mx-auto max-w-4xl text-center" data-scroll-reveal>
           <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
             {t("finalEyebrow")}
           </p>

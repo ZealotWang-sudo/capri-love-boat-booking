@@ -1,4 +1,5 @@
 import {
+  buildCaptainCancellationMessage,
   buildCaptainFinalConfirmationMessage,
   buildCaptainTimeConfirmationMessage,
 } from "@/lib/admin/captainMessages";
@@ -36,6 +37,12 @@ const MESSAGE_PREVIEWS = [
       "Use this after the captain confirms availability and Stripe capture succeeds. This includes customer contact and pay-on-board details.",
     message: buildCaptainFinalConfirmationMessage(PREVIEW_BOOKING),
     title: "Final confirmation",
+  },
+  {
+    description:
+      "Use this when a confirmed or held booking is cancelled and the captain should release the time.",
+    message: buildCaptainCancellationMessage(PREVIEW_BOOKING),
+    title: "Cancellation",
   },
 ];
 

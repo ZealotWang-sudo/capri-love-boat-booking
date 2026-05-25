@@ -5,7 +5,7 @@ import AdminNotice from "../AdminNotice";
 import AdminSubmitButton from "../AdminSubmitButton";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
-import { createPromoCode, updatePromoCodeStatus } from "./actions";
+import { createPromoCode, deletePromoCode, updatePromoCodeStatus } from "./actions";
 
 function formatDateTime(value) {
   if (!value) {
@@ -46,6 +46,20 @@ function PromoCodeStatusForm({ promoCode }) {
   );
 }
 
+function PromoCodeDeleteForm({ promoCode }) {
+  return (
+    <form action={deletePromoCode}>
+      <input type="hidden" name="id" value={promoCode.id} />
+      <AdminSubmitButton
+        pendingLabel="Deleting..."
+        className="border border-red-900/30 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-red-900 transition hover:border-red-900 hover:bg-red-900 hover:text-[#f3eee7] disabled:cursor-wait disabled:opacity-60"
+      >
+        Delete
+      </AdminSubmitButton>
+    </form>
+  );
+}
+
 function PromoCodeCard({ promoCode }) {
   return (
     <article className="border border-stone-300 bg-[#fbf8f3] p-5">
@@ -77,7 +91,10 @@ function PromoCodeCard({ promoCode }) {
             Created {formatDateTime(promoCode.created_at)}
           </p>
         </div>
-        <PromoCodeStatusForm promoCode={promoCode} />
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <PromoCodeStatusForm promoCode={promoCode} />
+          <PromoCodeDeleteForm promoCode={promoCode} />
+        </div>
       </div>
     </article>
   );
@@ -99,9 +116,13 @@ export default async function AdminPromoCodesPage({ searchParams }) {
   const createdNotice = getNoticeText(resolvedSearchParams, "created")
     ? "Promo code created successfully."
     : "";
+  const deletedNotice = getNoticeText(resolvedSearchParams, "deleted")
+    ? "Promo code deleted."
+    : "";
   const updatedNotice = getNoticeText(resolvedSearchParams, "updated");
   const successNotice =
     createdNotice ||
+    deletedNotice ||
     (updatedNotice === "active"
       ? "Promo code activated."
       : updatedNotice === "inactive"

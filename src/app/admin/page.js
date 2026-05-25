@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceRoleServerClient,
+} from "@/lib/supabase/server";
 import AdminRealtimeRefresh from "@/components/admin/AdminRealtimeRefresh";
 import AdminActionForm from "./AdminActionForm";
 import AdminHeader from "./AdminHeader";
 import AdminNotice from "./AdminNotice";
 import AdminBookingDetails from "./AdminBookingDetails";
-import { buildCaptainMessage } from "@/lib/admin/captainMessages";
+import {
+  buildCaptainMessage,
+  getCaptainMessageCopiedState,
+} from "@/lib/admin/captainMessages";
 import { getAdminUser, isAllowedAdmin } from "./auth";
 import UnauthorizedAdmin from "./UnauthorizedAdmin";
 
@@ -42,19 +48,10 @@ const BOOKING_GROUPS = [
   {
     id: "needs_action",
     title: "Needs action",
-    statuses: ["requested", "checking_with_captain"],
+    statuses: ["requested", "checking_with_captain", "payment_pending", "available"],
     defaultOpen: true,
     sort(bookings) {
       return sortByDateDesc(bookings, "created_at");
-    },
-  },
-  {
-    id: "waiting_for_customer",
-    title: "Waiting for customer",
-    statuses: ["payment_pending"],
-    defaultOpen: true,
-    sort(bookings) {
-      return sortByDateDesc(bookings, "updated_at");
     },
   },
   {
@@ -80,20 +77,9 @@ const BOOKING_GROUPS = [
     },
   },
   {
-    id: "incomplete_checkout",
-    title: "Incomplete checkout - temporary hold",
-    description:
-      "These customers started Stripe Checkout. The slot is held for up to 30 minutes and is deleted automatically if checkout expires.",
-    statuses: ["requested", "expired"],
-    defaultOpen: false,
-    sort(bookings) {
-      return sortByDateDesc(bookings, "updated_at");
-    },
-  },
-  {
     id: "closed",
     title: "Closed / cancelled",
-    statuses: ["cancelled", "not_available"],
+    statuses: ["cancelled", "not_available", "expired"],
     defaultOpen: false,
     sort(bookings) {
       return sortByDateDesc(bookings, "updated_at");
@@ -147,14 +133,12 @@ function formatReferenceCode(id) {
   return id ? `CAPRI-${id.slice(0, 8).toUpperCase()}` : "—";
 }
 
-function getCustomerManageUrl(booking) {
+function getCustomerManagePath(booking) {
   if (!booking.customer_manage_token) {
     return null;
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "";
-
-  return `${siteUrl}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
+  return `/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
 }
 
 function formatBookingStatus(value) {
@@ -199,6 +183,8 @@ function bookingMatchesSearch(booking, searchQuery) {
     formatBookingStatus(booking.booking_status),
     booking.payment_status,
     booking.captain_status,
+    booking.captain_message_copied_at,
+    booking.captain_message_copied_type,
     booking.customer_manage_token,
     booking.stripe_checkout_session_id,
     booking.stripe_payment_intent_id,
@@ -226,13 +212,68 @@ function getWhatsappHref(phone) {
 
 function StatusBadge({ label, value }) {
   return (
-    <div className="border border-stone-300 bg-[#f3eee7] px-2.5 py-1.5">
-      <p className="text-[0.6rem] uppercase tracking-[0.14em] text-stone-500">
-        {label}
-      </p>
-      <p className="mt-0.5 text-xs font-medium text-stone-950">
-        {formatValue(value)}
-      </p>
+    <div
+      aria-label={label}
+      className="inline-flex items-center rounded-full border border-stone-300 bg-[#f3eee7] px-2 py-1 text-[0.7rem] font-medium text-stone-950"
+    >
+      {formatValue(value)}
+    </div>
+  );
+}
+
+function getSharedRequestState(booking) {
+  if (!isConfirmedSharedBooking(booking)) {
+    return null;
+  }
+
+  const sharedRequests = Array.isArray(booking.shared_join_requests)
+    ? booking.shared_join_requests
+    : [];
+
+  if (
+    sharedRequests.some((request) =>
+      ["accepted", "connected"].includes(request.status),
+    )
+  ) {
+    return {
+      dotClass: "bg-emerald-600",
+      label: "Shared",
+      value: "accepted",
+    };
+  }
+
+  if (
+    sharedRequests.some((request) =>
+      ["authorized_pending_host_decision", "sent_to_main_booker"].includes(
+        request.status,
+      ),
+    )
+  ) {
+    return {
+      dotClass: "bg-amber-500",
+      label: "Shared",
+      value: "pending host",
+    };
+  }
+
+  return {
+    dotClass: "bg-stone-400",
+    label: "Shared",
+    value: "no request",
+  };
+}
+
+function SharedRequestBadge({ booking }) {
+  const state = getSharedRequestState(booking);
+
+  if (!state) {
+    return null;
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-[#f3eee7] px-2 py-1 text-[0.7rem] font-medium text-stone-950">
+      <span className={`h-2 w-2 rounded-full ${state.dotClass}`} />
+      {state.value}
     </div>
   );
 }
@@ -246,7 +287,26 @@ function StatusBadges({ booking }) {
       />
       <StatusBadge label="Payment" value={booking.payment_status} />
       <StatusBadge label="Captain" value={booking.captain_status} />
+      <SharedRequestBadge booking={booking} />
     </div>
+  );
+}
+
+function getCaptainMessageTintClass(booking) {
+  const captainMessageState = getCaptainMessageCopiedState(booking);
+
+  if (!captainMessageState.messageType) {
+    return "bg-[#fbf8f3]";
+  }
+
+  return captainMessageState.copied ? "bg-emerald-50/70" : "bg-amber-50/80";
+}
+
+function isConfirmedSharedBooking(booking) {
+  return (
+    booking.booking_status === "confirmed" &&
+    booking.payment_status === "captured" &&
+    booking.is_shared_open
   );
 }
 
@@ -266,7 +326,7 @@ function getPrimaryStatusAction(booking) {
     if (booking.payment_status === "authorized") {
       return {
         actionType: "capture",
-        label: "Captain available — capture payment",
+        label: "Captain available",
         confirmMessage:
           "Capture the authorized reservation fee and confirm this booking?",
         confirmTitle: "Capture payment and confirm?",
@@ -341,12 +401,14 @@ function ContactSummary({ booking }) {
 function TripBlock({ booking }) {
   return (
     <div>
-      <p>{booking.requested_date}</p>
-      <p className="mt-1 text-stone-600">
-        {formatTourType(booking.tour_type)} · {booking.guest_count} guests
+      <p className="text-base font-semibold tracking-[-0.01em] text-stone-950">
+        {booking.requested_date}
+      </p>
+      <p className="mt-1 text-base font-medium text-stone-950">
+        {formatValue(booking.time_window || booking.time_slot)}
       </p>
       <p className="mt-1 text-stone-600">
-        {formatValue(booking.time_window || booking.time_slot)}
+        {formatTourType(booking.tour_type)} · {booking.guest_count} guests
       </p>
     </div>
   );
@@ -356,7 +418,7 @@ function RequestBlock({ booking }) {
   return (
     <div>
       <p className="font-medium text-stone-950">{formatReferenceCode(booking.id)}</p>
-       <p className="mt-1 text-stone-600">
+       <p className="mt-1 text-xs text-stone-400">
         {formatDateTime(booking.created_at)}
       </p>
     
@@ -377,10 +439,12 @@ function NextAction({ booking }) {
 }
 
 function BookingDetailsButton({ booking }) {
+  const captainMessageState = getCaptainMessageCopiedState(booking);
   const bookingWithTourLabel = {
     ...booking,
     booking_status_display: formatBookingStatus(booking.booking_status),
-    manage_url: getCustomerManageUrl(booking),
+    captain_message_state: captainMessageState,
+    manage_path: getCustomerManagePath(booking),
     reference_code: formatReferenceCode(booking.id),
     tour_label: formatTourType(booking.tour_type),
   };
@@ -395,17 +459,6 @@ function BookingDetailsButton({ booking }) {
 
 function getBookingGroupId(booking) {
   const bookingStatus = booking.booking_status;
-
-  if (
-    booking.payment_status === "authorization_pending" ||
-    (bookingStatus === "expired" && booking.payment_status === "failed")
-  ) {
-    return "incomplete_checkout";
-  }
-
-  if (bookingStatus === "available") {
-    return "waiting_for_customer";
-  }
 
   const group = BOOKING_GROUPS.find((groupDefinition) =>
     groupDefinition.statuses.includes(bookingStatus),
@@ -429,7 +482,7 @@ function getGroupedBookings(bookings) {
 
 function BookingCard({ booking }) {
   return (
-    <article className="border border-stone-300 bg-[#fbf8f3] p-5">
+    <article className={`border border-stone-300 p-5 ${getCaptainMessageTintClass(booking)}`}>
       <div className="flex flex-col gap-4 border-b border-stone-200 pb-4">
         <RequestBlock booking={booking} />
         <StatusBadges booking={booking} />
@@ -473,7 +526,15 @@ function BookingCard({ booking }) {
 function BookingDesktopTable({ bookings }) {
   return (
     <div className="hidden overflow-x-auto border border-stone-300 bg-[#fbf8f3] lg:block">
-      <table className="min-w-[980px] divide-y divide-stone-300 text-left text-sm">
+      <table className="w-full min-w-[980px] table-fixed divide-y divide-stone-300 text-left text-sm">
+        <colgroup>
+          <col className="w-[17%]" />
+          <col className="w-[16%]" />
+          <col className="w-[20%]" />
+          <col className="w-[19%]" />
+          <col className="w-[17%]" />
+          <col className="w-[11%]" />
+        </colgroup>
         <thead className="text-xs uppercase tracking-[0.16em] text-stone-500">
           <tr>
             <th className="px-4 py-3">Request</th>
@@ -486,7 +547,10 @@ function BookingDesktopTable({ bookings }) {
         </thead>
         <tbody className="divide-y divide-stone-200">
           {bookings.map((booking) => (
-            <tr key={booking.id} className="align-top">
+            <tr
+              key={booking.id}
+              className={`align-top ${getCaptainMessageTintClass(booking)}`}
+            >
               <td className="px-4 py-4">
                 <RequestBlock booking={booking} />
               </td>
@@ -584,6 +648,33 @@ function BookingSearchForm({ resultCount, searchQuery, totalCount }) {
   );
 }
 
+function CaptainMessageTintLegend() {
+  return (
+    <div className="mt-4 flex flex-wrap gap-3 text-xs text-stone-600">
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+        Shared request pending host approval
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+        Shared request accepted
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-stone-400" />
+        Shared booking with no join request
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <span className="h-3 w-6 border border-amber-200 bg-amber-50" />
+        Captain message not copied
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <span className="h-3 w-6 border border-emerald-200 bg-emerald-50" />
+        Captain message copied
+      </span>
+    </div>
+  );
+}
+
 export default async function AdminPage({ searchParams }) {
   const user = await getAdminUser("/admin");
 
@@ -606,11 +697,38 @@ export default async function AdminPage({ searchParams }) {
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
-      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason",
+      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, captain_message_copied_at, captain_message_copied_type, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason, is_shared_open, shared_status, shared_open_seats, shared_gender_preference, shared_max_join_groups, shared_public_token",
     )
     .order("created_at", { ascending: false })
     .limit(searchQuery ? 200 : 50);
-  const loadedBookings = bookingRows ?? [];
+  const bookingIds = (bookingRows ?? []).map((booking) => booking.id);
+  let sharedJoinRequests = [];
+  let sharedJoinRequestsError = null;
+
+  if (bookingIds.length > 0) {
+    const serviceSupabase = createSupabaseServiceRoleServerClient();
+    const { data, error: joinRequestsError } = await serviceSupabase
+      .from("shared_join_requests")
+      .select(
+        "id, booking_id, created_at, updated_at, locale, customer_name, email, phone, whatsapp, wechat, preferred_contact_method, guest_count, gender_composition, message, consent_accepted, original_shared_request_fee_eur, promo_code, promo_discount_eur, shared_request_fee_eur, payment_status, status, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, authorized_at, host_response_deadline_at",
+      )
+      .in("booking_id", bookingIds)
+      .order("created_at", { ascending: false });
+
+    sharedJoinRequests = data ?? [];
+    sharedJoinRequestsError = joinRequestsError;
+  }
+
+  const sharedRequestsByBookingId = sharedJoinRequests.reduce((groups, request) => {
+    const existingRequests = groups.get(request.booking_id) ?? [];
+    existingRequests.push(request);
+    groups.set(request.booking_id, existingRequests);
+    return groups;
+  }, new Map());
+  const loadedBookings = (bookingRows ?? []).map((booking) => ({
+    ...booking,
+    shared_join_requests: sharedRequestsByBookingId.get(booking.id) ?? [],
+  }));
   const bookings = loadedBookings.filter((booking) =>
     bookingMatchesSearch(booking, searchQuery),
   );
@@ -633,12 +751,18 @@ export default async function AdminPage({ searchParams }) {
             Could not load bookings: {error.message}
           </div>
         ) : null}
+        {sharedJoinRequestsError ? (
+          <div className="mt-8 border border-red-900/30 bg-red-50 p-5 text-sm text-red-900">
+            Could not load shared join requests: {sharedJoinRequestsError.message}
+          </div>
+        ) : null}
 
         <BookingSearchForm
           resultCount={bookings.length}
           searchQuery={searchQuery}
           totalCount={loadedBookings.length}
         />
+        <CaptainMessageTintLegend />
 
         <div className="mt-8 space-y-6">
           {bookingGroups.map((group) => (

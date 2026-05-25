@@ -29,6 +29,12 @@ export const BOOKING_EMAIL_EVENTS = [
   { eventType: "booking_authorized", label: "Booking authorized" },
   { eventType: "payment_pending", label: "Payment pending" },
   { eventType: "booking_confirmed", label: "Booking confirmed" },
+  { eventType: "booking_rescheduled", label: "Booking rescheduled" },
+  {
+    eventType: "shared_primary_cancelled_promoted",
+    label: "Shared primary cancelled - promoted",
+  },
+  { eventType: "shared_promoted_primary", label: "Shared promoted primary" },
   { eventType: "not_available", label: "Captain not available" },
   { eventType: "cancelled", label: "Cancelled" },
   { eventType: "completed", label: "Completed" },
@@ -151,6 +157,14 @@ function getManageLinkText(booking, copy, locale) {
   return `\n\n${label}: ${booking.manage_url}`;
 }
 
+function getSharedBoatNoteText({ booking, copy }) {
+  if (!booking.is_shared_open || !copy.sharedBoatNote) {
+    return "";
+  }
+
+  return `\n\n${copy.sharedBoatNote}`;
+}
+
 function getAdminNotificationRecipients({ recipientEmail }) {
   if (recipientEmail?.toLowerCase() === PUBLIC_CONTACT_EMAIL.toLowerCase()) {
     return undefined;
@@ -165,6 +179,7 @@ function buildTextEmail({ booking, copy, locale }) {
     .join("\n");
   const cancellationReasonText = getCancellationReasonText(booking, locale);
   const manageLinkText = getManageLinkText(booking, copy, locale);
+  const sharedBoatNoteText = getSharedBoatNoteText({ booking, copy });
   const labels = getEmailLabels(locale);
   const tourLogistics = copy.showTourLogistics ? getTourLogistics(locale) : null;
   const tourLogisticsText = tourLogistics
@@ -179,7 +194,7 @@ function buildTextEmail({ booking, copy, locale }) {
         .join("\n")}`
     : "";
 
-  return `${labels.greeting} ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}\n\n${details}${tourLogisticsText}\n\nCapri Love Boat`;
+  return `${labels.greeting} ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}${sharedBoatNoteText}\n\n${details}${tourLogisticsText}\n\nCapri Love Boat`;
 }
 
 function buildHtmlEmail({ booking, copy, locale }) {
@@ -218,6 +233,18 @@ function buildHtmlEmail({ booking, copy, locale }) {
         </table>
       `
     : "";
+  const sharedBoatNoteHtml =
+    booking.is_shared_open && copy.sharedBoatNote
+      ? `
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:18px;">
+          <tr>
+            <td style="border:1px solid #bbb;background-color:#f3eee7;padding:14px 16px;text-align:left;">
+              <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:15px;line-height:22px;">${escapeHtml(copy.sharedBoatNote)}</p>
+            </td>
+          </tr>
+        </table>
+      `
+      : "";
   const tourLogistics = copy.showTourLogistics ? getTourLogistics(locale) : null;
   const tourLogisticsHtml = tourLogistics
     ? `
@@ -279,6 +306,7 @@ function buildHtmlEmail({ booking, copy, locale }) {
                   <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:16px;line-height:24px;">${escapeHtml(copy.intro)}</p>
                   ${cancellationReasonHtml}
                   ${manageLinkHtml}
+                  ${sharedBoatNoteHtml}
                 </td>
               </tr>
               <tr>
@@ -379,6 +407,7 @@ export async function sendBookingEmail({
   booking,
   checkDuplicate = true,
   eventType,
+  notifyAdmin = true,
   supabase,
 }) {
   if (!booking?.email || !eventType || !supabase) {
@@ -422,9 +451,11 @@ export async function sendBookingEmail({
 
   try {
     const resend = new Resend(resendApiKey);
-    const adminNotificationRecipients = getAdminNotificationRecipients({
-      recipientEmail: booking.email,
-    });
+    const adminNotificationRecipients = notifyAdmin
+      ? getAdminNotificationRecipients({
+          recipientEmail: booking.email,
+        })
+      : undefined;
     const { data, error } = await resend.emails.send({
       ...(adminNotificationRecipients
         ? { bcc: adminNotificationRecipients }

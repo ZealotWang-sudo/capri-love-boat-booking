@@ -42,9 +42,9 @@ const PAGE_TITLE_KEYS = {
 const MEETING_POINT_MAP_URL =
   "https://www.google.com/maps/place/40°33'21.2%22N+14°14'24.8%22E/@40.5558895,14.2395912,63a,35y,70.31h,49.28t/data=!3m1!1e3!4m4!3m3!8m2!3d40.555894!4d14.240227?entry=ttu&g_ep=EgoyMDI2MDUwNi4wIKXMDSoASAFQAw%3D%3D";
 const MEET_UP_PHOTOS = [
-  "/meet-up-point/meet-up1.jpg",
-  "/meet-up-point/meet-up2.jpg",
-  "/meet-up-point/meet-up3.jpg",
+  "/meet-up-point/meet-up-1.png",
+  "/meet-up-point/meet-up-2.png",
+  "/meet-up-point/meet-up-3.jpg",
   {
     alt: "Captain Renato",
     label: "Captain Renato",

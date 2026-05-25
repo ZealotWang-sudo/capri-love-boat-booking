@@ -28,12 +28,15 @@ export default function AutoImageCarousel({ images }) {
   );
 
   return (
-    <div className="overflow-hidden select-none bg-stone-200 cursor-grab active:cursor-grabbing" ref={emblaRef}>
-      <div className="flex">
+    <div
+      className="cursor-grab select-none overflow-hidden bg-stone-200 active:cursor-grabbing"
+      ref={emblaRef}
+    >
+      <div className="flex gap-[5px]">
         {images.map((image) => (
           <div
             key={image.src}
-            className="relative -mr-px h-64 w-[calc(70vw+1px)] shrink-0 overflow-hidden bg-stone-200 sm:h-80 sm:w-[calc(38vw+1px)] lg:h-[360px] lg:w-[calc(20vw+1px)]"
+            className="relative h-64 w-[70vw] shrink-0 overflow-hidden bg-stone-200 sm:h-80 sm:w-[38vw] lg:h-[360px] lg:w-[20vw]"
           >
             <Image
               src={image.src}

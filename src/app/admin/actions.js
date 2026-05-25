@@ -86,6 +86,8 @@ const RESCHEDULE_BOOKING_EMAIL_SELECT =
   "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token, is_shared_open, shared_status, shared_public_token";
 const RESCHEDULE_SHARED_REQUEST_SELECT =
   "id, booking_id, locale, customer_name, email, customer_manage_token, guest_count, gender_composition, shared_request_fee_eur, payment_status, status";
+const COMPLETED_SHARED_REQUEST_SELECT =
+  "id, booking_id, locale, customer_name, email, customer_manage_token, guest_count, shared_request_fee_eur, payment_status, status";
 
 function getAdminRedirectPath(params = {}) {
   const searchParams = new URLSearchParams(params);
@@ -154,6 +156,17 @@ async function getCustomerManageUrl(booking) {
   return `${origin}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
 }
 
+async function getSharedGuestManageUrl(request) {
+  const origin = await getRequestOrigin();
+  const managePath = getSharedGuestManagePath(request);
+
+  if (!origin || !managePath) {
+    return null;
+  }
+
+  return `${origin}${managePath}`;
+}
+
 async function getStripePaymentIntentId(booking) {
   if (booking.stripe_payment_intent_id) {
     return booking.stripe_payment_intent_id;
@@ -204,6 +217,70 @@ async function refundCapturedPaymentForCancellation(booking) {
   }
 
   return paymentIntentId;
+}
+
+async function sendCompletedSharedGuestEmails({ booking }) {
+  if (!booking?.is_shared_open || booking.booking_status !== "completed") {
+    return;
+  }
+
+  const serviceSupabase = createSupabaseServiceRoleServerClient();
+  const { data: acceptedRequests, error } = await serviceSupabase
+    .from("shared_join_requests")
+    .select(COMPLETED_SHARED_REQUEST_SELECT)
+    .eq("booking_id", booking.id)
+    .eq("status", "accepted")
+    .eq("payment_status", "captured");
+
+  if (error) {
+    console.error("[admin booking completed] Could not load shared guests", {
+      bookingId: booking.id,
+      message: error.message,
+    });
+    return;
+  }
+
+  for (const request of acceptedRequests ?? []) {
+    const sharedPayOnBoard =
+      typeof booking.pay_on_board_eur === "number"
+        ? booking.pay_on_board_eur / 2
+        : booking.pay_on_board_eur;
+    const sharedTotal =
+      typeof request.shared_request_fee_eur === "number" &&
+      typeof sharedPayOnBoard === "number"
+        ? request.shared_request_fee_eur + sharedPayOnBoard
+        : booking.total_price_eur;
+    const manageUrl = await getSharedGuestManageUrl(request);
+    const emailResult = await sendBookingEmail({
+      booking: {
+        ...booking,
+        customer_manage_token: request.customer_manage_token,
+        customer_name: request.customer_name,
+        email: request.email,
+        final_reservation_fee_eur: request.shared_request_fee_eur,
+        guest_count: request.guest_count,
+        locale: request.locale || booking.locale,
+        manage_url: manageUrl,
+        original_reservation_fee_eur: request.shared_request_fee_eur,
+        pay_on_board_eur: sharedPayOnBoard,
+        promo_code: null,
+        promo_discount_eur: 0,
+        reservation_fee_eur: request.shared_request_fee_eur,
+        total_price_eur: sharedTotal,
+      },
+      checkDuplicate: false,
+      eventType: "completed",
+      supabase: serviceSupabase,
+    });
+
+    if (!emailResult.sent) {
+      console.error("[admin booking completed] Shared guest email was not sent", {
+        bookingId: booking.id,
+        reason: emailResult.reason,
+        requestId: request.id,
+      });
+    }
+  }
 }
 
 async function getAdminSupabaseClient() {
@@ -346,6 +423,10 @@ export async function updateBookingOperationalStatus(formData) {
         reason: emailResult.reason,
       });
     }
+  }
+
+  if (statusAction === "completed") {
+    await sendCompletedSharedGuestEmails({ booking: updatedBooking });
   }
 
   revalidatePath("/admin");

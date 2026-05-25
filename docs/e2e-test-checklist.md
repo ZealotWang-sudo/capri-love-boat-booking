@@ -10,18 +10,19 @@ Use this checklist before and after production deployments. Run tests with a rea
 - [ ] Confirm available, partly booked, fully booked, and unavailable calendar states display correctly.
 - [ ] Select an available date and time.
 - [ ] Submit a valid booking with name, matching emails, phone, guest count, tour, date, time, and optional message.
-- [ ] Confirm the thank-you page appears.
-- [ ] Confirm the thank-you summary shows reference code, customer details, tour, date, exact time, price, reservation fee, and pay-on-board amount.
+- [ ] Confirm Stripe Checkout opens immediately.
+- [ ] Confirm no booking row is created yet if checkout is not completed.
+- [ ] Confirm no email is sent before Stripe authorization succeeds.
 - [ ] Confirm a conflicting booking request for the same tour/time is rejected with a friendly error.
 
 ## 2. Email Received
 
-- [ ] Confirm the customer receives the `booking_received` email.
+- [ ] Complete Stripe authorization and confirm the customer receives the `booking_authorized` email.
 - [ ] Confirm the email language matches the booking locale.
 - [ ] Confirm email details match the booking request.
 - [ ] Confirm the email contains a manage button, not a raw URL.
 - [ ] Confirm no duplicate email is logged for the same booking/event.
-- [ ] Confirm `booking_email_events` has a `sent` row for `booking_received`.
+- [ ] Confirm `booking_email_events` has a `sent` row for `booking_authorized`.
 
 ## 3. Manage Link
 
@@ -46,33 +47,40 @@ Use this checklist before and after production deployments. Run tests with a rea
 
 ## 5. Captain Available
 
-- [ ] From a `requested` booking, mark it as checking with captain.
-- [ ] From `checking_with_captain`, click Captain available.
-- [ ] Confirm booking status becomes `payment_pending`.
+- [ ] From a `checking_with_captain` booking with `payment_status = authorized`, click Captain available.
+- [ ] Confirm the authorized reservation fee is captured in Stripe.
+- [ ] Confirm booking status becomes `confirmed`.
 - [ ] Confirm captain status becomes `available`.
-- [ ] Confirm payment status remains `unpaid` until Stripe link creation/payment.
-- [ ] Confirm the customer receives the `payment_pending` email.
-- [ ] Confirm the manage link shows the reservation payment section.
+- [ ] Confirm payment status becomes `captured`.
+- [ ] Confirm the customer receives the `booking_confirmed` email.
+- [ ] Confirm the manage link shows confirmed tour logistics.
 
-## 6. Stripe Payment
+## 6. Initial Stripe Authorization
 
-- [ ] Open the customer manage link for a `payment_pending` booking.
-- [ ] Click the payment button.
-- [ ] Confirm Stripe Checkout opens.
-- [ ] Confirm Stripe amount equals `reservation_fee_eur` only.
+- [ ] Submit the booking form and confirm Stripe Checkout opens.
+- [ ] Confirm Stripe amount equals the final reservation fee only.
 - [ ] Confirm customer details and booking reference are present where expected.
-- [ ] Return without paying and confirm the payment button can be clicked again.
-- [ ] Complete payment with a Stripe test card.
+- [ ] Return without paying and confirm no booking row or email was created.
+- [ ] Complete authorization with a Stripe test card.
 
-## 7. Webhook Confirmation
+## 7. Authorization Webhook Confirmation
 
 - [ ] Confirm Stripe webhook receives `checkout.session.completed`.
-- [ ] Confirm booking status becomes `confirmed`.
-- [ ] Confirm payment status becomes `captured`.
+- [ ] Confirm booking row is created only after this event.
+- [ ] Confirm booking status becomes `checking_with_captain`.
+- [ ] Confirm payment status becomes `authorized`.
 - [ ] Confirm Stripe checkout session ID and payment intent ID are stored.
-- [ ] Confirm confirmation email is sent once.
-- [ ] Refresh the manage page and confirm it shows reservation fee received.
-- [ ] Confirm webhook retry/idempotency does not send duplicate confirmation emails.
+- [ ] Confirm `booking_authorized` email is sent once.
+- [ ] Refresh the manage page and confirm it shows the pre-authorized status.
+- [ ] Confirm webhook retry/idempotency does not send duplicate authorization emails.
+
+## 7A. Incomplete Checkout Expiry
+
+- [ ] Submit a booking request and do not complete Stripe Checkout.
+- [ ] Confirm no booking row is saved.
+- [ ] Confirm no reminder email is sent.
+- [ ] Confirm Stripe Checkout expires after about 20 minutes.
+- [ ] Confirm the unpaid attempt never blocks availability.
 
 ## 8. Cancellation Flow
 
@@ -82,8 +90,9 @@ Use this checklist before and after production deployments. Run tests with a rea
 - [ ] Confirm cancellation email highlights the cancellation reason.
 - [ ] Admin cancels a booking with cancellation type and reason.
 - [ ] Confirm `cancelled_at`, `cancelled_by`, `cancellation_type`, and `cancellation_reason` are stored.
-- [ ] Confirm paid bookings show the manual Stripe refund warning before admin cancellation.
-- [ ] Confirm no automatic Stripe refund is attempted.
+- [ ] Confirm paid bookings show the automatic Stripe refund warning before admin cancellation.
+- [ ] Confirm admin cancellation of a captured booking creates a Stripe refund and marks payment as refunded.
+- [ ] For shared bookings, run the detailed shared flow checks in `docs/shared-boat-edge-cases.md`.
 
 ## 9. Completed Flow
 

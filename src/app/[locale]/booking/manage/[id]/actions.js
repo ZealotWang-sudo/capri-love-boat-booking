@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
 import {
@@ -7,6 +9,11 @@ import {
   createSupabaseServiceRoleServerClient,
 } from "@/lib/supabase/server";
 import { releaseAuthorizedBookingPayment } from "@/lib/stripe/adminBookingPayments";
+import {
+  acceptSharedJoinRequestForHost,
+  rejectSharedJoinRequestForHost,
+  settleSharedJoinRequestsForBookingCancellation,
+} from "@/lib/stripe/sharedJoinRequests";
 
 const ALLOWED_LOCALES = new Set(["en", "zh", "it", "de", "fr"]);
 
@@ -29,6 +36,21 @@ function getManagePath({ bookingId, locale, token }, params = {}) {
   return `/${locale}/booking/manage/${bookingId}?${searchParams.toString()}`;
 }
 
+async function getRequestOrigin() {
+  const headerStore = await headers();
+  const host = headerStore.get("host");
+  const forwardedProto = headerStore.get("x-forwarded-proto")?.split(",")[0];
+
+  if (!host) {
+    return process.env.NEXT_PUBLIC_SITE_URL || "";
+  }
+
+  const protocol =
+    forwardedProto || (host.startsWith("localhost") ? "http" : "https");
+
+  return `${protocol}://${host}`;
+}
+
 export async function cancelCustomerBooking(formData) {
   const bookingId = getFormText(formData, "bookingId");
   const customerCancelReason = getFormText(formData, "customerCancelReason");
@@ -42,7 +64,9 @@ export async function cancelCustomerBooking(formData) {
   const serviceSupabase = createSupabaseServiceRoleServerClient();
   const { data: booking, error: bookingError } = await serviceSupabase
     .from("bookings")
-    .select("booking_status, payment_status")
+    .select(
+      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, customer_manage_token, booking_status, is_shared_open, shared_status, shared_public_token, payment_status",
+    )
     .eq("id", bookingId)
     .eq("customer_manage_token", token)
     .maybeSingle();
@@ -67,6 +91,7 @@ export async function cancelCustomerBooking(formData) {
         cancellationType: "customer_requested",
         manageToken: token,
         outcome: "cancelled",
+        siteUrl: await getRequestOrigin(),
       });
     } catch (error) {
       console.error("[customer booking cancel] Could not release authorization", {
@@ -97,6 +122,39 @@ export async function cancelCustomerBooking(formData) {
     redirect(getManagePath({ bookingId, locale, token }, { cancelError: "1" }));
   }
 
+  if (booking?.is_shared_open) {
+    const { error: sharedCancelError } = await serviceSupabase
+      .from("bookings")
+      .update({ shared_status: "cancelled" })
+      .eq("id", bookingId)
+      .eq("customer_manage_token", token)
+      .eq("booking_status", "cancelled");
+
+    if (sharedCancelError) {
+      console.error("[customer booking cancel] Could not cancel shared status", {
+        bookingId,
+        message: sharedCancelError.message,
+      });
+    }
+
+    try {
+      await settleSharedJoinRequestsForBookingCancellation({
+        booking: {
+          ...booking,
+          ...cancelledBooking,
+          booking_status: "cancelled",
+          shared_status: "cancelled",
+        },
+        siteUrl: await getRequestOrigin(),
+      });
+    } catch (error) {
+      console.error("[customer booking cancel] Could not settle shared requests", {
+        bookingId,
+        message: error.message,
+      });
+    }
+  }
+
   const emailResult = await sendBookingEmail({
     booking: {
       ...cancelledBooking,
@@ -115,4 +173,48 @@ export async function cancelCustomerBooking(formData) {
   }
 
   redirect(getManagePath({ bookingId, locale, token }, { cancelled: "1" }));
+}
+
+export async function respondToSharedJoinRequest(formData) {
+  const bookingId = getFormText(formData, "bookingId");
+  const locale = getLocale(getFormText(formData, "locale"));
+  const requestId = getFormText(formData, "requestId");
+  const response = getFormText(formData, "response");
+  const token = getFormText(formData, "token");
+
+  if (!bookingId || !requestId || !token) {
+    redirect(getManagePath({ bookingId, locale, token }, { sharedError: "1" }));
+  }
+
+  let redirectParams = { sharedError: "1" };
+
+  try {
+    if (response === "accept") {
+      await acceptSharedJoinRequestForHost({
+        bookingId,
+        manageToken: token,
+        requestId,
+        siteUrl: await getRequestOrigin(),
+      });
+      redirectParams = { sharedAccepted: "1" };
+    } else if (response === "reject") {
+      await rejectSharedJoinRequestForHost({
+        bookingId,
+        manageToken: token,
+        requestId,
+        siteUrl: await getRequestOrigin(),
+      });
+      redirectParams = { sharedRejected: "1" };
+    }
+  } catch (error) {
+    console.error("[customer shared join response]", {
+      bookingId,
+      message: error.message,
+      requestId,
+      response,
+    });
+  }
+
+  revalidatePath(`/${locale}/booking/manage/${bookingId}`);
+  redirect(getManagePath({ bookingId, locale, token }, redirectParams));
 }

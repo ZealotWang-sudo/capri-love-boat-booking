@@ -5,7 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 
 export default function MeetUpPhotoGallery({ labels, photos }) {
   const [activeIndex, setActiveIndex] = useState(null);
-  const activePhoto = activeIndex === null ? null : photos[activeIndex];
+  const normalizedPhotos = photos.map((photo) =>
+    typeof photo === "string" ? { src: photo } : photo,
+  );
+  const activePhoto = activeIndex === null ? null : normalizedPhotos[activeIndex];
 
   const closeModal = useCallback(() => {
     setActiveIndex(null);
@@ -56,22 +59,30 @@ export default function MeetUpPhotoGallery({ labels, photos }) {
       <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
         {labels.title}
       </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        {photos.map((photoSrc, index) => (
+      {labels.hint ? (
+        <p className="mt-2 text-sm leading-6 text-stone-600">{labels.hint}</p>
+      ) : null}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {normalizedPhotos.map((photo, index) => (
           <button
-            key={photoSrc}
+            key={photo.src}
             type="button"
             onClick={() => setActiveIndex(index)}
             className="group relative aspect-[4/3] overflow-hidden border border-stone-300 bg-stone-200 text-left"
             aria-label={`${labels.open} ${index + 1}`}
           >
             <Image
-              src={photoSrc}
-              alt={`${labels.photoAlt} ${index + 1}`}
+              src={photo.src}
+              alt={photo.alt ?? `${labels.photoAlt} ${index + 1}`}
               fill
               sizes="(max-width: 640px) 100vw, 180px"
               className="object-cover transition duration-300 group-hover:scale-105"
             />
+            {photo.label ? (
+              <span className="absolute inset-x-0 bottom-0 bg-stone-950/70 px-2 py-1 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-[#f3eee7]">
+                {photo.label}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -90,7 +101,8 @@ export default function MeetUpPhotoGallery({ labels, photos }) {
           >
             <div className="flex items-center justify-between gap-4 border-b border-stone-300 pb-3">
               <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                {activeIndex + 1} / {photos.length}
+                {activeIndex + 1} / {normalizedPhotos.length}
+                {activePhoto.label ? ` · ${activePhoto.label}` : ""}
               </p>
               <button
                 type="button"
@@ -103,8 +115,8 @@ export default function MeetUpPhotoGallery({ labels, photos }) {
 
             <div className="relative mt-4 h-[68vh] min-h-80 bg-stone-200">
               <Image
-                src={activePhoto}
-                alt={`${labels.photoAlt} ${activeIndex + 1}`}
+                src={activePhoto.src}
+                alt={activePhoto.alt ?? `${labels.photoAlt} ${activeIndex + 1}`}
                 fill
                 sizes="100vw"
                 className="object-contain"

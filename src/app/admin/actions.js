@@ -3,6 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { isUnavailableSlotsTableMissing } from "@/lib/adminUnavailableSlots";
+import {
+  ACTIVE_BOOKING_STATUSES,
+  bookingOverlapsSelection,
+  getDisplayTimeForTimeSlot,
+  isValidTimeSlotForTour,
+} from "@/lib/bookingAvailability";
 import {
   createSupabaseServerClient,
   createSupabaseServiceRoleServerClient,
@@ -12,9 +19,18 @@ import {
   sendBookingEmail,
 } from "@/lib/email/sendBookingEmail";
 import {
+  getSharedGuestManagePath,
+  sendSharedJoinEmail,
+} from "@/lib/email/sendSharedJoinEmail";
+import {
   captureAuthorizedBookingPayment,
   releaseAuthorizedBookingPayment,
 } from "@/lib/stripe/adminBookingPayments";
+import {
+  cancelAcceptedSharedJoinRequestFromAdmin,
+  cancelPrimaryAndPromoteSharedJoinRequestFromAdmin,
+  settleSharedJoinRequestsForBookingCancellation,
+} from "@/lib/stripe/sharedJoinRequests";
 import { getStripe } from "@/lib/stripe/server";
 
 const ADMIN_EMAIL = "wangkexin-personal@outlook.com";
@@ -32,6 +48,11 @@ const CANCELLATION_TYPES = new Set([
   "admin_decision",
   "duplicate_or_test",
   "other",
+]);
+const CAPTAIN_MESSAGE_TYPES = new Set([
+  "time_confirmation",
+  "final_confirmation",
+  "cancellation",
 ]);
 const BOOKING_STATUS_UPDATES = {
   checking_with_captain: {
@@ -61,6 +82,10 @@ const BOOKING_STATUS_UPDATES = {
     booking_status: "cancelled",
   },
 };
+const RESCHEDULE_BOOKING_EMAIL_SELECT =
+  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token, is_shared_open, shared_status, shared_public_token";
+const RESCHEDULE_SHARED_REQUEST_SELECT =
+  "id, booking_id, locale, customer_name, email, customer_manage_token, guest_count, gender_composition, shared_request_fee_eur, payment_status, status";
 
 function getAdminRedirectPath(params = {}) {
   const searchParams = new URLSearchParams(params);
@@ -80,6 +105,16 @@ function getPaymentIntentId(paymentIntent) {
   }
 
   return typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
+}
+
+function isValidDateString(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+
+  return !Number.isNaN(date.valueOf()) && date.toISOString().startsWith(value);
 }
 
 async function getRequestOrigin() {
@@ -216,11 +251,13 @@ export async function updateBookingOperationalStatus(formData) {
     updated_at: new Date().toISOString(),
   };
 
-  if (statusAction === "cancelled") {
+  let bookingForLifecycleUpdate = null;
+
+  if (statusAction === "cancelled" || statusAction === "captain_not_available") {
     const { data: bookingForCancellation, error: bookingLoadError } = await supabase
       .from("bookings")
       .select(
-        "id, payment_status, stripe_checkout_session_id, stripe_payment_intent_id",
+        "id, locale, customer_name, email, phone, customer_manage_token, requested_date, tour_type, time_slot, time_window, is_shared_open, payment_status, stripe_checkout_session_id, stripe_payment_intent_id",
       )
       .eq("id", bookingId)
       .maybeSingle();
@@ -233,14 +270,29 @@ export async function updateBookingOperationalStatus(formData) {
       throw new Error("Could not load booking payment before cancellation.");
     }
 
-    if (bookingForCancellation?.payment_status === "captured") {
+    bookingForLifecycleUpdate = bookingForCancellation;
+  }
+
+  if (statusAction === "cancelled") {
+    if (bookingForLifecycleUpdate?.is_shared_open) {
+      updatePayload.shared_status = "cancelled";
+    }
+
+    if (bookingForLifecycleUpdate?.payment_status === "captured") {
       const refundedPaymentIntentId =
-        await refundCapturedPaymentForCancellation(bookingForCancellation);
+        await refundCapturedPaymentForCancellation(bookingForLifecycleUpdate);
 
       if (refundedPaymentIntentId) {
         updatePayload.payment_status = "refunded";
         updatePayload.stripe_payment_intent_id = refundedPaymentIntentId;
       }
+    }
+
+    if (bookingForLifecycleUpdate?.is_shared_open) {
+      await settleSharedJoinRequestsForBookingCancellation({
+        booking: bookingForLifecycleUpdate,
+        siteUrl: await getRequestOrigin(),
+      });
     }
 
     updatePayload.cancelled_at = new Date().toISOString();
@@ -253,6 +305,9 @@ export async function updateBookingOperationalStatus(formData) {
     updatePayload.cancellation_reason = cancellationReason;
     updatePayload.cancellation_type = "captain_unavailable";
     updatePayload.cancelled_by = "captain";
+    if (bookingForLifecycleUpdate?.is_shared_open) {
+      updatePayload.shared_status = "cancelled";
+    }
   }
 
   const { data: updatedBooking, error } = await supabase
@@ -260,7 +315,7 @@ export async function updateBookingOperationalStatus(formData) {
     .update(updatePayload)
     .eq("id", bookingId)
     .select(
-      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token, cancellation_reason",
+      "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, customer_manage_token, cancellation_reason, is_shared_open, shared_status, shared_public_token",
     )
     .single();
 
@@ -305,7 +360,10 @@ export async function captureAuthorizedBookingPaymentAction(formData) {
   }
 
   await getAdminSupabaseClient();
-  await captureAuthorizedBookingPayment({ bookingId });
+  await captureAuthorizedBookingPayment({
+    bookingId,
+    siteUrl: await getRequestOrigin(),
+  });
 
   revalidatePath("/admin");
   redirect(getAdminRedirectPath({ updated: "captured" }));
@@ -336,10 +394,264 @@ export async function releaseAuthorizedBookingPaymentAction(formData) {
     cancellationReason,
     cancellationType,
     outcome,
+    siteUrl: await getRequestOrigin(),
   });
 
   revalidatePath("/admin");
   redirect(getAdminRedirectPath({ updated: outcome }));
+}
+
+export async function cancelAcceptedSharedJoinRequestAction(formData) {
+  const bookingId = getFormText(formData, "bookingId");
+  const requestId = getFormText(formData, "requestId");
+
+  if (!bookingId || !requestId) {
+    throw new Error("Invalid shared join cancellation request.");
+  }
+
+  await getAdminSupabaseClient();
+  await cancelAcceptedSharedJoinRequestFromAdmin({
+    bookingId,
+    requestId,
+    siteUrl: await getRequestOrigin(),
+  });
+
+  revalidatePath("/admin");
+  redirect(getAdminRedirectPath({ updated: "shared-secondary-cancelled" }));
+}
+
+export async function cancelPrimaryAndPromoteSharedJoinRequestAction(formData) {
+  const bookingId = getFormText(formData, "bookingId");
+  const cancellationReason = getFormText(formData, "cancellationReason");
+  const requestId = getFormText(formData, "requestId");
+
+  if (!bookingId || !requestId) {
+    throw new Error("Invalid primary cancellation promotion request.");
+  }
+
+  await getAdminSupabaseClient();
+  await cancelPrimaryAndPromoteSharedJoinRequestFromAdmin({
+    bookingId,
+    cancellationReason,
+    requestId,
+    siteUrl: await getRequestOrigin(),
+  });
+
+  revalidatePath("/admin");
+  redirect(getAdminRedirectPath({ updated: "shared-primary-promoted" }));
+}
+
+export async function rescheduleBookingAction(formData) {
+  const bookingId = getFormText(formData, "bookingId");
+  const requestedDate = getFormText(formData, "requestedDate");
+  const timeSlot = getFormText(formData, "timeSlot");
+
+  if (!bookingId || !isValidDateString(requestedDate) || !timeSlot) {
+    throw new Error("Invalid booking reschedule request.");
+  }
+
+  await getAdminSupabaseClient();
+  const serviceSupabase = createSupabaseServiceRoleServerClient();
+  const { data: booking, error: loadError } = await serviceSupabase
+    .from("bookings")
+    .select(
+      "id, requested_date, tour_type, time_slot, time_window, booking_status, payment_status",
+    )
+    .eq("id", bookingId)
+    .maybeSingle();
+
+  if (loadError) {
+    console.error("[admin booking reschedule] Could not load booking", {
+      bookingId,
+      message: loadError.message,
+    });
+    throw new Error("Could not load booking before rescheduling.");
+  }
+
+  if (!booking) {
+    throw new Error("Booking not found.");
+  }
+
+  if (!ACTIVE_BOOKING_STATUSES.has(booking.booking_status)) {
+    throw new Error("Only active bookings can be rescheduled.");
+  }
+
+  if (!isValidTimeSlotForTour(booking.tour_type, timeSlot)) {
+    throw new Error("Selected time is not valid for this tour type.");
+  }
+
+  const { data: unavailableSlot, error: unavailableSlotError } =
+    await serviceSupabase
+      .from("admin_unavailable_slots")
+      .select("date")
+      .eq("date", requestedDate)
+      .eq("time_slot", timeSlot)
+      .maybeSingle();
+
+  if (
+    unavailableSlotError &&
+    !isUnavailableSlotsTableMissing(unavailableSlotError)
+  ) {
+    console.error(
+      "[admin booking reschedule] Could not check manual unavailable slot",
+      unavailableSlotError.message,
+    );
+    throw new Error("Could not check manual unavailable slots.");
+  }
+
+  const { data: existingBookings, error: availabilityError } =
+    await serviceSupabase
+      .from("bookings")
+      .select(
+        "id, requested_date, tour_type, time_slot, time_window, booking_status, payment_status",
+      )
+      .in("booking_status", Array.from(ACTIVE_BOOKING_STATUSES))
+      .eq("requested_date", requestedDate)
+      .neq("id", bookingId);
+
+  if (availabilityError) {
+    console.error(
+      "[admin booking reschedule] Could not check booking availability",
+      availabilityError.message,
+    );
+    throw new Error("Could not check booking availability.");
+  }
+
+  const requestedSelection = {
+    ...booking,
+    requested_date: requestedDate,
+    time_slot: timeSlot,
+    time_window: getDisplayTimeForTimeSlot(timeSlot),
+  };
+  const hasOverlap = (existingBookings ?? []).some((existingBooking) =>
+    bookingOverlapsSelection(existingBooking, requestedSelection),
+  );
+
+  if (hasOverlap) {
+    throw new Error("Selected date and time overlaps another active booking.");
+  }
+
+  const { data: updatedBooking, error: updateError } = await serviceSupabase
+    .from("bookings")
+    .update({
+      requested_date: requestedDate,
+      time_slot: timeSlot,
+      time_window: getDisplayTimeForTimeSlot(timeSlot),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", bookingId)
+    .select(RESCHEDULE_BOOKING_EMAIL_SELECT)
+    .single();
+
+  if (updateError) {
+    console.error("[admin booking reschedule] Could not update booking", {
+      bookingId,
+      message: updateError.message,
+    });
+    throw new Error("Could not reschedule booking.");
+  }
+
+  if (unavailableSlot) {
+    const { error: clearUnavailableError } = await serviceSupabase
+      .from("admin_unavailable_slots")
+      .delete()
+      .eq("date", requestedDate)
+      .eq("time_slot", timeSlot);
+
+    if (clearUnavailableError) {
+      console.error(
+        "[admin booking reschedule] Booking moved but unavailable slot was not cleared",
+        {
+          bookingId,
+          message: clearUnavailableError.message,
+          requestedDate,
+          timeSlot,
+        },
+      );
+    }
+  }
+
+  const manageUrl = await getCustomerManageUrl(updatedBooking);
+  const emailResult = await sendBookingEmail({
+    booking: {
+      ...updatedBooking,
+      manage_url: manageUrl,
+    },
+    checkDuplicate: false,
+    eventType: "booking_rescheduled",
+    supabase: serviceSupabase,
+  });
+
+  if (!emailResult.sent) {
+    console.error("[admin booking reschedule] Primary email was not sent", {
+      bookingId,
+      reason: emailResult.reason,
+    });
+  }
+
+  if (updatedBooking.is_shared_open) {
+    const { data: acceptedRequests, error: sharedRequestError } =
+      await serviceSupabase
+        .from("shared_join_requests")
+        .select(RESCHEDULE_SHARED_REQUEST_SELECT)
+        .eq("booking_id", bookingId)
+        .eq("status", "accepted")
+        .eq("payment_status", "captured");
+
+    if (sharedRequestError) {
+      console.error(
+        "[admin booking reschedule] Could not load accepted shared requests",
+        {
+          bookingId,
+          message: sharedRequestError.message,
+        },
+      );
+    } else {
+      const siteUrl = await getRequestOrigin();
+
+      await Promise.allSettled(
+        (acceptedRequests ?? []).map((request) =>
+          sendSharedJoinEmail({
+            booking: updatedBooking,
+            eventType: "booking_rescheduled_guest",
+            managePath: getSharedGuestManagePath(request),
+            request,
+            siteUrl,
+            to: request.email,
+          }),
+        ),
+      );
+    }
+  }
+
+  revalidatePath("/admin");
+  redirect(getAdminRedirectPath({ updated: "rescheduled" }));
+}
+
+export async function markCaptainMessageCopiedAction({ bookingId, messageType }) {
+  if (!bookingId || !CAPTAIN_MESSAGE_TYPES.has(messageType)) {
+    throw new Error("Invalid captain message copy request.");
+  }
+
+  await getAdminSupabaseClient();
+  const serviceSupabase = createSupabaseServiceRoleServerClient();
+  const copiedAt = new Date().toISOString();
+  const { error } = await serviceSupabase
+    .from("bookings")
+    .update({
+      captain_message_copied_at: copiedAt,
+      captain_message_copied_type: messageType,
+      updated_at: copiedAt,
+    })
+    .eq("id", bookingId);
+
+  if (error) {
+    console.error("[admin captain message copied]", error.message);
+    throw new Error("Could not mark captain message as copied.");
+  }
+
+  revalidatePath("/admin");
+  return { copiedAt };
 }
 
 export async function deleteClosedBooking(formData) {

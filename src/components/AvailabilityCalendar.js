@@ -44,6 +44,7 @@ export default function AvailabilityCalendar({
   error,
   isLoading = false,
   loadingLabel,
+  minSelectableDate,
   onMonthChange,
   onSelect,
   partiallyBookedDates = [],
@@ -210,7 +211,9 @@ export default function AvailabilityCalendar({
             const dateKey = formatDateKey(date);
             const todayDateKey = formatDateKey(today);
             const isToday = dateKey === todayDateKey;
-            const unavailable = date <= today;
+            const unavailable =
+              date <= today ||
+              (minSelectableDate ? dateKey < minSelectableDate : false);
             const booked = !unavailable && fullyBookedDateSet.has(dateKey);
             const otherTourAvailable =
               !unavailable &&

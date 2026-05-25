@@ -1,9 +1,13 @@
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
+import {
+  ACTIVE_BOOKING_STATUSES,
+  bookingOverlapsSelection,
+} from "@/lib/bookingAvailability";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/server";
 
 const BOOKING_EMAIL_SELECT =
-  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id";
+  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, is_shared_open, shared_status, shared_public_token";
 
 function getPaymentIntentId(paymentIntent) {
   if (!paymentIntent) {
@@ -13,12 +17,221 @@ function getPaymentIntentId(paymentIntent) {
   return typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
 }
 
-function getCustomerManageUrl(booking) {
+function getCustomerManageUrl(booking, siteUrl = getSiteUrl()) {
   if (!booking.customer_manage_token) {
     return null;
   }
 
-  return `${getSiteUrl()}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
+  return `${siteUrl.replace(/\/$/, "")}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
+}
+
+function getMetadataText(metadata, key) {
+  const value = metadata?.[key];
+
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getMetadataInteger(metadata, key) {
+  const value = getMetadataText(metadata, key);
+
+  if (!value) {
+    return null;
+  }
+
+  const numberValue = Number(value);
+
+  return Number.isInteger(numberValue) ? numberValue : null;
+}
+
+function getMetadataBoolean(metadata, key) {
+  return getMetadataText(metadata, key) === "true";
+}
+
+function getCheckoutSiteUrl(checkoutSession) {
+  return getMetadataText(checkoutSession?.metadata, "site_url") ?? getSiteUrl();
+}
+
+function getAuthorizedBookingFromMetadata({ checkoutSession, paymentIntent }) {
+  const metadata = checkoutSession.metadata ?? {};
+  const isSharedOpen = getMetadataBoolean(metadata, "is_shared_open");
+  const bookingId = getMetadataText(metadata, "booking_id");
+  const customerManageToken = getMetadataText(metadata, "customer_manage_token");
+
+  if (!bookingId || !customerManageToken) {
+    return null;
+  }
+
+  return {
+    booking_status: "checking_with_captain",
+    captain_status: "pending",
+    contact_method: getMetadataText(metadata, "contact_method"),
+    customer_manage_token: customerManageToken,
+    customer_name: getMetadataText(metadata, "customer_name"),
+    email: getMetadataText(metadata, "email"),
+    final_reservation_fee_eur: getMetadataInteger(
+      metadata,
+      "final_reservation_fee_eur",
+    ),
+    guest_count: getMetadataInteger(metadata, "guest_count"),
+    id: bookingId,
+    is_shared_open: isSharedOpen,
+    locale: getMetadataText(metadata, "locale") ?? "en",
+    message: getMetadataText(metadata, "message"),
+    original_reservation_fee_eur: getMetadataInteger(
+      metadata,
+      "original_reservation_fee_eur",
+    ),
+    pay_on_board_eur: getMetadataInteger(metadata, "pay_on_board_eur"),
+    payment_status: "authorized",
+    phone: getMetadataText(metadata, "phone"),
+    promo_code: getMetadataText(metadata, "promo_code"),
+    promo_discount_eur: getMetadataInteger(metadata, "promo_discount_eur") ?? 0,
+    requested_date: getMetadataText(metadata, "requested_date"),
+    reservation_fee_eur: getMetadataInteger(metadata, "reservation_fee_eur"),
+    shared_gender_preference:
+      getMetadataText(metadata, "shared_gender_preference") ?? "any",
+    shared_max_join_groups: getMetadataInteger(metadata, "shared_max_join_groups"),
+    shared_open_seats: isSharedOpen
+      ? getMetadataInteger(metadata, "shared_open_seats")
+      : null,
+    shared_public_token: isSharedOpen
+      ? getMetadataText(metadata, "shared_public_token")
+      : null,
+    shared_status: isSharedOpen ? "pending_captain_confirmation" : "none",
+    stripe_checkout_session_id: checkoutSession.id,
+    stripe_payment_intent_id: paymentIntent.id,
+    time_slot: getMetadataText(metadata, "time_slot"),
+    time_window: getMetadataText(metadata, "time_window"),
+    total_price_eur: getMetadataInteger(metadata, "total_price_eur"),
+    tour_type: getMetadataText(metadata, "tour_type"),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function hasActiveBookingOverlap({ booking, supabase }) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, requested_date, tour_type, time_slot, time_window, booking_status, payment_status",
+    )
+    .in("booking_status", Array.from(ACTIVE_BOOKING_STATUSES))
+    .eq("requested_date", booking.requested_date);
+
+  if (error) {
+    console.error("[stripe authorization] Could not recheck availability", {
+      bookingId: booking.id,
+      message: error.message,
+    });
+    throw new Error("Could not recheck booking availability.");
+  }
+
+  return (data ?? []).some(
+    (existingBooking) =>
+      existingBooking.id !== booking.id &&
+      bookingOverlapsSelection(existingBooking, booking),
+  );
+}
+
+async function releaseUnavailableAuthorization({
+  booking,
+  paymentIntent,
+  siteUrl,
+  supabase,
+}) {
+  await getStripe().paymentIntents.cancel(paymentIntent.id);
+
+  const closedBooking = {
+    ...booking,
+    booking_status: "not_available",
+    cancellation_reason:
+      "This time was no longer available when checkout authorization completed.",
+    cancellation_type: "admin_decision",
+    captain_status: "not_available",
+    payment_status: "released",
+    shared_status: booking.is_shared_open ? "cancelled" : booking.shared_status,
+    updated_at: new Date().toISOString(),
+  };
+  const { data: insertedBooking, error } = await supabase
+    .from("bookings")
+    .insert(closedBooking)
+    .select(BOOKING_EMAIL_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[stripe authorization] Could not save unavailable booking", {
+      bookingId: booking.id,
+      message: error.message,
+    });
+    throw new Error("Could not save unavailable booking.");
+  }
+
+  if (insertedBooking) {
+    await sendBookingEmailWithManageUrl({
+      booking: insertedBooking,
+      eventType: "not_available",
+      logPrefix: "[stripe authorization]",
+      siteUrl,
+      supabase,
+    });
+  }
+
+  return { authorized: false, reason: "time no longer available", released: true };
+}
+
+async function createAuthorizedBookingFromSession({
+  checkoutSession,
+  paymentIntent,
+  supabase,
+}) {
+  const booking = getAuthorizedBookingFromMetadata({
+    checkoutSession,
+    paymentIntent,
+  });
+
+  if (!booking) {
+    return { authorized: false, reason: "checkout metadata missing booking" };
+  }
+
+  if (await hasActiveBookingOverlap({ booking, supabase })) {
+    return releaseUnavailableAuthorization({
+      booking,
+      paymentIntent,
+      siteUrl: getCheckoutSiteUrl(checkoutSession),
+      supabase,
+    });
+  }
+
+  const { data: insertedBooking, error } = await supabase
+    .from("bookings")
+    .insert(booking)
+    .select(BOOKING_EMAIL_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { authorized: false, reason: "booking already created" };
+    }
+
+    console.error("[stripe authorization] Could not create authorized booking", {
+      bookingId: booking.id,
+      message: error.message,
+    });
+    throw new Error("Could not create authorized booking.");
+  }
+
+  if (!insertedBooking) {
+    return { authorized: false, reason: "booking already processed" };
+  }
+
+  await sendBookingEmailWithManageUrl({
+    booking: insertedBooking,
+    eventType: "booking_authorized",
+    logPrefix: "[stripe authorization]",
+    siteUrl: getCheckoutSiteUrl(checkoutSession),
+    supabase,
+  });
+
+  return { authorized: true };
 }
 
 async function getCheckoutSession({ session, sessionId }) {
@@ -105,11 +318,17 @@ async function getBookingForCheckoutSession({
   return metadataBooking;
 }
 
-async function sendBookingEmailWithManageUrl({ booking, eventType, logPrefix, supabase }) {
+async function sendBookingEmailWithManageUrl({
+  booking,
+  eventType,
+  logPrefix,
+  siteUrl,
+  supabase,
+}) {
   const emailResult = await sendBookingEmail({
     booking: {
       ...booking,
-      manage_url: getCustomerManageUrl(booking),
+      manage_url: getCustomerManageUrl(booking, siteUrl),
     },
     eventType,
     supabase,
@@ -137,24 +356,13 @@ export async function recordBookingAuthorizationFromSession({
   }
 
   const supabase = createSupabaseServiceRoleServerClient();
+  const siteUrl = getCheckoutSiteUrl(checkoutSession);
   const booking = await getBookingForCheckoutSession({
     bookingId,
     checkoutSession,
     supabase,
     token,
   });
-
-  if (!booking) {
-    return { authorized: false, reason: "booking not found" };
-  }
-
-  if (booking.payment_status === "authorized") {
-    return { authorized: false, reason: "booking already authorized" };
-  }
-
-  if (["captured", "released", "refunded"].includes(booking.payment_status)) {
-    return { authorized: false, reason: "booking payment already closed" };
-  }
 
   const paymentIntent = await getPaymentIntent(checkoutSession.payment_intent);
 
@@ -164,6 +372,22 @@ export async function recordBookingAuthorizationFromSession({
       (paymentIntent.amount_capturable ?? 0) <= 0)
   ) {
     return { authorized: false, reason: "payment intent is not authorized" };
+  }
+
+  if (!booking) {
+    return createAuthorizedBookingFromSession({
+      checkoutSession,
+      paymentIntent,
+      supabase,
+    });
+  }
+
+  if (booking.payment_status === "authorized") {
+    return { authorized: false, reason: "booking already authorized" };
+  }
+
+  if (["captured", "released", "refunded"].includes(booking.payment_status)) {
+    return { authorized: false, reason: "booking payment already closed" };
   }
 
   const { data: updatedBooking, error: updateError } = await supabase
@@ -197,6 +421,7 @@ export async function recordBookingAuthorizationFromSession({
     booking: updatedBooking,
     eventType: "booking_authorized",
     logPrefix: "[stripe authorization]",
+    siteUrl,
     supabase,
   });
 
@@ -278,6 +503,7 @@ export async function confirmBookingPaymentFromSession({
   }
 
   const supabase = createSupabaseServiceRoleServerClient();
+  const siteUrl = getCheckoutSiteUrl(checkoutSession);
   const bookingToConfirm = await getBookingForCheckoutSession({
     bookingId,
     checkoutSession,
@@ -322,6 +548,7 @@ export async function confirmBookingPaymentFromSession({
     booking: updatedBooking,
     eventType: "booking_confirmed",
     logPrefix: "[stripe payment confirm]",
+    siteUrl,
     supabase,
   });
 

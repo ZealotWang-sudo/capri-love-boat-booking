@@ -15,6 +15,7 @@ const FAQ_ITEM_KEYS = [
   "lateArrival",
   "route",
   "swimming",
+  "afterSwimming",
   "meetingPoint",
   "whatToBring",
 ];

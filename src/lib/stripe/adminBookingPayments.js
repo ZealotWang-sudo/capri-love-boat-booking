@@ -3,14 +3,14 @@ import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/server";
 
 const BOOKING_PAYMENT_SELECT =
-  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, customer_cancelled_at, customer_cancel_reason, stripe_checkout_session_id, stripe_payment_intent_id, cancellation_reason";
+  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, customer_cancelled_at, customer_cancel_reason, stripe_checkout_session_id, stripe_payment_intent_id, cancellation_reason, is_shared_open, shared_status, shared_public_token";
 
-function getCustomerManageUrl(booking) {
+function getCustomerManageUrl(booking, siteUrl = getSiteUrl()) {
   if (!booking.customer_manage_token) {
     return null;
   }
 
-  return `${getSiteUrl()}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
+  return `${siteUrl.replace(/\/$/, "")}/${booking.locale}/booking/manage/${booking.id}?token=${encodeURIComponent(booking.customer_manage_token)}`;
 }
 
 async function loadBookingForPayment({ bookingId, manageToken, supabase }) {
@@ -37,11 +37,16 @@ async function loadBookingForPayment({ bookingId, manageToken, supabase }) {
   return booking;
 }
 
-async function sendEmailForUpdatedBooking({ booking, eventType, supabase }) {
+async function sendEmailForUpdatedBooking({
+  booking,
+  eventType,
+  siteUrl,
+  supabase,
+}) {
   const emailResult = await sendBookingEmail({
     booking: {
       ...booking,
-      manage_url: getCustomerManageUrl(booking),
+      manage_url: getCustomerManageUrl(booking, siteUrl),
     },
     eventType,
     supabase,
@@ -56,7 +61,7 @@ async function sendEmailForUpdatedBooking({ booking, eventType, supabase }) {
   }
 }
 
-export async function captureAuthorizedBookingPayment({ bookingId }) {
+export async function captureAuthorizedBookingPayment({ bookingId, siteUrl }) {
   const supabase = createSupabaseServiceRoleServerClient();
   const booking = await loadBookingForPayment({ bookingId, supabase });
 
@@ -98,15 +103,20 @@ export async function captureAuthorizedBookingPayment({ bookingId }) {
     throw new Error(`Stripe capture did not succeed: ${paymentIntent.status}`);
   }
 
+  const captureUpdatePayload = {
+    booking_status: "confirmed",
+    captain_status: "available",
+    payment_status: "captured",
+    stripe_payment_intent_id: paymentIntent.id,
+    updated_at: new Date().toISOString(),
+    ...(booking.is_shared_open &&
+    booking.shared_status === "pending_captain_confirmation"
+      ? { shared_status: "open" }
+      : {}),
+  };
   const { data: updatedBooking, error: updateError } = await supabase
     .from("bookings")
-    .update({
-      booking_status: "confirmed",
-      captain_status: "available",
-      payment_status: "captured",
-      stripe_payment_intent_id: paymentIntent.id,
-      updated_at: new Date().toISOString(),
-    })
+    .update(captureUpdatePayload)
     .eq("id", booking.id)
     .eq("payment_status", "authorized")
     .select(BOOKING_PAYMENT_SELECT)
@@ -127,6 +137,7 @@ export async function captureAuthorizedBookingPayment({ bookingId }) {
   await sendEmailForUpdatedBooking({
     booking: updatedBooking,
     eventType: "booking_confirmed",
+    siteUrl,
     supabase,
   });
 
@@ -140,6 +151,7 @@ export async function releaseAuthorizedBookingPayment({
   cancellationType = "admin_decision",
   manageToken,
   outcome = "cancelled",
+  siteUrl,
 }) {
   const supabase = createSupabaseServiceRoleServerClient();
   const booking = await loadBookingForPayment({ bookingId, manageToken, supabase });
@@ -200,6 +212,7 @@ export async function releaseAuthorizedBookingPayment({
       ? cancellationReason || null
       : booking.customer_cancel_reason,
     payment_status: "released",
+    ...(booking.is_shared_open ? { shared_status: "cancelled" } : {}),
     stripe_payment_intent_id: paymentIntent.id,
     updated_at: new Date().toISOString(),
   };
@@ -228,6 +241,7 @@ export async function releaseAuthorizedBookingPayment({
   await sendEmailForUpdatedBooking({
     booking: updatedBooking,
     eventType: isNotAvailable ? "not_available" : "cancelled",
+    siteUrl,
     supabase,
   });
 

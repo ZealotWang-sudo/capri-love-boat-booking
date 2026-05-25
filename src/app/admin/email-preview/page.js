@@ -5,6 +5,10 @@ import {
   SUPPORTED_EMAIL_LOCALES,
   buildBookingEmailPreview,
 } from "@/lib/email/sendBookingEmail";
+import {
+  SHARED_JOIN_EMAIL_EVENTS,
+  buildSharedJoinEmailPreview,
+} from "@/lib/email/sendSharedJoinEmail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const ADMIN_EMAIL = "wangkexin-personal@outlook.com";
@@ -32,9 +36,21 @@ const PREVIEW_BOOKING = {
   total_price_eur: 350,
   tour_type: "three_hours",
 };
+const PREVIEW_SHARED_REQUEST = {
+  customer_manage_token: "shared-preview-token",
+  customer_name: "Wei Wei",
+  gender_composition: "all_female",
+  guest_count: 4,
+  id: "shared-preview-request",
+  locale: "en",
+  shared_request_fee_eur: 70,
+};
 
 function getPreviewBooking(locale, eventType) {
-  const needsReason = eventType === "cancelled" || eventType === "not_available";
+  const needsReason =
+    eventType === "cancelled" ||
+    eventType === "not_available" ||
+    eventType === "shared_primary_cancelled_promoted";
 
   return {
     ...PREVIEW_BOOKING,
@@ -49,6 +65,41 @@ function PreviewCard({ event, locale }) {
     booking: getPreviewBooking(locale, event.eventType),
     eventType: event.eventType,
     locale,
+  });
+
+  if (!preview) {
+    return null;
+  }
+
+  return (
+    <article className="border border-stone-300 bg-[#fbf8f3]">
+      <div className="border-b border-stone-300 px-4 py-4">
+        <p className="text-[0.65rem] font-medium uppercase tracking-[0.18em] text-stone-500">
+          {event.label} · {LANGUAGE_LABELS[locale] ?? locale}
+        </p>
+        <h2 className="mt-2 text-lg font-medium text-stone-950">
+          {preview.subject}
+        </h2>
+        <p className="mt-1 text-xs text-stone-500">Button: {preview.cta}</p>
+      </div>
+      <div
+        className="overflow-hidden bg-[#f0f0f0]"
+        dangerouslySetInnerHTML={{ __html: preview.html }}
+      />
+    </article>
+  );
+}
+
+function SharedPreviewCard({ event, locale }) {
+  const preview = buildSharedJoinEmailPreview({
+    booking: getPreviewBooking(locale, "booking_confirmed"),
+    eventType: event.eventType,
+    locale,
+    manageUrl: `https://capriloveboat.com/${locale}/shared/manage/shared-preview-request?token=shared-preview-token`,
+    request: {
+      ...PREVIEW_SHARED_REQUEST,
+      locale,
+    },
   });
 
   if (!preview) {
@@ -135,9 +186,24 @@ export default async function AdminEmailPreviewPage() {
                   {LANGUAGE_LABELS[locale] ?? locale}
                 </h2>
               </div>
+              <h3 className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                Booking emails
+              </h3>
               <div className="grid gap-6 xl:grid-cols-2">
                 {BOOKING_EMAIL_EVENTS.map((event) => (
                   <PreviewCard
+                    key={`${locale}-${event.eventType}`}
+                    event={event}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+              <h3 className="mt-8 mb-4 text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                Shared join emails
+              </h3>
+              <div className="grid gap-6 xl:grid-cols-2">
+                {SHARED_JOIN_EMAIL_EVENTS.map((event) => (
+                  <SharedPreviewCard
                     key={`${locale}-${event.eventType}`}
                     event={event}
                     locale={locale}

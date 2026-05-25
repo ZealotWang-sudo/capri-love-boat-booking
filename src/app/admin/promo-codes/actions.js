@@ -114,3 +114,31 @@ export async function updatePromoCodeStatus(formData) {
   revalidatePath("/admin/promo-codes");
   redirect(getPromoCodesRedirectPath({ updated: isActive ? "active" : "inactive" }));
 }
+
+export async function deletePromoCode(formData) {
+  const id = getFormText(formData, "id");
+
+  if (!id) {
+    redirect(getPromoCodesRedirectPath({ error: "Promo code id is required." }));
+  }
+
+  const supabase = await getAdminSupabaseClient();
+  const { data: deletedPromoCode, error } = await supabase
+    .from("promo_codes")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[admin promo codes] Could not delete promo code", error.message);
+    redirect(getPromoCodesRedirectPath({ error: "Could not delete promo code." }));
+  }
+
+  if (!deletedPromoCode) {
+    redirect(getPromoCodesRedirectPath({ error: "Promo code was not found." }));
+  }
+
+  revalidatePath("/admin/promo-codes");
+  redirect(getPromoCodesRedirectPath({ deleted: "1" }));
+}

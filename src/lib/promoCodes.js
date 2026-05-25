@@ -6,11 +6,15 @@ export function normalizePromoCode(value) {
   return typeof value === "string" ? value.trim().toUpperCase() : "";
 }
 
-export function calculatePromoPricing({ discountEur = 0, originalReservationFeeEur }) {
+export function calculatePromoPricing({
+  discountEur = 0,
+  minimumReservationFeeEur = MIN_RESERVATION_FEE_EUR,
+  originalReservationFeeEur,
+}) {
   const safeDiscount = Math.max(Number.isInteger(discountEur) ? discountEur : 0, 0);
   const finalReservationFeeEur = Math.max(
     originalReservationFeeEur - safeDiscount,
-    MIN_RESERVATION_FEE_EUR,
+    minimumReservationFeeEur,
   );
 
   return {
@@ -35,6 +39,7 @@ export async function getPromoCodeByCode(supabase, code) {
 
 export async function validatePromoCodeForReservation({
   code,
+  minimumReservationFeeEur = MIN_RESERVATION_FEE_EUR,
   originalReservationFeeEur,
   supabase,
 }) {
@@ -69,6 +74,7 @@ export async function validatePromoCodeForReservation({
 
   const pricing = calculatePromoPricing({
     discountEur: promoCode.discount_eur,
+    minimumReservationFeeEur,
     originalReservationFeeEur,
   });
 

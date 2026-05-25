@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  ONLINE_BOOKING_CUTOFF_ERROR_MESSAGE,
+  isOnlineBookingDateAllowed,
+} from "@/lib/bookingCutoff";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { createReservationCheckoutSession } from "@/lib/stripe/createReservationCheckoutSession";
 
@@ -58,6 +62,10 @@ export async function POST(request) {
 
   if (!isLegacyPayment && !isAuthorizationRetry) {
     return jsonError("This booking is not ready for payment.", 409);
+  }
+
+  if (!isOnlineBookingDateAllowed(booking.requested_date)) {
+    return jsonError(ONLINE_BOOKING_CUTOFF_ERROR_MESSAGE, 409);
   }
 
   let session;

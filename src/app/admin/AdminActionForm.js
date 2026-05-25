@@ -6,9 +6,12 @@ import AdminStatusActionButton from "./AdminStatusActionButton";
 import AdminWarningModal from "./AdminWarningModal";
 import {
   captureAuthorizedBookingPaymentAction,
+  cancelAcceptedSharedJoinRequestAction,
+  cancelPrimaryAndPromoteSharedJoinRequestAction,
   deleteClosedBooking,
   refundCapturedBookingPayment,
   releaseAuthorizedBookingPaymentAction,
+  rescheduleBookingAction,
   updateBookingOperationalStatus,
 } from "./actions";
 
@@ -27,6 +30,18 @@ function getServerAction(actionType) {
 
   if (actionType === "release") {
     return releaseAuthorizedBookingPaymentAction;
+  }
+
+  if (actionType === "cancelSharedSecondary") {
+    return cancelAcceptedSharedJoinRequestAction;
+  }
+
+  if (actionType === "cancelSharedPrimaryPromote") {
+    return cancelPrimaryAndPromoteSharedJoinRequestAction;
+  }
+
+  if (actionType === "reschedule") {
+    return rescheduleBookingAction;
   }
 
   return updateBookingOperationalStatus;
@@ -48,6 +63,13 @@ export default function AdminActionForm({
   reasonPlaceholder,
   reasonRequired = false,
   releaseOutcome,
+  requestId,
+  rescheduleDateDefault,
+  rescheduleDateFieldName,
+  timeSlotDefault,
+  timeSlotFieldName,
+  timeSlotLabel,
+  timeSlotOptions = [],
   statusAction,
   variant,
   warningNotice,
@@ -58,6 +80,7 @@ export default function AdminActionForm({
   return (
     <form action={serverAction}>
       <input type="hidden" name="bookingId" value={bookingId} />
+      {requestId ? <input type="hidden" name="requestId" value={requestId} /> : null}
       {statusAction ? (
         <input type="hidden" name="statusAction" value={statusAction} />
       ) : null}
@@ -86,12 +109,43 @@ export default function AdminActionForm({
       </AdminStatusActionButton>
       <AdminWarningModal
         extraContent={
-          reasonFieldName || cancellationTypeFieldName || warningNotice ? (
+          reasonFieldName ||
+          cancellationTypeFieldName ||
+          rescheduleDateFieldName ||
+          timeSlotFieldName ||
+          warningNotice ? (
             <div className="space-y-5">
               {warningNotice ? (
                 <p className="border border-red-900/30 p-3 text-sm leading-6 text-red-900">
                   {warningNotice}
                 </p>
+              ) : null}
+              {rescheduleDateFieldName ? (
+                <div>
+                  <label
+                    htmlFor={`${bookingId}-${rescheduleDateFieldName}`}
+                    className="block text-xs uppercase tracking-[0.18em] text-stone-500"
+                  >
+                    New date
+                  </label>
+                  <input
+                    id={`${bookingId}-${rescheduleDateFieldName}`}
+                    type="date"
+                    name={rescheduleDateFieldName}
+                    defaultValue={rescheduleDateDefault}
+                    required
+                    className="mt-3 w-full border border-stone-300 bg-transparent px-4 py-3 text-sm outline-none transition focus:border-stone-950"
+                  />
+                </div>
+              ) : null}
+              {timeSlotFieldName ? (
+                <AdminDropdownSelect
+                  defaultValue={timeSlotDefault}
+                  label={timeSlotLabel}
+                  name={timeSlotFieldName}
+                  options={timeSlotOptions}
+                  placeholder="Choose a new time"
+                />
               ) : null}
               {cancellationTypeFieldName && !cancellationTypeDefault ? (
                 <AdminDropdownSelect

@@ -1,7 +1,9 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import CopySharedLinkButton from "@/components/CopySharedLinkButton";
 import CustomerCancelBookingForm from "@/components/CustomerCancelBookingForm";
 import MeetUpPhotoGallery from "@/components/MeetUpPhotoGallery";
+import SharedJoinRequestHostActions from "@/components/SharedJoinRequestHostActions";
 import SiteHeader from "@/components/SiteHeader";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { formatCustomerDate } from "@/lib/formatCustomerDate";
@@ -21,16 +23,6 @@ const TOUR_LABEL_KEYS = {
   sunset_three_hours: "tourSunsetThreeHour",
   three_hours: "tourThreeHour",
   two_hours: "tourTwoHour",
-};
-const STATUS_LABEL_KEYS = {
-  cancelled: "statusCancelled",
-  checking_with_captain: "statusCheckingWithCaptain",
-  completed: "statusCompleted",
-  confirmed: "statusConfirmed",
-  expired: "statusExpired",
-  not_available: "statusNotAvailable",
-  payment_pending: "statusPaymentPending",
-  requested: "statusRequested",
 };
 const NEXT_STEP_KEYS = {
   cancelled: "nextStepCancelled",
@@ -53,11 +45,18 @@ const MEET_UP_PHOTOS = [
   "/meet-up-point/meet-up1.jpg",
   "/meet-up-point/meet-up2.jpg",
   "/meet-up-point/meet-up3.jpg",
+  {
+    alt: "Captain Renato",
+    label: "Captain Renato",
+    src: "/meet-up-point/capain-face.png",
+  },
 ];
 const CAPTAIN_PHONE = "+39 339 665 0836";
 const CAPTAIN_PHONE_HREF = "tel:+393396650836";
 const CUSTOMER_MANAGED_BOOKING_SELECT =
-  "id, locale, customer_name, email, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, customer_cancelled_at, customer_cancel_reason";
+  "id, locale, customer_name, email, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, customer_cancelled_at, customer_cancel_reason, is_shared_open, shared_status, shared_public_token, shared_open_seats, shared_gender_preference";
+const SHARED_JOIN_REQUEST_SELECT =
+  "id, created_at, updated_at, customer_name, guest_count, gender_composition, payment_status, status";
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
@@ -70,14 +69,39 @@ function getSearchText(value) {
 }
 
 function formatEuro(value) {
-  return typeof value === "number" ? `€${value}` : "-";
+  if (typeof value !== "number") {
+    return "-";
+  }
+
+  return Number.isInteger(value) ? `€${value}` : `€${value.toFixed(2)}`;
+}
+
+function formatSharedPayOnBoardSplit(value) {
+  if (typeof value !== "number") {
+    return "-";
+  }
+
+  const splitAmount = value / 2;
+  const formattedSplitAmount = Number.isInteger(splitAmount)
+    ? splitAmount
+    : splitAmount.toFixed(2);
+
+  return `${formatEuro(value)} / 2 = €${formattedSplitAmount}`;
 }
 
 function formatValue(value) {
   return value || "-";
 }
 
-function SummaryItem({ fullWidth = false, label, value }) {
+function getSharedPublicPath({ locale, token }) {
+  if (!token) {
+    return "";
+  }
+
+  return `/${locale}/shared/${token}`;
+}
+
+function SummaryItem({ fullWidth = false, label, note, value }) {
   return (
     <div
       className={[
@@ -89,7 +113,85 @@ function SummaryItem({ fullWidth = false, label, value }) {
         {label}
       </p>
       <p className="mt-1 text-sm text-stone-950">{formatValue(value)}</p>
+      {note ? (
+        <p className="mt-2 text-xs leading-5 text-stone-500">{note}</p>
+      ) : null}
     </div>
+  );
+}
+
+function PricingSection({ children, total, title }) {
+  return (
+    <details className="group mt-8 border border-stone-300 bg-[#f3eee7] p-5">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left [&::-webkit-details-marker]:hidden">
+        <span className="text-xs uppercase tracking-[0.18em] text-stone-500">
+          {title}
+        </span>
+        <span className="flex items-center gap-3 text-lg text-stone-950">
+          {formatValue(total)}
+          <span
+            aria-hidden="true"
+            className="grid h-7 w-7 place-items-center rounded-full border border-stone-300 text-stone-500 transition group-open:rotate-180"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              className="h-4 w-4"
+            >
+              <path
+                d="M5 7.5L10 12.5L15 7.5"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.6"
+              />
+            </svg>
+          </span>
+        </span>
+      </summary>
+      <div className="mt-5 grid gap-x-6 sm:grid-cols-2">{children}</div>
+    </details>
+  );
+}
+
+function SharedJoinRequestCard({
+  bookingStatus,
+  bookingId,
+  decisionCompleted = false,
+  labels,
+  locale,
+  request,
+  token,
+}) {
+  const canRespond =
+    !decisionCompleted &&
+    bookingStatus !== "cancelled" &&
+    request.status === "authorized_pending_host_decision" &&
+    request.payment_status === "authorized";
+
+  return (
+    <article className="mt-5 border border-stone-300 bg-[#fbf8f3] p-4">
+      <div className="grid gap-x-6 sm:grid-cols-2">
+        <SummaryItem label={labels.name} value={request.customer_name} />
+        <SummaryItem label={labels.guests} value={request.guest_count} />
+        <SummaryItem
+          label={labels.genderComposition}
+          value={labels.genderCompositionValues[request.gender_composition] ?? request.gender_composition}
+        />
+      </div>
+      {canRespond ? (
+        <SharedJoinRequestHostActions
+          acceptLabel={labels.acceptButton}
+          acceptPendingLabel={labels.acceptPendingButton}
+          bookingId={bookingId}
+          locale={locale}
+          rejectLabel={labels.rejectButton}
+          rejectPendingLabel={labels.rejectPendingButton}
+          requestId={request.id}
+          token={token}
+        />
+      ) : null}
+    </article>
   );
 }
 
@@ -136,6 +238,29 @@ async function getManagedBooking({ bookingId, token }) {
   return data;
 }
 
+async function getSharedJoinRequests(bookingId) {
+  if (!bookingId) {
+    return [];
+  }
+
+  const supabase = createSupabaseServiceRoleServerClient();
+  const { data, error } = await supabase
+    .from("shared_join_requests")
+    .select(SHARED_JOIN_REQUEST_SELECT)
+    .eq("booking_id", bookingId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[customer booking manage] Could not load shared join requests", {
+      bookingId,
+      message: error.message,
+    });
+    return [];
+  }
+
+  return data ?? [];
+}
+
 async function confirmReturnedStripePayment({ bookingId, sessionId, token }) {
   if (!bookingId || !sessionId || !token) {
     return;
@@ -163,6 +288,9 @@ export default async function ManageBookingPage({ params, searchParams }) {
   const stripeSessionId = getSearchText(query?.session_id);
   const isCancelled = getSearchText(query?.cancelled) === "1";
   const hasCancelError = getSearchText(query?.cancelError) === "1";
+  const sharedAccepted = getSearchText(query?.sharedAccepted) === "1";
+  const sharedRejected = getSearchText(query?.sharedRejected) === "1";
+  const sharedError = getSearchText(query?.sharedError) === "1";
   setRequestLocale(locale);
 
   const t = await getTranslations("BookingManage");
@@ -179,44 +307,76 @@ export default async function ManageBookingPage({ params, searchParams }) {
   const managePath = `/booking/manage/${id}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 
   if (!booking) {
-    return (
-      <main className="min-h-screen bg-[#f3eee7] text-stone-950">
-        <SiteHeader brand={common("brand")} locale={locale} path={managePath} />
-        <section className="mx-auto max-w-3xl px-5 py-20 text-center sm:px-8">
-          <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
-            {t("eyebrow")}
-          </p>
-          <h1 className="mt-6 text-4xl font-light tracking-[-0.03em] sm:text-6xl">
-            {t("invalidTitle")}
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg font-light leading-8 text-stone-600">
-            {t("invalidMessage")}
-          </p>
-          <Link
-            href={`/${locale}`}
-            className="mt-10 inline-flex border border-stone-950 bg-stone-950 px-8 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950"
-          >
-            {common("home")}
-          </Link>
-        </section>
-      </main>
-    );
+    redirect(`/${locale}/book`);
   }
 
   const canCancel = CANCELLABLE_STATUSES.has(booking.booking_status);
+  const sharedJoinRequests = await getSharedJoinRequests(booking.id);
+  const visibleSharedJoinRequests = sharedRejected
+    ? []
+    : sharedJoinRequests.filter((request) =>
+        [
+          "accepted",
+          "authorized_pending_host_decision",
+          "connected",
+          "sent_to_main_booker",
+        ].includes(request.status),
+      );
   const tourLabelKey = TOUR_LABEL_KEYS[booking.tour_type];
   const tourLabel = tourLabelKey ? t(tourLabelKey) : formatValue(booking.tour_type);
-  const statusLabelKey = STATUS_LABEL_KEYS[booking.booking_status];
-  const statusLabel = statusLabelKey
-    ? t(statusLabelKey)
-    : formatValue(booking.booking_status);
-  const nextStepKey = NEXT_STEP_KEYS[booking.booking_status];
+  const isAuthorizationPending =
+    booking.payment_status === "authorization_pending";
+  const nextStepKey = isAuthorizationPending
+    ? "nextStepAuthorizationPending"
+    : NEXT_STEP_KEYS[booking.booking_status];
   const pageTitleKey = PAGE_TITLE_KEYS[booking.booking_status] ?? "title";
   const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY);
   const hasPromoDiscount = (booking.promo_discount_eur ?? 0) > 0;
+  const connectedSharedRequestExists = visibleSharedJoinRequests.some(
+    (request) =>
+      ["accepted", "connected"].includes(request.status) &&
+      request.payment_status === "captured",
+  );
+  const closedSharedRequestExists = visibleSharedJoinRequests.some(
+    (request) =>
+      request.status === "released" ||
+      request.payment_status === "released" ||
+      request.payment_status === "refunded",
+  );
   const finalReservationFee =
     booking.final_reservation_fee_eur ?? booking.reservation_fee_eur;
-
+  const showSharedLink =
+    booking.booking_status === "confirmed" &&
+    booking.payment_status === "captured" &&
+    booking.is_shared_open &&
+    booking.shared_status === "open" &&
+    booking.shared_public_token;
+  const showSharedPending =
+    booking.is_shared_open &&
+    booking.shared_status === "pending_captain_confirmation";
+  const showSharedConnected =
+    booking.is_shared_open &&
+    (booking.shared_status === "connected" ||
+      connectedSharedRequestExists ||
+      sharedAccepted);
+  const showSharedClosed =
+    booking.is_shared_open &&
+    !showSharedConnected &&
+    (booking.booking_status === "cancelled" ||
+      booking.shared_status === "cancelled" ||
+      closedSharedRequestExists);
+  const showSharedInfo = booking.is_shared_open;
+  const sharedPublicPath = showSharedLink
+    ? getSharedPublicPath({ locale, token: booking.shared_public_token })
+    : "";
+  const payOnBoardDue =
+    showSharedConnected && typeof booking.pay_on_board_eur === "number"
+      ? booking.pay_on_board_eur / 2
+      : booking.pay_on_board_eur;
+  const customerTotal =
+    typeof finalReservationFee === "number" && typeof payOnBoardDue === "number"
+      ? finalReservationFee + payOnBoardDue
+      : null;
   return (
     <main className="min-h-screen bg-[#f3eee7] text-stone-950">
       <SiteHeader brand={common("brand")} locale={locale} path={managePath} />
@@ -245,6 +405,21 @@ export default async function ManageBookingPage({ params, searchParams }) {
               {t("cancelError")}
             </div>
           ) : null}
+          {sharedAccepted ? (
+            <div className="mb-6 border border-emerald-900/30 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
+              {t("sharedRequestAccepted")}
+            </div>
+          ) : null}
+          {sharedRejected ? (
+            <div className="mb-6 border border-stone-950 bg-[#f3eee7] p-4 text-sm leading-6 text-stone-700">
+              {t("sharedRequestRejected")}
+            </div>
+          ) : null}
+          {sharedError ? (
+            <div className="mb-6 border border-red-900/40 bg-[#f3eee7] p-4 text-sm leading-6 text-red-900">
+              {t("sharedRequestError")}
+            </div>
+          ) : null}
 
           <h2 className="text-2xl font-light tracking-[-0.03em]">
             {t("summaryTitle")}
@@ -261,28 +436,6 @@ export default async function ManageBookingPage({ params, searchParams }) {
             />
             <SummaryItem label={t("tour")} value={tourLabel} />
             <SummaryItem label={t("guests")} value={booking.guest_count} />
-            <SummaryItem
-              label={t("totalPrice")}
-              value={formatEuro(booking.total_price_eur)}
-            />
-            {hasPromoDiscount ? (
-              <>
-                <SummaryItem label={t("promoCode")} value={booking.promo_code} />
-                <SummaryItem
-                  label={t("promoDiscount")}
-                  value={`-${formatEuro(booking.promo_discount_eur)}`}
-                />
-              </>
-            ) : null}
-            <SummaryItem
-              label={t("reservationFee")}
-              value={formatEuro(finalReservationFee)}
-            />
-            <SummaryItem
-              label={t("payOnBoard")}
-              value={formatEuro(booking.pay_on_board_eur)}
-            />
-            <SummaryItem fullWidth label={t("status")} value={statusLabel} />
           </div>
 
           {nextStepKey ? (
@@ -295,6 +448,35 @@ export default async function ManageBookingPage({ params, searchParams }) {
               </p>
             </section>
           ) : null}
+
+          <PricingSection
+            title={t("pricingTitle")}
+            total={formatEuro(customerTotal)}
+          >
+            <SummaryItem
+              label={t("totalPrice")}
+              value={formatEuro(customerTotal)}
+            />
+            {hasPromoDiscount ? (
+              <SummaryItem
+                label={t("promoDiscount")}
+                value={`-${formatEuro(booking.promo_discount_eur)}`}
+              />
+            ) : null}
+            <SummaryItem
+              label={t("reservationFee")}
+              value={formatEuro(finalReservationFee)}
+            />
+            <SummaryItem
+              label={t("payOnBoard")}
+              note={showSharedConnected ? t("sharedPayOnBoardNote") : null}
+              value={
+                showSharedConnected
+                  ? formatSharedPayOnBoardSplit(booking.pay_on_board_eur)
+                  : formatEuro(booking.pay_on_board_eur)
+              }
+            />
+          </PricingSection>
 
           {booking.booking_status === "payment_pending" ||
           booking.payment_status === "authorization_pending" ? (
@@ -340,17 +522,6 @@ export default async function ManageBookingPage({ params, searchParams }) {
             </div>
           ) : null}
 
-          {booking.payment_status === "captured" ? (
-            <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                {t("paymentTitle")}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-stone-600">
-                {t("paymentCaptured")}
-              </p>
-            </div>
-          ) : null}
-
           {booking.payment_status === "released" ? (
             <div className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
@@ -373,6 +544,75 @@ export default async function ManageBookingPage({ params, searchParams }) {
             </div>
           ) : null}
 
+          {showSharedInfo ? (
+            <section className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {t("sharedLinkTitle")}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                {showSharedLink
+                  ? t("sharedLinkBody")
+                  : showSharedPending
+                    ? t("sharedLinkPending")
+                    : showSharedConnected
+                      ? t("sharedRequestConnectedBody")
+                      : showSharedClosed
+                        ? t("sharedRequestClosedBody")
+                        : t("sharedRequestReviewBody")}
+              </p>
+              {showSharedLink ? (
+                <CopySharedLinkButton
+                  label={t("sharedLinkCopyButton")}
+                  labels={{
+                    close: t("sharedLinkQrClose"),
+                    copied: t("sharedLinkCopied"),
+                    copyFailed: t("sharedLinkCopyFailed"),
+                    qrButton: t("sharedLinkQrButton"),
+                    qrCopyButton: t("sharedLinkQrCopyButton"),
+                    qrCopyCopied: t("sharedLinkQrCopyCopied"),
+                    qrCopyFailed: t("sharedLinkQrCopyFailed"),
+                    qrDescription: t("sharedLinkQrDescription"),
+                    qrTitle: t("sharedLinkQrTitle"),
+                  }}
+                  path={sharedPublicPath}
+                />
+              ) : null}
+              {visibleSharedJoinRequests.length > 0 ? (
+                <div className="mt-6">
+                  <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                    {t("sharedRequestsTitle")}
+                  </p>
+                  {visibleSharedJoinRequests.map((request) => (
+                    <SharedJoinRequestCard
+                      key={request.id}
+                      bookingStatus={booking.booking_status}
+                      bookingId={booking.id}
+                      decisionCompleted={sharedAccepted || sharedRejected}
+                      labels={{
+                        acceptButton: t("sharedRequestAcceptButton"),
+                        acceptPendingButton: t("sharedRequestAcceptPendingButton"),
+                        genderComposition: t("sharedRequestGenderComposition"),
+                        genderCompositionValues: {
+                          all_female: t("sharedRequestAllFemale"),
+                          all_male: t("sharedRequestAllMale"),
+                          mixed: t("sharedRequestMixed"),
+                          prefer_not_to_say: t("sharedRequestPreferNotToSay"),
+                        },
+                        guests: t("guests"),
+                        name: t("name"),
+                        rejectButton: t("sharedRequestRejectButton"),
+                        rejectPendingButton: t("sharedRequestRejectPendingButton"),
+                      }}
+                      locale={locale}
+                      request={request}
+                      token={token}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           {booking.booking_status === "confirmed" ? (
             <section className="mt-8 border border-stone-300 bg-[#f3eee7] p-5">
               <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
@@ -388,6 +628,7 @@ export default async function ManageBookingPage({ params, searchParams }) {
                   photos={MEET_UP_PHOTOS}
                   labels={{
                     close: t("meetUpPhotoClose"),
+                    hint: t("meetUpPhotoHint"),
                     next: t("meetUpPhotoNext"),
                     open: t("meetUpPhotoOpen"),
                     photoAlt: t("meetUpPhotoAlt"),

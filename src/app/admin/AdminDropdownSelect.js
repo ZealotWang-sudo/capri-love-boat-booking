@@ -7,6 +7,7 @@ function getSelectedLabel(options, value, placeholder) {
 }
 
 export default function AdminDropdownSelect({
+  defaultValue = "",
   label,
   name,
   options,
@@ -14,7 +15,7 @@ export default function AdminDropdownSelect({
 }) {
   const listboxId = useId();
   const [open, setOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState("");
+  const [selectedValue, setSelectedValue] = useState(defaultValue);
   const selectedLabel = getSelectedLabel(options, selectedValue, placeholder);
 
   function handleSelect(option) {

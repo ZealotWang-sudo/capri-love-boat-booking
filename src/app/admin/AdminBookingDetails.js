@@ -3,6 +3,11 @@
 import { useState } from "react";
 import AdminActionForm from "./AdminActionForm";
 import CopyCaptainMessageButton from "./CopyCaptainMessageButton";
+import CopySharedLinkButton from "@/components/CopySharedLinkButton";
+import {
+  getDisplayTimeForTimeSlot,
+  getValidTimeSlotsForTour,
+} from "@/lib/bookingAvailability";
 
 const STATUS_ACTIONS = [
   {
@@ -27,7 +32,7 @@ const STATUS_ACTIONS = [
   {
     actionType: "capture",
     id: "capture_authorized_payment",
-    label: "Captain available — capture payment",
+    label: "Captain available",
     confirmMessage:
       "Capture the authorized reservation fee and confirm this booking?",
     confirmTitle: "Capture payment and confirm?",
@@ -96,6 +101,22 @@ const STATUS_ACTIONS = [
     showWhen: { booking_status: "confirmed" },
   },
   {
+    actionType: "reschedule",
+    id: "reschedule_booking",
+    label: "Reschedule booking",
+    confirmLabel: "Save new date and time",
+    confirmMessage:
+      "Move this booking to a different date and time? Payment and confirmation status will stay unchanged.",
+    confirmTitle: "Reschedule booking?",
+    rescheduleDateFieldName: "requestedDate",
+    timeSlotFieldName: "timeSlot",
+    timeSlotLabel: "New time",
+    showWhen: { booking_status: "confirmed" },
+    variant: "primary",
+    warningNotice:
+      "This checks for overlaps with other active bookings before saving.",
+  },
+  {
     value: "cancelled",
     label: "Cancel request",
     cancellationTypeDefault: "admin_decision",
@@ -145,7 +166,7 @@ const STATUS_ACTIONS = [
     reasonLabel: "Reason for cancellation",
     reasonPlaceholder: "Optional note to include in the customer email.",
     refundWarning:
-      "Reservation fee has already been paid. Cancelling this booking will automatically start a Stripe refund before the customer email is sent.",
+      "Reservation fee has already been paid. Cancelling this booking will automatically start Stripe refunds for the main booking and any accepted shared join request before customer emails are sent.",
     showWhen: { booking_status: "confirmed" },
     variant: "danger",
   },
@@ -222,26 +243,218 @@ function DetailItem({ label, value }) {
   );
 }
 
-function DetailLink({ href, label }) {
-  if (!href) {
-    return <DetailItem label={label} value={null} />;
+function CollapsibleSection({
+  children,
+  defaultOpen = false,
+  description,
+  title,
+}) {
+  const [isExpanded, setIsExpanded] = useState(defaultOpen);
+
+  return (
+    <section className="border-t border-stone-300 py-4">
+      <div className="flex items-start justify-between gap-4 ">
+        <button
+          type="button"
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+          className="flex min-w-0 flex-1 items-start justify-between gap-4 text-left"
+        >
+          <span>
+            <span className="block text-xs uppercase tracking-[0.18em] text-stone-100 bg-stone-500 px-2 py-1 rounded-md">
+              {title}
+            </span>
+            {description ? (
+              <span className="mt-1 block text-xs leading-5 text-stone-500">
+                {description}
+              </span>
+            ) : null}
+          </span>
+          <span className="shrink-0 text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+            {isExpanded ? "Hide" : "Show"}
+          </span>
+        </button>
+      </div>
+      {isExpanded ? <div className="mt-5">{children}</div> : null}
+    </section>
+  );
+}
+
+function DetailGrid({ children }) {
+  return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
+}
+
+function getSharedGuestManagePath(request) {
+  if (!request.customer_manage_token) {
+    return "";
+  }
+
+  return `/${request.locale}/shared/manage/${request.id}?token=${encodeURIComponent(
+    request.customer_manage_token,
+  )}`;
+}
+
+function canShowConnectedSharedAdminActions({ booking, request }) {
+  return (
+    booking.booking_status === "confirmed" &&
+    booking.payment_status === "captured" &&
+    booking.shared_status === "connected" &&
+    booking.is_shared_open &&
+    request.status === "accepted" &&
+    request.payment_status === "captured"
+  );
+}
+
+function SharedAdminCancellationActions({ booking, request }) {
+  if (!canShowConnectedSharedAdminActions({ booking, request })) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5 border-t border-stone-300 pt-5">
+      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+        Connected shared cancellation
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <AdminActionForm
+          actionType="cancelSharedSecondary"
+          bookingId={booking.id}
+          confirmLabel="Refund secondary"
+          confirmMessage="Cancel only this secondary request? The joining group's prepayment will be refunded, the primary booking stays confirmed, and the shared link reopens."
+          confirmTitle="Cancel secondary request?"
+          label="Cancel secondary request"
+          requestId={request.id}
+          variant="danger"
+          warningNotice="Use this when the joining group should be removed but the original primary booking should continue. Both groups will be emailed."
+        />
+        <AdminActionForm
+          actionType="cancelSharedPrimaryPromote"
+          bookingId={booking.id}
+          confirmLabel="Refund primary and promote"
+          confirmMessage="Cancel the original primary group and promote this secondary group into the main booking? The original primary prepayment will be refunded. This group's captured prepayment will be kept as the booking prepayment."
+          confirmTitle="Promote secondary to primary?"
+          label="Cancel primary and promote"
+          reasonFieldName="cancellationReason"
+          reasonLabel="Reason for primary cancellation"
+          reasonPlaceholder="Optional note to include in the original primary customer's email."
+          requestId={request.id}
+          variant="danger"
+          warningNotice="This keeps the same booking date and share link, but replaces the main customer details with this secondary group and reopens sharing."
+        />
+      </div>
+    </div>
+  );
+}
+
+function SharedRequestDebugCard({ booking, request }) {
+  const guestManagePath = getSharedGuestManagePath(request);
+
+  return (
+    <article className="border border-stone-300 bg-[#fbf8f3] p-4">
+      {guestManagePath ? (
+        <div className="mb-4 flex justify-end">
+          <ManageBookingButton
+            label="Open guest summary"
+            path={guestManagePath}
+          />
+        </div>
+      ) : null}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DetailItem label="Request ID" value={request.id} />
+        <DetailItem label="Created" value={request.created_at} />
+        <DetailItem label="Updated" value={request.updated_at} />
+        <DetailItem label="Locale" value={request.locale} />
+        <DetailItem label="Name" value={request.customer_name} />
+        <DetailItem label="Email" value={request.email} />
+        <DetailItem label="Phone" value={request.phone} />
+        <DetailItem label="WhatsApp" value={request.whatsapp} />
+        <DetailItem label="WeChat" value={request.wechat} />
+        <DetailItem
+          label="Preferred contact"
+          value={request.preferred_contact_method}
+        />
+        <DetailItem label="Guests" value={request.guest_count} />
+        <DetailItem label="Gender" value={request.gender_composition} />
+        <DetailItem label="Status" value={request.status} />
+        <DetailItem label="Payment status" value={request.payment_status} />
+        <DetailItem
+          label="Original request fee"
+          value={formatEuro(request.original_shared_request_fee_eur)}
+        />
+        <DetailItem label="Promo code" value={request.promo_code} />
+        <DetailItem
+          label="Promo discount"
+          value={formatDiscount(request.promo_discount_eur)}
+        />
+        <DetailItem
+          label="Final request fee"
+          value={formatEuro(request.shared_request_fee_eur)}
+        />
+        <DetailItem
+          label="Consent accepted"
+          value={request.consent_accepted ? "yes" : "no"}
+        />
+        <DetailItem label="Authorized at" value={request.authorized_at} />
+        <DetailItem
+          label="Host deadline"
+          value={request.host_response_deadline_at}
+        />
+        <DetailItem
+          label="Payment intent"
+          value={request.stripe_payment_intent_id}
+        />
+        <DetailItem
+          label="Checkout session"
+          value={request.stripe_checkout_session_id}
+        />
+      </div>
+      <div className="mt-4">
+        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+          Message
+        </p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-stone-700">
+          {formatValue(request.message)}
+        </p>
+      </div>
+      <SharedAdminCancellationActions booking={booking} request={request} />
+    </article>
+  );
+}
+
+function ManageBookingButton({ label = "Open manage page", path }) {
+  if (!path) {
+    return <DetailItem label="Manage booking" value={null} />;
+  }
+
+  function handleOpenManageBooking() {
+    window.open(`${window.location.origin}${path}`, "_blank", "noreferrer");
   }
 
   return (
     <div>
-      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
-        {label}
-      </p>
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-1 block break-all text-sm text-stone-950 underline decoration-stone-400 underline-offset-4 hover:text-stone-600"
+      <button
+        type="button"
+        onClick={handleOpenManageBooking}
+        className="mt-2 border border-stone-950 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-[0.16em] text-stone-950 transition hover:bg-stone-950 hover:text-[#f3eee7]"
       >
-        {href}
-      </a>
+        {label}
+      </button>
     </div>
   );
+}
+
+function getSharedPublicPath(booking) {
+  if (!booking.locale || !booking.shared_public_token) {
+    return "";
+  }
+
+  return `/${booking.locale}/shared/${booking.shared_public_token}`;
+}
+
+function getRescheduleTimeSlotOptions(booking) {
+  return getValidTimeSlotsForTour(booking.tour_type).map((timeSlot) => ({
+    label: getDisplayTimeForTimeSlot(timeSlot) || timeSlot,
+    value: timeSlot,
+  }));
 }
 
 function StatusActionForm({ action, booking }) {
@@ -262,7 +475,17 @@ function StatusActionForm({ action, booking }) {
       reasonPlaceholder={action.reasonPlaceholder}
       reasonRequired={action.reasonRequired}
       releaseOutcome={action.releaseOutcome}
+      rescheduleDateDefault={booking.requested_date}
+      rescheduleDateFieldName={action.rescheduleDateFieldName}
       statusAction={action.value}
+      timeSlotDefault={booking.time_slot}
+      timeSlotFieldName={action.timeSlotFieldName}
+      timeSlotLabel={action.timeSlotLabel}
+      timeSlotOptions={
+        action.actionType === "reschedule"
+          ? getRescheduleTimeSlotOptions(booking)
+          : undefined
+      }
       variant={action.variant}
       warningNotice={
         action.warningNotice ??
@@ -306,6 +529,9 @@ function shouldShowStatusAction(action, booking) {
 export default function AdminBookingDetails({ booking, captainMessage }) {
   const [isOpen, setIsOpen] = useState(false);
   const whatsappHref = getWhatsappHref(booking.phone);
+  const sharedJoinRequests = Array.isArray(booking.shared_join_requests)
+    ? booking.shared_join_requests
+    : [];
   const showCancellationDetails =
     booking.cancellation_reason ||
     booking.cancellation_type ||
@@ -330,18 +556,26 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
       {isOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/35 px-4 py-6">
           <div className="mx-auto max-w-3xl border border-stone-300 bg-[#f3eee7] p-5 text-stone-950 shadow-xl sm:p-8">
-            <div className="flex items-start justify-between gap-6 border-b border-stone-300 pb-5">
-              <div>
+            <div className="flex items-start justify-between gap-6  border-stone-300 pb-5">
+              <div className="">
                 <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
                   Booking details
                 </p>
+                <div className="flex flex justify-between ">
+
+                <div className="flex flex-col ">
                 <h2 className="mt-3 text-3xl font-light tracking-[-0.03em]">
                   {formatValue(booking.customer_name)}
                 </h2>
                 <p className="mt-2 text-sm uppercase tracking-[0.16em] text-stone-500">
                   {formatValue(booking.reference_code)}
                 </p>
+                </div>
+
+                </div>
               </div>
+
+              <div className="flex flex-col items-end justify-end gap-2 ">
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -349,13 +583,13 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
               >
                 Close
               </button>
+              <ManageBookingButton path={booking.manage_path} />
+              </div>
             </div>
 
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              <section className="space-y-4">
-                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Trip
-                </h3>
+            <div className="mt-4">
+              <CollapsibleSection title="Trip">
+                <DetailGrid>
                 <DetailItem label="Reference" value={booking.reference_code} />
                 <DetailItem label="Date" value={booking.requested_date} />
                 <DetailItem
@@ -365,12 +599,11 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                 <DetailItem label="Tour" value={booking.tour_label} />
                 <DetailItem label="Guests" value={booking.guest_count} />
                 <DetailItem label="Language" value={booking.locale} />
-              </section>
+                </DetailGrid>
+              </CollapsibleSection>
 
-              <section className="space-y-4">
-                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Contact
-                </h3>
+              <CollapsibleSection title="Contact">
+                <DetailGrid>
                 <DetailItem label="Email" value={booking.email} />
                 <div>
                   <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
@@ -397,16 +630,20 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   label="Contact method"
                   value={booking.contact_method}
                 />
-                <DetailLink
-                  href={booking.manage_url}
-                  label="Manage booking"
-                />
-              </section>
 
-              <section className="space-y-4">
-                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Price
-                </h3>
+                </DetailGrid>
+                <div className="mt-5 border-t border-stone-300 pt-5">
+                  <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                    Customer message
+                  </p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-700">
+                    {formatValue(booking.message)}
+                  </p>
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection title="Price">
+                <DetailGrid>
                 <DetailItem
                   label="Total"
                   value={formatEuro(booking.total_price_eur)}
@@ -437,24 +674,98 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   label="Pay on site"
                   value={formatEuro(booking.pay_on_board_eur)}
                 />
-              </section>
+                </DetailGrid>
+              </CollapsibleSection>
 
-              <section className="space-y-4">
-                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Status
-                </h3>
+              <CollapsibleSection title="Status">
+                <DetailGrid>
                 <DetailItem
                   label="Booking"
                   value={booking.booking_status_display ?? booking.booking_status}
                 />
                 <DetailItem label="Payment" value={booking.payment_status} />
                 <DetailItem label="Captain" value={booking.captain_status} />
-              </section>
+                </DetailGrid>
+                <div className="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                      Captain message
+                    </p>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {booking.captain_message_state?.label
+                        ? booking.captain_message_state.label
+                        : "Generated Italian message"}
+                    </p>
+                  </div>
+                  <CopyCaptainMessageButton
+                    bookingId={booking.id}
+                    initialCopied={booking.captain_message_state?.copied}
+                    message={captainMessage}
+                    messageType={booking.captain_message_state?.messageType}
+                  />
+                </div>
+              </CollapsibleSection>
 
-              <section className="space-y-4">
-                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Stripe
-                </h3>
+              <CollapsibleSection title="Shared boat">
+
+                <DetailGrid>
+                <DetailItem
+                  label="Shared enabled"
+                  value={booking.is_shared_open ? "true" : "false"}
+                />
+                <DetailItem label="Shared status" value={booking.shared_status} />
+                <DetailItem
+                  label="Open seats"
+                  value={booking.shared_open_seats}
+                />
+                <DetailItem
+                  label="Gender preference"
+                  value={booking.shared_gender_preference}
+                />
+                <DetailItem
+                  label="Max join groups"
+                  value={booking.shared_max_join_groups}
+                />
+                {/* <DetailItem
+                  label="Public token"
+                  value={booking.shared_public_token}
+                /> */}
+                </DetailGrid>
+                {booking.is_shared_open && booking.shared_public_token ? (
+                  <div className="mb-5 mt-5">
+                    <p className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                      Share link
+                    </p>
+                    <CopySharedLinkButton
+                      label="Copy shared link"
+                      path={getSharedPublicPath(booking)}
+                    />
+                  </div>
+                ) : null}
+              <div className="mt-6 border-t border-stone-300 pt-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                  Shared join requests
+                </p>
+              {sharedJoinRequests.length > 0 ? (
+                <div className="mt-4 space-y-4">
+                  {sharedJoinRequests.map((request) => (
+                    <SharedRequestDebugCard
+                      key={request.id}
+                      booking={booking}
+                      request={request}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-stone-500">
+                  No shared join requests for this booking.
+                </p>
+              )}
+              </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection title="Stripe">
+                <DetailGrid>
                 <DetailItem
                   label="Payment intent"
                   value={booking.stripe_payment_intent_id}
@@ -463,23 +774,13 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   label="Checkout session"
                   value={booking.stripe_checkout_session_id}
                 />
-              </section>
+                </DetailGrid>
+              </CollapsibleSection>
             </div>
 
-            <section className="mt-8 border-t border-stone-300 pt-6">
-              <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                Customer message
-              </h3>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-700">
-                {formatValue(booking.message)}
-              </p>
-            </section>
-
             {showCancellationDetails ? (
-              <section className="mt-8 border-t border-stone-300 pt-6">
-                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Cancellation
-                </h3>
+              <CollapsibleSection title="Cancellation">
+                <DetailGrid>
                 {booking.customer_cancelled_at ? (
                   <DetailItem
                     label="Cancelled by customer at"
@@ -498,30 +799,16 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                     value={booking.cancellation_type}
                   />
                 ) : null}
+                </DetailGrid>
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-700">
                   {formatValue(
                     booking.cancellation_reason || booking.customer_cancel_reason,
                   )}
                 </p>
-              </section>
+              </CollapsibleSection>
             ) : null}
 
-            <section className="mt-8 grid gap-4 border-t border-stone-300 pt-6 sm:grid-cols-[1fr_auto] sm:items-start">
-              <div>
-                <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                  Captain message
-                </h3>
-                <p className="mt-2 text-sm text-stone-600">
-                  Copies the generated Italian message for the captain.
-                </p>
-              </div>
-              <CopyCaptainMessageButton message={captainMessage} />
-            </section>
-
-            <section className="mt-8 border-t border-stone-300 pt-6">
-              <h3 className="text-xs uppercase tracking-[0.18em] text-stone-500">
-                Manual actions
-              </h3>
+            <CollapsibleSection title="Manual actions">
               {availableActions.length > 0 ? (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {availableActions.map((action) => (
@@ -537,7 +824,7 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   No manual action buttons for this booking.
                 </p>
               )}
-            </section>
+            </CollapsibleSection>
           </div>
         </div>
       ) : null}

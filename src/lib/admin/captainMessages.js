@@ -6,6 +6,16 @@ const CAPTAIN_TOUR_LABELS = {
   two_hours: "2 ore",
   special_request: "Richiesta speciale",
 };
+export const CAPTAIN_MESSAGE_TYPES = {
+  cancellation: "cancellation",
+  finalConfirmation: "final_confirmation",
+  timeConfirmation: "time_confirmation",
+};
+export const CAPTAIN_MESSAGE_TYPE_LABELS = {
+  [CAPTAIN_MESSAGE_TYPES.cancellation]: "Cancellation",
+  [CAPTAIN_MESSAGE_TYPES.finalConfirmation]: "Final confirmation",
+  [CAPTAIN_MESSAGE_TYPES.timeConfirmation]: "Time confirmation",
+};
 
 function formatValue(value) {
   return value || "—";
@@ -36,19 +46,16 @@ function formatItalianDate(value) {
 export function buildCaptainTimeConfirmationMessage(booking) {
   const customerMessage = booking.message?.trim();
   const messageLines = [
-    "Ciao, abbiamo una nuova richiesta di prenotazione da verificare.",
+    "Ciao, puoi verificare la disponibilità per questa richiesta?",
     "",
     `Riferimento: ${formatReferenceCode(booking.id)}`,
     `Cliente: ${formatValue(booking.customer_name)}`,
-    "",
     `Tour: ${formatCaptainTourType(booking.tour_type)}`,
     `Data: ${formatItalianDate(booking.requested_date)}`,
     `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
     `Ospiti: ${formatValue(booking.guest_count)}`,
     "",
-    "Puoi confermare se sei disponibile per questo orario?",
-    "",
-    "Nota: questa non è ancora una prenotazione confermata. Se confermi la disponibilità, incasseremo la quota di prenotazione e ti invieremo il messaggio finale di conferma.",
+    "Non è ancora confermata: se confermi, incassiamo la quota e ti inviamo la conferma finale.",
   ];
 
   if (customerMessage) {
@@ -84,13 +91,85 @@ export function buildCaptainFinalConfirmationMessage(booking) {
   return messageLines.join("\n");
 }
 
-export function buildCaptainMessage(booking) {
-  const isPaidBooking =
-    booking.payment_status === "captured" ||
-    booking.booking_status === "confirmed" ||
-    booking.booking_status === "completed";
+export function buildCaptainCancellationMessage(booking) {
+  const cancellationReason =
+    booking.customer_cancel_reason?.trim() || booking.cancellation_reason?.trim();
 
-  return isPaidBooking
-    ? buildCaptainFinalConfirmationMessage(booking)
-    : buildCaptainTimeConfirmationMessage(booking);
+  const messageLines = [
+    "Ciao, il cliente ha cancellato questa prenotazione.",
+    "",
+    `Riferimento: ${formatReferenceCode(booking.id)}`,
+    `Cliente: ${formatValue(booking.customer_name)}`,
+    "",
+    `Tour: ${formatCaptainTourType(booking.tour_type)}`,
+    `Data: ${formatItalianDate(booking.requested_date)}`,
+    `Orario: ${formatValue(booking.time_window || booking.time_slot)}`,
+    `Ospiti: ${formatValue(booking.guest_count)}`,
+    "",
+    "Questa prenotazione non è più confermata, quindi non è necessario tenere questo orario riservato.",
+  ];
+
+  if (cancellationReason) {
+    messageLines.push("", "Motivo della cancellazione:", cancellationReason);
+  }
+
+  return messageLines.join("\n");
+}
+
+export function getCaptainMessageType(booking) {
+  if (booking.booking_status === "cancelled" || booking.booking_status === "not_available") {
+    return CAPTAIN_MESSAGE_TYPES.cancellation;
+  }
+
+  if (
+    booking.payment_status === "captured" ||
+    booking.booking_status === "confirmed"
+  ) {
+    return CAPTAIN_MESSAGE_TYPES.finalConfirmation;
+  }
+
+  if (
+    booking.booking_status === "requested" ||
+    booking.booking_status === "checking_with_captain"
+  ) {
+    return CAPTAIN_MESSAGE_TYPES.timeConfirmation;
+  }
+
+  return null;
+}
+
+export function getCaptainMessageCopiedState(booking) {
+  const messageType = getCaptainMessageType(booking);
+
+  if (!messageType) {
+    return {
+      copied: false,
+      copiedAt: null,
+      label: "No captain message",
+      messageType: null,
+    };
+  }
+
+  const copied = booking.captain_message_copied_type === messageType;
+
+  return {
+    copied,
+    copiedAt: copied ? booking.captain_message_copied_at : null,
+    label: CAPTAIN_MESSAGE_TYPE_LABELS[messageType],
+    messageType,
+  };
+}
+
+export function buildCaptainMessage(booking) {
+  const messageType = getCaptainMessageType(booking);
+
+  if (messageType === CAPTAIN_MESSAGE_TYPES.cancellation) {
+    return buildCaptainCancellationMessage(booking);
+  }
+
+  if (messageType === CAPTAIN_MESSAGE_TYPES.finalConfirmation) {
+    return buildCaptainFinalConfirmationMessage(booking);
+  }
+
+  return buildCaptainTimeConfirmationMessage(booking);
 }

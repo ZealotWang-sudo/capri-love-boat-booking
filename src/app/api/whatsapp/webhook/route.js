@@ -29,8 +29,29 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
+  const entries = Array.isArray(body.entry) ? body.entry : [];
 
-  console.log("[whatsapp webhook]", JSON.stringify(body, null, 2));
+  entries.forEach((entry) => {
+    const changes = Array.isArray(entry.changes) ? entry.changes : [];
+
+    changes.forEach((change) => {
+      const messages = Array.isArray(change.value?.messages)
+        ? change.value.messages
+        : [];
+
+      messages.forEach((message) => {
+        const normalizedMessage = {
+          from: message.from,
+          messageId: message.id,
+          timestamp: message.timestamp,
+          type: message.type,
+          text: message.text?.body ?? null,
+        };
+
+        console.log("[whatsapp normalized message]", normalizedMessage);
+      });
+    });
+  });
 
   return NextResponse.json({ received: true }, { status: 200 });
 }

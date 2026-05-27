@@ -14,11 +14,16 @@ export async function POST(request) {
   const guestCount = getText(String(body?.guest_count ?? ""), "-");
   const customerMessage = getText(body?.customer_message, "Nessun messaggio.");
   const toPhone =
-    getText(body?.to_phone) || process.env.WHATSAPP_TEST_RECIPIENT_PHONE;
+    getText(body?.to_phone) ||
+    process.env.WHATSAPP_CAPTAIN_PHONE ||
+    process.env.WHATSAPP_TEST_RECIPIENT_PHONE;
 
   if (!toPhone) {
     return NextResponse.json(
-      { error: "Missing to_phone and WHATSAPP_TEST_RECIPIENT_PHONE." },
+      {
+        error:
+          "Missing to_phone, WHATSAPP_CAPTAIN_PHONE, and WHATSAPP_TEST_RECIPIENT_PHONE.",
+      },
       { status: 400 },
     );
   }

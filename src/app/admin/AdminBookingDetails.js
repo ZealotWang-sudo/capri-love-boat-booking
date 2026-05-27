@@ -712,7 +712,7 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {canSendCaptainWhatsapp ? (
-                      <SendCaptainWhatsAppButton bookingId={booking.id} />
+                      <SendCaptainWhatsAppButton booking={booking} />
                     ) : null}
                     <CopyCaptainMessageButton
                       bookingId={booking.id}

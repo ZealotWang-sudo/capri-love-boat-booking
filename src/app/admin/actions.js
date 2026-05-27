@@ -88,8 +88,6 @@ const RESCHEDULE_SHARED_REQUEST_SELECT =
   "id, booking_id, locale, customer_name, email, customer_manage_token, guest_count, gender_composition, shared_request_fee_eur, payment_status, status";
 const COMPLETED_SHARED_REQUEST_SELECT =
   "id, booking_id, locale, customer_name, email, customer_manage_token, guest_count, shared_request_fee_eur, payment_status, status";
-const CAPTAIN_WHATSAPP_BOOKING_SELECT =
-  "id, requested_date, time_slot, time_window, tour_type, guest_count, message, captain_status";
 
 function getAdminRedirectPath(params = {}) {
   const searchParams = new URLSearchParams(params);
@@ -109,19 +107,6 @@ function getPaymentIntentId(paymentIntent) {
   }
 
   return typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id;
-}
-
-function formatBookingReferenceCode(bookingId) {
-  return bookingId ? `CAPRI-${bookingId.slice(0, 8).toUpperCase()}` : "-";
-}
-
-function formatBookingDateForCaptainMessage(value) {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value || "-";
-  }
-
-  const [year, month, day] = value.split("-");
-  return `${day}/${month}/${year}`;
 }
 
 function isValidDateString(value) {
@@ -756,62 +741,6 @@ export async function sendCaptainWhatsappBookingAction({ bookingId }) {
   }
 
   const supabase = await getAdminSupabaseClient();
-  const { data: booking, error: loadError } = await supabase
-    .from("bookings")
-    .select(CAPTAIN_WHATSAPP_BOOKING_SELECT)
-    .eq("id", bookingId)
-    .maybeSingle();
-
-  if (loadError) {
-    console.error("[admin captain whatsapp] Could not load booking", {
-      bookingId,
-      message: loadError.message,
-    });
-    throw new Error("Could not load booking.");
-  }
-
-  if (!booking) {
-    throw new Error("Booking not found.");
-  }
-
-  const toPhone = process.env.WHATSAPP_CAPTAIN_PHONE;
-
-  if (!toPhone) {
-    throw new Error("Missing WHATSAPP_CAPTAIN_PHONE environment variable.");
-  }
-
-  const origin = await getRequestOrigin();
-
-  if (!origin) {
-    throw new Error("Could not determine request origin.");
-  }
-
-  const response = await fetch(`${origin}/api/whatsapp/send-captain-booking`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      booking_reference: formatBookingReferenceCode(booking.id),
-      booking_date: formatBookingDateForCaptainMessage(booking.requested_date),
-      booking_time: booking.time_window || booking.time_slot || "-",
-      customer_message: booking.message,
-      guest_count: booking.guest_count,
-      to_phone: toPhone,
-      tour_type: booking.tour_type,
-    }),
-  });
-  const apiResponse = await response.json();
-
-  if (!response.ok) {
-    console.error("[admin captain whatsapp] Endpoint returned error", {
-      bookingId,
-      response: apiResponse,
-      status: response.status,
-    });
-    throw new Error(apiResponse?.error || "Could not send WhatsApp message.");
-  }
-
   const sentAt = new Date().toISOString();
   let { error: updateError } = await supabase
     .from("bookings")
@@ -820,7 +749,7 @@ export async function sendCaptainWhatsappBookingAction({ bookingId }) {
       captain_status: "message_sent",
       updated_at: sentAt,
     })
-    .eq("id", booking.id);
+    .eq("id", bookingId);
 
   if (
     updateError &&
@@ -834,7 +763,7 @@ export async function sendCaptainWhatsappBookingAction({ bookingId }) {
         captain_status: "message_sent",
         updated_at: sentAt,
       })
-      .eq("id", booking.id);
+      .eq("id", bookingId);
 
     updateError = updateWithoutTimestamp.error;
   }

@@ -4,7 +4,15 @@ import { useState } from "react";
 import AdminNotice from "./AdminNotice";
 import { sendCaptainWhatsappBookingAction } from "./actions";
 
-export default function SendCaptainWhatsAppButton({ bookingId }) {
+function getReferenceCode(booking) {
+  if (booking?.reference_code) {
+    return booking.reference_code;
+  }
+
+  return booking?.id ? `CAPRI-${booking.id.slice(0, 8).toUpperCase()}` : "-";
+}
+
+export default function SendCaptainWhatsAppButton({ booking }) {
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const isSending = status === "sending";
@@ -13,7 +21,42 @@ export default function SendCaptainWhatsAppButton({ bookingId }) {
     try {
       setStatus("sending");
       setErrorMessage("");
-      await sendCaptainWhatsappBookingAction({ bookingId });
+      const payload = {
+        booking_reference: getReferenceCode(booking),
+        booking_date: booking?.requested_date || "-",
+        booking_time: booking?.time_window || booking?.time_slot || "-",
+        customer_message: booking?.message || "",
+        guest_count: booking?.guest_count,
+        to_phone: null,
+        tour_type: booking?.tour_label || booking?.tour_type || "-",
+      };
+      const response = await fetch("/api/whatsapp/send-captain-booking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const responseText = await response.text();
+      let parsedResponse = null;
+
+      try {
+        parsedResponse = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        parsedResponse = null;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `HTTP ${response.status}: ${responseText.slice(0, 300) || "Empty response"}`,
+        );
+      }
+
+      if (parsedResponse?.error) {
+        throw new Error(String(parsedResponse.error).slice(0, 300));
+      }
+
+      await sendCaptainWhatsappBookingAction({ bookingId: booking.id });
       setStatus("sent");
     } catch (error) {
       setStatus("failed");

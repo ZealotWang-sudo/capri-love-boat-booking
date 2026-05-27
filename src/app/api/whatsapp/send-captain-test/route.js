@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sendWhatsAppText } from "@/lib/whatsapp/sendWhatsAppText";
 
 const CAPTAIN_TEST_MESSAGE = `Ciao Renato, nuova richiesta da verificare.
 
@@ -11,41 +12,28 @@ Ospiti: 2
 Puoi confermare la disponibilità?`;
 
 export async function POST() {
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const recipientPhone = process.env.WHATSAPP_TEST_RECIPIENT_PHONE;
 
-  if (!accessToken || !phoneNumberId || !recipientPhone) {
+  if (!recipientPhone) {
     return NextResponse.json(
       {
-        error:
-          "Missing WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, or WHATSAPP_TEST_RECIPIENT_PHONE.",
+        error: "Missing WHATSAPP_TEST_RECIPIENT_PHONE.",
       },
       { status: 500 },
     );
   }
 
-  const response = await fetch(
-    `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: recipientPhone,
-        type: "text",
-        text: {
-          body: CAPTAIN_TEST_MESSAGE,
-        },
-      }),
-    },
-  );
-  const metaResponse = await response.json();
+  try {
+    const metaResponse = await sendWhatsAppText({
+      to: recipientPhone,
+      body: CAPTAIN_TEST_MESSAGE,
+    });
 
-  console.log("[whatsapp captain test response]", metaResponse);
+    console.log("[whatsapp captain test response]", metaResponse);
 
-  return NextResponse.json(metaResponse, { status: response.status });
+    return NextResponse.json(metaResponse, { status: 200 });
+  } catch (error) {
+    console.error("[whatsapp captain test] Request failed", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

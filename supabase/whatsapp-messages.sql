@@ -13,3 +13,6 @@ create table if not exists public.whatsapp_messages (
   raw_payload jsonb,
   created_at timestamptz default now()
 );
+
+grant usage on schema public to service_role;
+grant select, insert, update, delete on table public.whatsapp_messages to service_role;

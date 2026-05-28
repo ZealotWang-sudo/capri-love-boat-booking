@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import AdminRealtimeRefresh from "@/components/admin/AdminRealtimeRefresh";
 import {
@@ -14,6 +13,7 @@ import AdminSubmitButton from "../AdminSubmitButton";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
 import AdminCalendarDayCard from "./AdminCalendarDayCard";
+import AdminCalendarMonthNavigation from "./AdminCalendarMonthNavigation";
 import { markDateRangeUnavailable } from "./actions";
 const ADMIN_UNAVAILABLE_SLOTS_SQL = `-- Manual admin calendar unavailability.
 -- Run this in the Supabase SQL editor.
@@ -122,16 +122,6 @@ function getNoticeText(searchParams, key) {
   const value = searchParams?.[key];
 
   return typeof value === "string" ? value : "";
-}
-
-function addMonths(month, offset) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const date = new Date(Date.UTC(year, monthNumber - 1 + offset, 1));
-
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
-    2,
-    "0",
-  )}`;
 }
 
 function formatMonthLabel(month) {
@@ -312,20 +302,7 @@ export default async function AdminCalendarPage({ searchParams }) {
               {formatMonthLabel(month)}
             </h2>
           </div>
-          <div className="flex gap-2">
-            <Link
-              href={`/admin/calendar?month=${addMonths(month, -1)}`}
-              className="border border-stone-300 px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
-            >
-              Previous
-            </Link>
-            <Link
-              href={`/admin/calendar?month=${addMonths(month, 1)}`}
-              className="border border-stone-300 px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-700 transition hover:border-stone-950 hover:bg-stone-950 hover:text-[#f3eee7]"
-            >
-              Next
-            </Link>
-          </div>
+          <AdminCalendarMonthNavigation month={month} />
         </div>
 
         <form

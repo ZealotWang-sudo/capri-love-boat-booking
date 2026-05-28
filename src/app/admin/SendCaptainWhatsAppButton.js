@@ -11,12 +11,14 @@ export default function SendCaptainWhatsAppButton({
 }) {
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [warningMessage, setWarningMessage] = useState("");
   const isSending = status === "sending";
 
   async function handleSend() {
     try {
       setStatus("sending");
       setErrorMessage("");
+      setWarningMessage("");
       const payload = {
         booking_id: booking.id,
         captain_message: captainMessage || "",
@@ -52,6 +54,15 @@ export default function SendCaptainWhatsAppButton({
         bookingId: booking.id,
         messageType,
       });
+
+      if (parsedResponse?.tracking?.inserted === false) {
+        setStatus("sent");
+        setWarningMessage(
+          `WhatsApp sent, but tracking row was not saved: ${String(parsedResponse?.tracking?.error || "Unknown error.").slice(0, 220)}`,
+        );
+        return;
+      }
+
       setStatus("sent");
     } catch (error) {
       setStatus("failed");
@@ -70,6 +81,9 @@ export default function SendCaptainWhatsAppButton({
       ) : null}
       {status === "failed" ? (
         <AdminNotice tone="error">{errorMessage}</AdminNotice>
+      ) : null}
+      {warningMessage ? (
+        <AdminNotice tone="error">{warningMessage}</AdminNotice>
       ) : null}
       <button
         type="button"

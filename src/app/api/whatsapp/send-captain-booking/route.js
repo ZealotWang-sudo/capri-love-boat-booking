@@ -6,6 +6,37 @@ function getText(value, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+async function insertOutboundWhatsAppTracking({
+  bookingId,
+  metaMessageId,
+  metaResponse,
+  toPhone,
+}) {
+  const supabase = createSupabaseServiceRoleServerClient();
+  const { error: insertError } = await supabase.from("whatsapp_messages").insert({
+    booking_id: bookingId,
+    direction: "outbound",
+    message_type: "text",
+    meta_message_id: metaMessageId,
+    raw_payload: metaResponse,
+    status: "sent",
+    template_name: null,
+    to_phone: toPhone,
+  });
+
+  if (!insertError || insertError.code === "23505") {
+    return {
+      inserted: true,
+      error: null,
+    };
+  }
+
+  return {
+    inserted: false,
+    error: insertError.message || "Unknown insert error.",
+  };
+}
+
 export async function POST(request) {
   const body = await request.json();
   const bookingId = getText(body?.booking_id, "");
@@ -42,26 +73,19 @@ export async function POST(request) {
       body: captainMessage,
     });
     const metaMessageId = getText(metaResponse?.messages?.[0]?.id, null);
-    const supabase = createSupabaseServiceRoleServerClient();
-    const { error: insertError } = await supabase
-      .from("whatsapp_messages")
-      .insert({
-        booking_id: bookingId,
-        direction: "outbound",
-        message_type: "text",
-        meta_message_id: metaMessageId,
-        raw_payload: metaResponse,
-        status: "sent",
-        template_name: null,
-        to_phone: toPhone,
-      });
+    const trackingResult = await insertOutboundWhatsAppTracking({
+      bookingId,
+      metaMessageId,
+      metaResponse,
+      toPhone,
+    });
 
-    if (insertError && insertError.code !== "23505") {
+    if (!trackingResult.inserted) {
       console.error(
         "[whatsapp captain booking] Could not insert outbound message tracking",
         {
           bookingId,
-          message: insertError.message,
+          message: trackingResult.error,
           metaMessageId,
         },
       );
@@ -69,7 +93,13 @@ export async function POST(request) {
 
     console.log("[whatsapp captain booking response]", metaResponse);
 
-    return NextResponse.json(metaResponse, { status: 200 });
+    return NextResponse.json(
+      {
+        ...metaResponse,
+        tracking: trackingResult,
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("[whatsapp captain booking] Request failed", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });

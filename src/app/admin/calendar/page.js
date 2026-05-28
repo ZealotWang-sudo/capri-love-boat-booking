@@ -10,9 +10,11 @@ import {
 } from "@/lib/bookingAvailability";
 import AdminHeader from "../AdminHeader";
 import AdminNotice from "../AdminNotice";
+import AdminSubmitButton from "../AdminSubmitButton";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
 import AdminCalendarDayCard from "./AdminCalendarDayCard";
+import { markDateRangeUnavailable } from "./actions";
 const ADMIN_UNAVAILABLE_SLOTS_SQL = `-- Manual admin calendar unavailability.
 -- Run this in the Supabase SQL editor.
 
@@ -279,11 +281,14 @@ export default async function AdminCalendarPage({ searchParams }) {
   const unavailableSlotsByDate = groupUnavailableSlots(unavailableRows ?? []);
   const dates = getCalendarDates(monthRange, todayDate);
   const updatedNotice = getNoticeText(resolvedSearchParams, "updated");
+  const updatedRangeCount = getNoticeText(resolvedSearchParams, "range");
   const successNotice =
     updatedNotice === "available"
       ? "Time slot is available again."
       : updatedNotice === "unavailable"
         ? "Time slot marked unavailable."
+        : updatedNotice === "unavailable_range"
+          ? `Marked ${updatedRangeCount || "multiple"} day(s) unavailable.`
         : "";
   const errorNotice = getNoticeText(resolvedSearchParams, "error");
 
@@ -322,6 +327,64 @@ export default async function AdminCalendarPage({ searchParams }) {
             </Link>
           </div>
         </div>
+
+        <form
+          action={markDateRangeUnavailable}
+          className="mt-4 border border-stone-300 bg-[#fbf8f3] p-5"
+        >
+          <input type="hidden" name="month" value={month} />
+          <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
+            Quick block
+          </p>
+          <h3 className="mt-2 text-xl font-light tracking-[-0.02em]">
+            Mark multiple days unavailable
+          </h3>
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            <label className="block">
+              <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                Start date
+              </span>
+              <input
+                type="date"
+                name="startDate"
+                defaultValue={rangeStartDate}
+                required
+                className="mt-2 w-full border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-950"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                End date
+              </span>
+              <input
+                type="date"
+                name="endDate"
+                defaultValue={monthRange.endDate}
+                required
+                className="mt-2 w-full border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-950"
+              />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                Reason (optional)
+              </span>
+              <input
+                type="text"
+                name="reason"
+                placeholder="Vacation / maintenance / private event"
+                className="mt-2 w-full border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-950"
+              />
+            </label>
+          </div>
+          <div className="mt-4">
+            <AdminSubmitButton
+              pendingLabel="Blocking days..."
+              className="border border-stone-950 bg-stone-950 px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60"
+            >
+              Mark range unavailable
+            </AdminSubmitButton>
+          </div>
+        </form>
 
         {bookingsError || unavailableError ? (
           <div className="mt-8 border border-red-900/30 bg-red-50 p-5 text-sm leading-7 text-red-900">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { sendWhatsAppText } from "@/lib/whatsapp/sendWhatsAppText";
 
 function getText(value, fallback = "") {
@@ -7,12 +8,8 @@ function getText(value, fallback = "") {
 
 export async function POST(request) {
   const body = await request.json();
-  const bookingReference = getText(body?.booking_reference, "-");
-  const bookingDate = getText(body?.booking_date, "-");
-  const bookingTime = getText(body?.booking_time, "-");
-  const tourType = getText(body?.tour_type, "-");
-  const guestCount = getText(String(body?.guest_count ?? ""), "-");
-  const customerMessage = getText(body?.customer_message, "Nessun messaggio.");
+  const bookingId = getText(body?.booking_id, "");
+  const captainMessage = getText(body?.captain_message, "");
   const toPhone =
     getText(body?.to_phone) ||
     process.env.WHATSAPP_CAPTAIN_PHONE ||
@@ -28,24 +25,47 @@ export async function POST(request) {
     );
   }
 
-  const messageBody = `Ciao Renato, nuova richiesta da verificare.
+  if (!captainMessage) {
+    return NextResponse.json(
+      { error: "Missing captain_message." },
+      { status: 400 },
+    );
+  }
 
-Riferimento: ${bookingReference}
-Data: ${bookingDate}
-Orario: ${bookingTime}
-Tour: ${tourType}
-Ospiti: ${guestCount}
-
-Nota cliente:
-${customerMessage}
-
-Puoi confermare la disponibilità?`;
+  if (!bookingId) {
+    return NextResponse.json({ error: "Missing booking_id." }, { status: 400 });
+  }
 
   try {
     const metaResponse = await sendWhatsAppText({
       to: toPhone,
-      body: messageBody,
+      body: captainMessage,
     });
+    const metaMessageId = getText(metaResponse?.messages?.[0]?.id, null);
+    const supabase = createSupabaseServiceRoleServerClient();
+    const { error: insertError } = await supabase
+      .from("whatsapp_messages")
+      .insert({
+        booking_id: bookingId,
+        direction: "outbound",
+        message_type: "text",
+        meta_message_id: metaMessageId,
+        raw_payload: metaResponse,
+        status: "sent",
+        template_name: null,
+        to_phone: toPhone,
+      });
+
+    if (insertError && insertError.code !== "23505") {
+      console.error(
+        "[whatsapp captain booking] Could not insert outbound message tracking",
+        {
+          bookingId,
+          message: insertError.message,
+          metaMessageId,
+        },
+      );
+    }
 
     console.log("[whatsapp captain booking response]", metaResponse);
 

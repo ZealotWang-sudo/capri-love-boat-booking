@@ -548,9 +548,9 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
     shouldShowStatusAction(action, booking),
   );
   const canSendCaptainWhatsapp = [
-    "requested",
-    "checking_with_captain",
-  ].includes(booking.booking_status);
+    "time_confirmation",
+    "final_confirmation",
+  ].includes(booking.captain_message_state?.messageType);
 
   return (
     <>
@@ -712,7 +712,11 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {canSendCaptainWhatsapp ? (
-                      <SendCaptainWhatsAppButton booking={booking} />
+                      <SendCaptainWhatsAppButton
+                        booking={booking}
+                        captainMessage={captainMessage}
+                        messageType={booking.captain_message_state?.messageType}
+                      />
                     ) : null}
                     <CopyCaptainMessageButton
                       bookingId={booking.id}

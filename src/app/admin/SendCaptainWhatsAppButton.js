@@ -4,15 +4,11 @@ import { useState } from "react";
 import AdminNotice from "./AdminNotice";
 import { sendCaptainWhatsappBookingAction } from "./actions";
 
-function getReferenceCode(booking) {
-  if (booking?.reference_code) {
-    return booking.reference_code;
-  }
-
-  return booking?.id ? `CAPRI-${booking.id.slice(0, 8).toUpperCase()}` : "-";
-}
-
-export default function SendCaptainWhatsAppButton({ booking }) {
+export default function SendCaptainWhatsAppButton({
+  booking,
+  captainMessage,
+  messageType,
+}) {
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const isSending = status === "sending";
@@ -22,13 +18,9 @@ export default function SendCaptainWhatsAppButton({ booking }) {
       setStatus("sending");
       setErrorMessage("");
       const payload = {
-        booking_reference: getReferenceCode(booking),
-        booking_date: booking?.requested_date || "-",
-        booking_time: booking?.time_window || booking?.time_slot || "-",
-        customer_message: booking?.message || "",
-        guest_count: booking?.guest_count,
+        booking_id: booking.id,
+        captain_message: captainMessage || "",
         to_phone: null,
-        tour_type: booking?.tour_label || booking?.tour_type || "-",
       };
       const response = await fetch("/api/whatsapp/send-captain-booking", {
         method: "POST",
@@ -56,7 +48,10 @@ export default function SendCaptainWhatsAppButton({ booking }) {
         throw new Error(String(parsedResponse.error).slice(0, 300));
       }
 
-      await sendCaptainWhatsappBookingAction({ bookingId: booking.id });
+      await sendCaptainWhatsappBookingAction({
+        bookingId: booking.id,
+        messageType,
+      });
       setStatus("sent");
     } catch (error) {
       setStatus("failed");

@@ -69,6 +69,19 @@ function appendCalendarNotice(path, params = {}) {
   return nextQuery ? `${pathname}?${nextQuery}` : pathname;
 }
 
+function enumerateDateRange(startDate, endDate) {
+  const dates = [];
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+
+  while (start <= end) {
+    dates.push(start.toISOString().slice(0, 10));
+    start.setUTCDate(start.getUTCDate() + 1);
+  }
+
+  return dates;
+}
+
 async function getAdminSupabaseClient() {
   const user = await getAdminUser("/admin/calendar");
 
@@ -156,4 +169,84 @@ export async function markTimeSlotAvailable(formData) {
   revalidatePath("/admin/calendar");
   revalidatePath("/admin");
   redirect(appendCalendarNotice(redirectPath, { updated: "available" }));
+}
+
+export async function markDateRangeUnavailable(formData) {
+  const startDate = getFormText(formData, "startDate");
+  const endDate = getFormText(formData, "endDate");
+  const reason = getFormText(formData, "reason");
+  const redirectPath = getRedirectPath(formData);
+
+  try {
+    assertValidDate(startDate);
+    assertValidDate(endDate);
+  } catch {
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Could not mark selected date range unavailable.",
+      }),
+    );
+  }
+
+  if (endDate < startDate) {
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "End date must be on or after start date.",
+      }),
+    );
+  }
+
+  const dates = enumerateDateRange(startDate, endDate);
+
+  if (dates.length === 0) {
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Could not mark selected date range unavailable.",
+      }),
+    );
+  }
+
+  if (dates.length > 120) {
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Date range is too large. Please use 120 days or fewer.",
+      }),
+    );
+  }
+
+  const { supabase, user } = await getAdminSupabaseClient();
+  const rows = dates.flatMap((date) =>
+    BOOKING_TIME_SLOT_ORDER.map((timeSlot) => ({
+      created_by: user.email,
+      date,
+      reason: reason || "Date range unavailable",
+      time_slot: timeSlot,
+    })),
+  );
+
+  const { error } = await supabase
+    .from("admin_unavailable_slots")
+    .upsert(rows, { onConflict: "date,time_slot" });
+
+  if (error) {
+    console.error("[admin calendar] Could not mark date range unavailable", {
+      endDate,
+      message: error.message,
+      startDate,
+    });
+    redirect(
+      appendCalendarNotice(redirectPath, {
+        error: "Could not mark selected date range unavailable.",
+      }),
+    );
+  }
+
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin");
+  redirect(
+    appendCalendarNotice(redirectPath, {
+      range: String(dates.length),
+      updated: "unavailable_range",
+    }),
+  );
 }

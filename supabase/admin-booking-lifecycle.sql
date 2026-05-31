@@ -6,6 +6,7 @@ alter table public.bookings
   add column if not exists cancelled_by text,
   add column if not exists cancellation_type text,
   add column if not exists cancellation_reason text,
+  add column if not exists captain_message_sent_at timestamptz,
   add column if not exists captain_message_copied_at timestamptz,
   add column if not exists captain_message_copied_type text;
 
@@ -53,6 +54,7 @@ alter table public.bookings
   check (
     captain_status in (
       'pending',
+      'message_sent',
       'available',
       'not_available',
       'suggested_alternative'

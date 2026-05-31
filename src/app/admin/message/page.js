@@ -1,7 +1,6 @@
 import {
-  buildCaptainCancellationMessage,
-  buildCaptainFinalConfirmationMessage,
-  buildCaptainTimeConfirmationMessage,
+  CAPTAIN_MESSAGE_TYPES,
+  buildCaptainMessageByType,
 } from "@/lib/admin/captainMessages";
 import AdminHeader from "../AdminHeader";
 import CopyCaptainMessageButton from "../CopyCaptainMessageButton";
@@ -29,19 +28,28 @@ const MESSAGE_PREVIEWS = [
   {
     description:
       "Use this after the customer authorizes the reservation fee and you need the captain to confirm the time.",
-    message: buildCaptainTimeConfirmationMessage(PREVIEW_BOOKING),
+    message: buildCaptainMessageByType(
+      PREVIEW_BOOKING,
+      CAPTAIN_MESSAGE_TYPES.timeConfirmation,
+    ),
     title: "Time confirmation",
   },
   {
     description:
       "Use this after the captain confirms availability and Stripe capture succeeds. This includes customer contact and pay-on-board details.",
-    message: buildCaptainFinalConfirmationMessage(PREVIEW_BOOKING),
+    message: buildCaptainMessageByType(
+      PREVIEW_BOOKING,
+      CAPTAIN_MESSAGE_TYPES.finalConfirmation,
+    ),
     title: "Final confirmation",
   },
   {
     description:
       "Use this when a confirmed or held booking is cancelled and the captain should release the time.",
-    message: buildCaptainCancellationMessage(PREVIEW_BOOKING),
+    message: buildCaptainMessageByType(
+      PREVIEW_BOOKING,
+      CAPTAIN_MESSAGE_TYPES.cancellation,
+    ),
     title: "Cancellation",
   },
 ];
@@ -81,12 +89,15 @@ export default async function AdminMessagePage() {
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
       <section className="mx-auto max-w-7xl">
-        <AdminHeader active="message" title="Message" userEmail={user.email} />
+        <AdminHeader
+          active="development"
+          title="Message Preview"
+          userEmail={user.email}
+        />
 
         <section className="mt-8 border border-stone-300 bg-[#fbf8f3] p-6 text-sm leading-6 text-stone-700">
-          These are the two captain message templates used during the booking
-          flow. Booking details still generate the message with the real date,
-          time, price, and customer information.
+          These are the captain WhatsApp templates used in production. Preview,
+          copy message, and WhatsApp sending all use the same template source.
         </section>
 
         <section className="mt-8 grid gap-6 xl:grid-cols-2">

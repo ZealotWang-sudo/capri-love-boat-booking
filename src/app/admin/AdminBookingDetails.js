@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import AdminActionForm from "./AdminActionForm";
 import CopyCaptainMessageButton from "./CopyCaptainMessageButton";
+import SendCaptainWhatsAppButton from "./SendCaptainWhatsAppButton";
 import CopySharedLinkButton from "@/components/CopySharedLinkButton";
 import {
   getDisplayTimeForTimeSlot,
@@ -25,7 +27,7 @@ const STATUS_ACTIONS = [
     confirmTitle: "Captain confirmed time?",
     showWhen: {
       booking_status: "checking_with_captain",
-      captain_status: "pending",
+      captain_status: ["pending", "message_sent"],
       payment_status: "unpaid",
     },
   },
@@ -38,7 +40,7 @@ const STATUS_ACTIONS = [
     confirmTitle: "Capture payment and confirm?",
     showWhen: {
       booking_status: "checking_with_captain",
-      captain_status: "pending",
+      captain_status: ["pending", "message_sent"],
       payment_status: "authorized",
     },
     variant: "primary",
@@ -79,6 +81,7 @@ const STATUS_ACTIONS = [
     releaseOutcome: "not_available",
     showWhen: {
       booking_status: "checking_with_captain",
+      captain_status: ["pending", "message_sent"],
       payment_status: "authorized",
     },
     variant: "danger",
@@ -522,7 +525,10 @@ function shouldShowStatusAction(action, booking) {
   }
 
   return Object.entries(action.showWhen).every(
-    ([fieldName, value]) => booking[fieldName] === value,
+    ([fieldName, value]) =>
+      Array.isArray(value)
+        ? value.includes(booking[fieldName])
+        : booking[fieldName] === value,
   );
 }
 
@@ -542,6 +548,10 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
   const availableActions = STATUS_ACTIONS.filter((action) =>
     shouldShowStatusAction(action, booking),
   );
+  const canSendCaptainWhatsapp = [
+    "time_confirmation",
+    "final_confirmation",
+  ].includes(booking.captain_message_state?.messageType);
 
   return (
     <>
@@ -618,9 +628,11 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                           href={whatsappHref}
                           target="_blank"
                           rel="noreferrer"
-                          className="underline decoration-stone-400 underline-offset-4 hover:text-stone-600"
+                          aria-label="Open WhatsApp"
+                          title="Open WhatsApp"
+                          className="inline-flex items-center text-stone-600 transition hover:text-stone-950"
                         >
-                          WhatsApp
+                          <MessageCircle className="h-4 w-4" aria-hidden="true" />
                         </a>
                       </>
                     ) : null}
@@ -685,6 +697,10 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                 />
                 <DetailItem label="Payment" value={booking.payment_status} />
                 <DetailItem label="Captain" value={booking.captain_status} />
+                <DetailItem
+                  label="Captain message sent at"
+                  value={booking.captain_message_sent_at}
+                />
                 </DetailGrid>
                 <div className="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -697,12 +713,20 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                         : "Generated Italian message"}
                     </p>
                   </div>
-                  <CopyCaptainMessageButton
-                    bookingId={booking.id}
-                    initialCopied={booking.captain_message_state?.copied}
-                    message={captainMessage}
-                    messageType={booking.captain_message_state?.messageType}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canSendCaptainWhatsapp ? (
+                      <SendCaptainWhatsAppButton
+                        booking={booking}
+                        messageType={booking.captain_message_state?.messageType}
+                      />
+                    ) : null}
+                    <CopyCaptainMessageButton
+                      bookingId={booking.id}
+                      initialCopied={booking.captain_message_state?.copied}
+                      message={captainMessage}
+                      messageType={booking.captain_message_state?.messageType}
+                    />
+                  </div>
                 </div>
               </CollapsibleSection>
 

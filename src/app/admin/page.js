@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import {
   createSupabaseServerClient,
   createSupabaseServiceRoleServerClient,
@@ -9,7 +10,7 @@ import AdminHeader from "./AdminHeader";
 import AdminNotice from "./AdminNotice";
 import AdminBookingDetails from "./AdminBookingDetails";
 import {
-  buildCaptainMessage,
+  buildCaptainMessageByType,
   getCaptainMessageCopiedState,
 } from "@/lib/admin/captainMessages";
 import { getAdminUser, isAllowedAdmin } from "./auth";
@@ -321,7 +322,7 @@ function getPrimaryStatusAction(booking) {
 
   if (
     booking.booking_status === "checking_with_captain" &&
-    booking.captain_status === "pending"
+    ["pending", "message_sent"].includes(booking.captain_status)
   ) {
     if (booking.payment_status === "authorized") {
       return {
@@ -386,9 +387,11 @@ function ContactSummary({ booking }) {
               href={whatsappHref}
               target="_blank"
               rel="noreferrer"
-              className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+              aria-label="Open WhatsApp"
+              title="Open WhatsApp"
+              className="inline-flex items-center text-stone-600 transition hover:text-stone-950"
             >
-              WhatsApp
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
             </a>
           </>
         ) : null}
@@ -440,6 +443,9 @@ function NextAction({ booking }) {
 
 function BookingDetailsButton({ booking }) {
   const captainMessageState = getCaptainMessageCopiedState(booking);
+  const captainMessage = captainMessageState.messageType
+    ? buildCaptainMessageByType(booking, captainMessageState.messageType)
+    : "";
   const bookingWithTourLabel = {
     ...booking,
     booking_status_display: formatBookingStatus(booking.booking_status),
@@ -452,7 +458,7 @@ function BookingDetailsButton({ booking }) {
   return (
     <AdminBookingDetails
       booking={bookingWithTourLabel}
-      captainMessage={buildCaptainMessage(booking)}
+      captainMessage={captainMessage}
     />
   );
 }
@@ -697,7 +703,7 @@ export default async function AdminPage({ searchParams }) {
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
-      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, captain_message_copied_at, captain_message_copied_type, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason, is_shared_open, shared_status, shared_open_seats, shared_gender_preference, shared_max_join_groups, shared_public_token",
+      "id, created_at, updated_at, locale, customer_name, email, phone, contact_method, guest_count, requested_date, tour_type, time_slot, time_window, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, captain_message_copied_at, captain_message_copied_type, captain_message_sent_at, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, message, customer_cancelled_at, customer_cancel_reason, cancelled_at, cancelled_by, cancellation_type, cancellation_reason, is_shared_open, shared_status, shared_open_seats, shared_gender_preference, shared_max_join_groups, shared_public_token",
     )
     .order("created_at", { ascending: false })
     .limit(searchQuery ? 200 : 50);

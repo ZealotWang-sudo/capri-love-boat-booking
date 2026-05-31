@@ -735,6 +735,89 @@ export async function markCaptainMessageCopiedAction({ bookingId, messageType })
   return { copiedAt };
 }
 
+export async function sendCaptainWhatsappBookingAction({ bookingId, messageType }) {
+  if (!bookingId) {
+    throw new Error("Invalid captain WhatsApp request.");
+  }
+
+  if (messageType && !CAPTAIN_MESSAGE_TYPES.has(messageType)) {
+    throw new Error("Invalid captain message type.");
+  }
+
+  const supabase = await getAdminSupabaseClient();
+  const { data: booking, error: loadError } = await supabase
+    .from("bookings")
+    .select("id, booking_status, captain_status")
+    .eq("id", bookingId)
+    .maybeSingle();
+
+  if (loadError) {
+    console.error("[admin captain whatsapp] Could not load booking", {
+      bookingId,
+      message: loadError.message,
+    });
+    throw new Error("Could not load booking.");
+  }
+
+  if (!booking) {
+    throw new Error("Booking not found.");
+  }
+
+  const shouldMarkCaptainMessageSent =
+    messageType === "time_confirmation" &&
+    ["requested", "checking_with_captain"].includes(booking.booking_status) &&
+    booking.captain_status === "pending";
+  const sentAt = new Date().toISOString();
+  const updatePayload = {
+    ...(shouldMarkCaptainMessageSent ? { captain_status: "message_sent" } : {}),
+    ...(messageType ? { captain_message_copied_type: messageType } : {}),
+    captain_message_copied_at: sentAt,
+    captain_message_sent_at: sentAt,
+    updated_at: sentAt,
+  };
+  let { error: updateError } = await supabase
+    .from("bookings")
+    .update(updatePayload)
+    .eq("id", bookingId);
+
+  if (
+    updateError &&
+    (updateError.message?.includes("captain_message_sent_at") ||
+      updateError.message?.includes("column") ||
+      updateError.code === "PGRST204")
+  ) {
+    const updateWithoutTimestamp = await supabase
+      .from("bookings")
+      .update({
+        ...(shouldMarkCaptainMessageSent ? { captain_status: "message_sent" } : {}),
+        ...(messageType ? { captain_message_copied_type: messageType } : {}),
+        captain_message_copied_at: sentAt,
+        updated_at: sentAt,
+      })
+      .eq("id", bookingId);
+
+    updateError = updateWithoutTimestamp.error;
+  }
+
+  if (updateError) {
+    console.error("[admin captain whatsapp] Could not update booking status", {
+      bookingId,
+      message: updateError.message,
+    });
+
+    if (updateError.message?.includes("bookings_captain_status_check")) {
+      throw new Error(
+        "Database constraint does not allow captain_status = message_sent yet.",
+      );
+    }
+
+    throw new Error("WhatsApp was sent, but booking status update failed.");
+  }
+
+  revalidatePath("/admin");
+  return { sentAt };
+}
+
 export async function deleteClosedBooking(formData) {
   const bookingId = getFormText(formData, "bookingId");
 

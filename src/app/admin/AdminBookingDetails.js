@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import AdminActionForm from "./AdminActionForm";
 import CopyCaptainMessageButton from "./CopyCaptainMessageButton";
 import SendCaptainWhatsAppButton from "./SendCaptainWhatsAppButton";
@@ -627,9 +628,11 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                           href={whatsappHref}
                           target="_blank"
                           rel="noreferrer"
-                          className="underline decoration-stone-400 underline-offset-4 hover:text-stone-600"
+                          aria-label="Open WhatsApp"
+                          title="Open WhatsApp"
+                          className="inline-flex items-center text-stone-600 transition hover:text-stone-950"
                         >
-                          WhatsApp
+                          <MessageCircle className="h-4 w-4" aria-hidden="true" />
                         </a>
                       </>
                     ) : null}
@@ -714,7 +717,6 @@ export default function AdminBookingDetails({ booking, captainMessage }) {
                     {canSendCaptainWhatsapp ? (
                       <SendCaptainWhatsAppButton
                         booking={booking}
-                        captainMessage={captainMessage}
                         messageType={booking.captain_message_state?.messageType}
                       />
                     ) : null}

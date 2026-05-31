@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import {
   createSupabaseServerClient,
   createSupabaseServiceRoleServerClient,
@@ -9,7 +10,7 @@ import AdminHeader from "./AdminHeader";
 import AdminNotice from "./AdminNotice";
 import AdminBookingDetails from "./AdminBookingDetails";
 import {
-  buildCaptainMessage,
+  buildCaptainMessageByType,
   getCaptainMessageCopiedState,
 } from "@/lib/admin/captainMessages";
 import { getAdminUser, isAllowedAdmin } from "./auth";
@@ -386,9 +387,11 @@ function ContactSummary({ booking }) {
               href={whatsappHref}
               target="_blank"
               rel="noreferrer"
-              className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+              aria-label="Open WhatsApp"
+              title="Open WhatsApp"
+              className="inline-flex items-center text-stone-600 transition hover:text-stone-950"
             >
-              WhatsApp
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
             </a>
           </>
         ) : null}
@@ -440,6 +443,9 @@ function NextAction({ booking }) {
 
 function BookingDetailsButton({ booking }) {
   const captainMessageState = getCaptainMessageCopiedState(booking);
+  const captainMessage = captainMessageState.messageType
+    ? buildCaptainMessageByType(booking, captainMessageState.messageType)
+    : "";
   const bookingWithTourLabel = {
     ...booking,
     booking_status_display: formatBookingStatus(booking.booking_status),
@@ -452,7 +458,7 @@ function BookingDetailsButton({ booking }) {
   return (
     <AdminBookingDetails
       booking={bookingWithTourLabel}
-      captainMessage={buildCaptainMessage(booking)}
+      captainMessage={captainMessage}
     />
   );
 }

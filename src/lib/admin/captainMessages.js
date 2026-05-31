@@ -11,6 +11,9 @@ export const CAPTAIN_MESSAGE_TYPES = {
   finalConfirmation: "final_confirmation",
   timeConfirmation: "time_confirmation",
 };
+export const CAPTAIN_MESSAGE_TYPE_VALUES = new Set(
+  Object.values(CAPTAIN_MESSAGE_TYPES),
+);
 export const CAPTAIN_MESSAGE_TYPE_LABELS = {
   [CAPTAIN_MESSAGE_TYPES.cancellation]: "Cancellation",
   [CAPTAIN_MESSAGE_TYPES.finalConfirmation]: "Final confirmation",
@@ -116,6 +119,18 @@ export function buildCaptainCancellationMessage(booking) {
   return messageLines.join("\n");
 }
 
+export function buildCaptainMessageByType(booking, messageType) {
+  if (messageType === CAPTAIN_MESSAGE_TYPES.cancellation) {
+    return buildCaptainCancellationMessage(booking);
+  }
+
+  if (messageType === CAPTAIN_MESSAGE_TYPES.finalConfirmation) {
+    return buildCaptainFinalConfirmationMessage(booking);
+  }
+
+  return buildCaptainTimeConfirmationMessage(booking);
+}
+
 export function getCaptainMessageType(booking) {
   if (booking.booking_status === "cancelled" || booking.booking_status === "not_available") {
     return CAPTAIN_MESSAGE_TYPES.cancellation;
@@ -162,14 +177,5 @@ export function getCaptainMessageCopiedState(booking) {
 
 export function buildCaptainMessage(booking) {
   const messageType = getCaptainMessageType(booking);
-
-  if (messageType === CAPTAIN_MESSAGE_TYPES.cancellation) {
-    return buildCaptainCancellationMessage(booking);
-  }
-
-  if (messageType === CAPTAIN_MESSAGE_TYPES.finalConfirmation) {
-    return buildCaptainFinalConfirmationMessage(booking);
-  }
-
-  return buildCaptainTimeConfirmationMessage(booking);
+  return buildCaptainMessageByType(booking, messageType);
 }

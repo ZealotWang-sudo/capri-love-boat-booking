@@ -6,7 +6,6 @@ import { sendCaptainWhatsappBookingAction } from "./actions";
 
 export default function SendCaptainWhatsAppButton({
   booking,
-  captainMessage,
   messageType,
 }) {
   const [status, setStatus] = useState("idle");
@@ -21,7 +20,7 @@ export default function SendCaptainWhatsAppButton({
       setWarningMessage("");
       const payload = {
         booking_id: booking.id,
-        captain_message: captainMessage || "",
+        message_type: messageType || "",
         to_phone: null,
       };
       const response = await fetch("/api/whatsapp/send-captain-booking", {

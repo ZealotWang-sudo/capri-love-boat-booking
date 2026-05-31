@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import AdminRealtimeRefresh from "@/components/admin/AdminRealtimeRefresh";
+import CopyTextButton from "../CopyTextButton";
 import AdminHeader from "../AdminHeader";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
@@ -85,6 +86,24 @@ function formatTimeSlot(booking) {
 function sumBy(bookings, fieldName) {
   return bookings.reduce(
     (total, booking) => total + Number(booking[fieldName] || 0),
+    0,
+  );
+}
+
+function getEffectiveReservationFee(booking) {
+  if (typeof booking.final_reservation_fee_eur === "number") {
+    return booking.final_reservation_fee_eur;
+  }
+
+  const baseReservationFee = Number(booking.reservation_fee_eur || 0);
+  const promoDiscount = Number(booking.promo_discount_eur || 0);
+
+  return Math.max(baseReservationFee - promoDiscount, 0);
+}
+
+function sumEffectiveReservationFee(bookings) {
+  return bookings.reduce(
+    (total, booking) => total + getEffectiveReservationFee(booking),
     0,
   );
 }
@@ -214,7 +233,7 @@ function UpcomingTripsTable({ bookings }) {
       </h2>
       <div className="mt-5 overflow-x-auto">
         {bookings.length > 0 ? (
-          <table className="min-w-[720px] divide-y divide-stone-200 text-left text-sm">
+          <table className="w-full min-w-[720px] table-fixed divide-y divide-stone-200 text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.16em] text-stone-500">
               <tr>
                 <th className="py-3 pr-4">Reference</th>
@@ -228,7 +247,16 @@ function UpcomingTripsTable({ bookings }) {
               {bookings.map((booking) => (
                 <tr key={booking.id}>
                   <td className="py-3 pr-4 text-stone-950">
-                    CAPRI-{booking.id.slice(0, 8).toUpperCase()}
+                    <div className="flex items-center gap-1">
+                      <span className="select-all">
+                        CAPRI-{booking.id.slice(0, 8).toUpperCase()}
+                      </span>
+                      <CopyTextButton
+                        label="Copy"
+                        copiedLabel="Copied"
+                        text={`CAPRI-${booking.id.slice(0, 8).toUpperCase()}`}
+                      />
+                    </div>
                   </td>
                   <td className="py-3 pr-4 text-stone-700">
                     {booking.requested_date}
@@ -267,7 +295,7 @@ export default async function AdminDataPage() {
   const { data: bookingRows, error } = await supabase
     .from("bookings")
     .select(
-      "id, created_at, updated_at, locale, guest_count, requested_date, tour_type, time_slot, time_window, reservation_fee_eur, pay_on_board_eur, booking_status, payment_status",
+      "id, created_at, updated_at, locale, guest_count, requested_date, tour_type, time_slot, time_window, reservation_fee_eur, final_reservation_fee_eur, promo_discount_eur, pay_on_board_eur, booking_status, payment_status",
     )
     .order("created_at", { ascending: false });
   const { data: pageViewRows, error: pageViewsError } = await supabase
@@ -303,7 +331,7 @@ export default async function AdminDataPage() {
   const expectedPayOnBoard = sumBy(confirmedBookings, "pay_on_board_eur");
   const averageReservationFee =
     confirmedBookings.length > 0
-      ? sumBy(confirmedBookings, "reservation_fee_eur") / confirmedBookings.length
+      ? sumEffectiveReservationFee(confirmedBookings) / confirmedBookings.length
       : 0;
   const todayDateString = getTodayDateString();
   const pageViewsToday = pageViews.filter(
@@ -438,14 +466,15 @@ export default async function AdminDataPage() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Captured reservation fees"
-              value={formatEuro(sumBy(capturedBookings, "reservation_fee_eur"))}
+              value={formatEuro(sumEffectiveReservationFee(capturedBookings))}
+              note="After promo discounts"
             />
             <MetricCard
               label="Captured this month"
               value={formatEuro(
-                sumBy(thisMonthCapturedBookings, "reservation_fee_eur"),
+                sumEffectiveReservationFee(thisMonthCapturedBookings),
               )}
-              note="Based on booking updated date"
+              note="After promo discounts, based on booking updated date"
             />
             <MetricCard
               label="Expected pay on board"
@@ -455,7 +484,7 @@ export default async function AdminDataPage() {
             <MetricCard
               label="Avg reservation fee"
               value={formatEuro(averageReservationFee)}
-              note="Confirmed bookings only"
+              note="Confirmed bookings only, after promo discounts"
             />
           </div>
         </section>

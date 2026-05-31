@@ -6,7 +6,6 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/pricing", label: "Pricing", id: "pricing" },
   { href: "/admin/promo-codes", label: "Promo Codes", id: "promo-codes" },
   { href: "/admin/development", label: "Development", id: "development" },
-  { href: "/admin/message", label: "Message", id: "message" },
   { href: "/admin/data", label: "Data", id: "data" },
 ];
 

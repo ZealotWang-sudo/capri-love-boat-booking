@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  CAPTAIN_MESSAGE_TYPE_VALUES,
+  buildCaptainMessageByType,
+} from "@/lib/admin/captainMessages";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { sendWhatsAppText } from "@/lib/whatsapp/sendWhatsAppText";
 
@@ -40,7 +44,7 @@ async function insertOutboundWhatsAppTracking({
 export async function POST(request) {
   const body = await request.json();
   const bookingId = getText(body?.booking_id, "");
-  const captainMessage = getText(body?.captain_message, "");
+  const messageType = getText(body?.message_type, "");
   const toPhone =
     getText(body?.to_phone) ||
     process.env.WHATSAPP_CAPTAIN_PHONE ||
@@ -56,9 +60,9 @@ export async function POST(request) {
     );
   }
 
-  if (!captainMessage) {
+  if (!messageType || !CAPTAIN_MESSAGE_TYPE_VALUES.has(messageType)) {
     return NextResponse.json(
-      { error: "Missing captain_message." },
+      { error: "Missing or invalid message_type." },
       { status: 400 },
     );
   }
@@ -68,6 +72,28 @@ export async function POST(request) {
   }
 
   try {
+    const supabase = createSupabaseServiceRoleServerClient();
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .select(
+        "id, customer_name, email, phone, guest_count, requested_date, tour_type, time_slot, time_window, pay_on_board_eur, message, cancellation_reason, customer_cancel_reason",
+      )
+      .eq("id", bookingId)
+      .maybeSingle();
+
+    if (bookingError) {
+      console.error("[whatsapp captain booking] Could not load booking", {
+        bookingId,
+        message: bookingError.message,
+      });
+      return NextResponse.json({ error: "Could not load booking." }, { status: 500 });
+    }
+
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+
+    const captainMessage = buildCaptainMessageByType(booking, messageType);
     const metaResponse = await sendWhatsAppText({
       to: toPhone,
       body: captainMessage,

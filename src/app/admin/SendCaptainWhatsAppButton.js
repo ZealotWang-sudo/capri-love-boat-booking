@@ -57,7 +57,7 @@ export default function SendCaptainWhatsAppButton({
       if (parsedResponse?.tracking?.inserted === false) {
         setStatus("sent");
         setWarningMessage(
-          `WhatsApp sent, but tracking row was not saved: ${String(parsedResponse?.tracking?.error || "Unknown error.").slice(0, 220)}`,
+          `Telegram sent, but tracking row was not saved: ${String(parsedResponse?.tracking?.error || "Unknown error.").slice(0, 220)}`,
         );
         return;
       }
@@ -68,7 +68,7 @@ export default function SendCaptainWhatsAppButton({
       setErrorMessage(
         error instanceof Error && error.message
           ? error.message
-          : "Could not send WhatsApp to captain.",
+          : "Could not send Telegram message to captain.",
       );
     }
   }
@@ -76,7 +76,7 @@ export default function SendCaptainWhatsAppButton({
   return (
     <>
       {status === "sent" ? (
-        <AdminNotice>WhatsApp availability request sent to captain.</AdminNotice>
+        <AdminNotice>Telegram availability request sent to captain.</AdminNotice>
       ) : null}
       {status === "failed" ? (
         <AdminNotice tone="error">{errorMessage}</AdminNotice>
@@ -102,7 +102,7 @@ export default function SendCaptainWhatsAppButton({
         ) : status === "sent" ? (
           "Sent"
         ) : (
-          "Send WhatsApp to Captain"
+          "Send Telegram to Captain"
         )}
       </button>
     </>

@@ -1,6 +1,7 @@
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/server";
+import { sendCaptainCancellationTelegramNotification } from "@/lib/telegram/sendCaptainCancellationTelegramNotification";
 
 const BOOKING_PAYMENT_SELECT =
   "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, customer_cancelled_at, customer_cancel_reason, stripe_checkout_session_id, stripe_payment_intent_id, cancellation_reason, is_shared_open, shared_status, shared_public_token";
@@ -158,7 +159,9 @@ export async function releaseAuthorizedBookingPayment({
 
   if (
     ["released", "refunded"].includes(booking.payment_status) ||
-    ["cancelled", "not_available", "expired"].includes(booking.booking_status)
+    ["cancelled", "canceled", "declined", "concluded", "not_available", "expired"].includes(
+      booking.booking_status,
+    )
   ) {
     return { reason: "booking already closed", released: false };
   }
@@ -244,6 +247,19 @@ export async function releaseAuthorizedBookingPayment({
     siteUrl,
     supabase,
   });
+
+  try {
+    await sendCaptainCancellationTelegramNotification({
+      bookingId: updatedBooking.id,
+      cancelledBy: updatedBooking.cancelled_by,
+      previousBookingStatus: booking.booking_status,
+      reason: updatedBooking.customer_cancel_reason || updatedBooking.cancellation_reason,
+    });
+  } catch (error) {
+    console.warn(
+      `[admin booking release] Telegram cancellation warning: ${error?.message || "Unknown error."}`,
+    );
+  }
 
   return { released: true };
 }

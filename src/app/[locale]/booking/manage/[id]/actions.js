@@ -14,6 +14,7 @@ import {
   rejectSharedJoinRequestForHost,
   settleSharedJoinRequestsForBookingCancellation,
 } from "@/lib/stripe/sharedJoinRequests";
+import { sendCaptainCancellationTelegramNotification } from "@/lib/telegram/sendCaptainCancellationTelegramNotification";
 
 const ALLOWED_LOCALES = new Set(["en", "zh", "it", "de", "fr"]);
 
@@ -120,6 +121,19 @@ export async function cancelCustomerBooking(formData) {
 
   if (!cancelledBooking) {
     redirect(getManagePath({ bookingId, locale, token }, { cancelError: "1" }));
+  }
+
+  try {
+    await sendCaptainCancellationTelegramNotification({
+      bookingId,
+      cancelledBy: "customer",
+      previousBookingStatus: booking?.booking_status,
+      reason: customerCancelReason,
+    });
+  } catch (telegramError) {
+    console.warn(
+      `[customer booking cancel] Telegram cancellation warning: ${telegramError?.message || "Unknown error."}`,
+    );
   }
 
   if (booking?.is_shared_open) {

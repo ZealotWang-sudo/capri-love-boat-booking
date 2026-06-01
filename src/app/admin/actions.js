@@ -23,7 +23,6 @@ import {
   sendSharedJoinEmail,
 } from "@/lib/email/sendSharedJoinEmail";
 import {
-  captureAuthorizedBookingPayment,
   releaseAuthorizedBookingPayment,
 } from "@/lib/stripe/adminBookingPayments";
 import {
@@ -32,6 +31,11 @@ import {
   settleSharedJoinRequestsForBookingCancellation,
 } from "@/lib/stripe/sharedJoinRequests";
 import { getStripe } from "@/lib/stripe/server";
+import {
+  markCaptainAvailable,
+  markCaptainUnavailable,
+} from "@/lib/bookings/markCaptainAvailable";
+import { sendCaptainCancellationTelegramNotification } from "@/lib/telegram/sendCaptainCancellationTelegramNotification";
 
 const ADMIN_EMAIL = "wangkexin-personal@outlook.com";
 const CLOSED_BOOKING_STATUSES = new Set([
@@ -323,6 +327,31 @@ export async function updateBookingOperationalStatus(formData) {
   }
 
   const supabase = await getAdminSupabaseClient();
+  const siteUrl = await getRequestOrigin();
+
+  if (statusAction === "captain_available") {
+    await markCaptainAvailable({
+      bookingId,
+      source: "admin",
+      actor: { adminEmail: ADMIN_EMAIL },
+      siteUrl,
+    });
+    revalidatePath("/admin");
+    redirect(getAdminRedirectPath({ updated: statusAction }));
+  }
+
+  if (statusAction === "captain_not_available") {
+    await markCaptainUnavailable({
+      bookingId,
+      source: "admin",
+      actor: { adminEmail: ADMIN_EMAIL },
+      cancellationReason,
+      siteUrl,
+    });
+    revalidatePath("/admin");
+    redirect(getAdminRedirectPath({ updated: statusAction }));
+  }
+
   const updatePayload = {
     ...updateFields,
     updated_at: new Date().toISOString(),
@@ -330,11 +359,11 @@ export async function updateBookingOperationalStatus(formData) {
 
   let bookingForLifecycleUpdate = null;
 
-  if (statusAction === "cancelled" || statusAction === "captain_not_available") {
+  if (statusAction === "cancelled") {
     const { data: bookingForCancellation, error: bookingLoadError } = await supabase
       .from("bookings")
       .select(
-        "id, locale, customer_name, email, phone, customer_manage_token, requested_date, tour_type, time_slot, time_window, is_shared_open, payment_status, stripe_checkout_session_id, stripe_payment_intent_id",
+        "id, locale, customer_name, email, phone, customer_manage_token, requested_date, tour_type, time_slot, time_window, booking_status, is_shared_open, payment_status, stripe_checkout_session_id, stripe_payment_intent_id",
       )
       .eq("id", bookingId)
       .maybeSingle();
@@ -378,15 +407,6 @@ export async function updateBookingOperationalStatus(formData) {
     updatePayload.cancellation_type = cancellationType;
   }
 
-  if (statusAction === "captain_not_available") {
-    updatePayload.cancellation_reason = cancellationReason;
-    updatePayload.cancellation_type = "captain_unavailable";
-    updatePayload.cancelled_by = "captain";
-    if (bookingForLifecycleUpdate?.is_shared_open) {
-      updatePayload.shared_status = "cancelled";
-    }
-  }
-
   const { data: updatedBooking, error } = await supabase
     .from("bookings")
     .update(updatePayload)
@@ -399,6 +419,21 @@ export async function updateBookingOperationalStatus(formData) {
   if (error) {
     console.error("[admin booking update]", error.message);
     throw new Error("Could not update booking status.");
+  }
+
+  if (statusAction === "cancelled") {
+    try {
+      await sendCaptainCancellationTelegramNotification({
+        bookingId: updatedBooking.id,
+        cancelledBy: "admin",
+        previousBookingStatus: bookingForLifecycleUpdate?.booking_status,
+        reason: cancellationReason,
+      });
+    } catch (telegramError) {
+      console.warn(
+        `[admin booking update] Telegram cancellation warning: ${telegramError?.message || "Unknown error."}`,
+      );
+    }
   }
 
   const emailEventType = getBookingEmailEventForStatus(
@@ -441,8 +476,10 @@ export async function captureAuthorizedBookingPaymentAction(formData) {
   }
 
   await getAdminSupabaseClient();
-  await captureAuthorizedBookingPayment({
+  await markCaptainAvailable({
     bookingId,
+    source: "admin",
+    actor: { adminEmail: ADMIN_EMAIL },
     siteUrl: await getRequestOrigin(),
   });
 
@@ -470,13 +507,23 @@ export async function releaseAuthorizedBookingPaymentAction(formData) {
   }
 
   await getAdminSupabaseClient();
-  await releaseAuthorizedBookingPayment({
-    bookingId,
-    cancellationReason,
-    cancellationType,
-    outcome,
-    siteUrl: await getRequestOrigin(),
-  });
+  if (outcome === "not_available") {
+    await markCaptainUnavailable({
+      bookingId,
+      source: "admin",
+      actor: { adminEmail: ADMIN_EMAIL },
+      cancellationReason,
+      siteUrl: await getRequestOrigin(),
+    });
+  } else {
+    await releaseAuthorizedBookingPayment({
+      bookingId,
+      cancellationReason,
+      cancellationType,
+      outcome,
+      siteUrl: await getRequestOrigin(),
+    });
+  }
 
   revalidatePath("/admin");
   redirect(getAdminRedirectPath({ updated: outcome }));

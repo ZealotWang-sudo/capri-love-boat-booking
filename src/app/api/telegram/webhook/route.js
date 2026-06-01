@@ -1,4 +1,17 @@
 import { NextResponse } from "next/server";
+import {
+  CAPTAIN_MESSAGE_TYPES,
+  buildCaptainMessageByType,
+} from "@/lib/admin/captainMessages";
+import {
+  markCaptainAvailable,
+  markCaptainUnavailable,
+} from "@/lib/bookings/markCaptainAvailable";
+import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
+
+const FOLLOW_UP_BOOKING_SELECT =
+  "id, customer_name, email, phone, guest_count, requested_date, tour_type, time_slot, time_window, pay_on_board_eur, message, cancellation_reason, customer_cancel_reason";
 
 function getText(value, fallback = null) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
@@ -55,6 +68,76 @@ async function answerCallbackQuery(callbackQueryId) {
   }
 }
 
+async function editMessageReplyMarkup({ chatId, messageId }) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+  if (!botToken) {
+    throw new Error("Missing TELEGRAM_BOT_TOKEN environment variable.");
+  }
+
+  const response = await fetch(
+    `https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: [] },
+      }),
+    },
+  );
+
+  const telegramResponse = await response.json();
+
+  if (!response.ok || telegramResponse?.ok === false) {
+    const apiDescription =
+      typeof telegramResponse?.description === "string" &&
+      telegramResponse.description.trim()
+        ? telegramResponse.description.trim()
+        : "Unknown Telegram API error.";
+    throw new Error(`Telegram editMessageReplyMarkup failed: ${apiDescription}`);
+  }
+}
+
+async function loadBookingForFollowUpMessage(bookingId) {
+  const supabase = createSupabaseServiceRoleServerClient();
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .select(FOLLOW_UP_BOOKING_SELECT)
+    .eq("id", bookingId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[telegram webhook] Could not load booking for follow-up", {
+      bookingId,
+      message: error.message,
+    });
+    throw new Error("Could not load booking for Telegram follow-up.");
+  }
+
+  if (!booking) {
+    throw new Error("Booking not found for Telegram follow-up.");
+  }
+
+  return booking;
+}
+
+function getSiteUrlFromRequest(request) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost || request.headers.get("host");
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0];
+
+  if (!host) {
+    return process.env.NEXT_PUBLIC_SITE_URL || "";
+  }
+
+  const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");
+  return `${protocol}://${host}`;
+}
+
 export async function POST(request) {
   try {
     const update = await request.json();
@@ -81,6 +164,65 @@ export async function POST(request) {
         chatId,
         messageId,
       });
+
+      const actor = {
+        telegramFirstName,
+        telegramUserId,
+      };
+      const siteUrl = getSiteUrlFromRequest(request);
+      let decisionResult;
+
+      if (parsed.action === "accept") {
+        decisionResult = await markCaptainAvailable({
+          bookingId: parsed.bookingId,
+          source: "telegram",
+          actor,
+          siteUrl,
+        });
+      } else {
+        decisionResult = await markCaptainUnavailable({
+          bookingId: parsed.bookingId,
+          source: "telegram",
+          actor,
+          siteUrl,
+        });
+      }
+
+      if (decisionResult?.applied) {
+        if (parsed.action === "accept") {
+          try {
+            const booking = await loadBookingForFollowUpMessage(parsed.bookingId);
+            const followUpText = buildCaptainMessageByType(
+              booking,
+              CAPTAIN_MESSAGE_TYPES.finalConfirmation,
+            );
+            await sendTelegramMessage({ text: followUpText });
+          } catch (error) {
+            console.warn(
+              `[telegram webhook] follow-up message warning: ${error?.message || "Unknown error."}`,
+            );
+          }
+        }
+
+        if (chatId && messageId) {
+          try {
+            await editMessageReplyMarkup({
+              chatId,
+              messageId,
+            });
+          } catch (error) {
+            console.warn(
+              `[telegram webhook] editMessageReplyMarkup warning: ${error?.message || "Unknown error."}`,
+            );
+          }
+        }
+      } else {
+        console.log("[telegram callback booking] Skipped duplicate captain action", {
+          action: parsed.action,
+          bookingId: parsed.bookingId,
+          reason: decisionResult?.reason || "booking already processed",
+        });
+      }
     } else {
       console.warn("[telegram callback booking] Invalid callback data format", {
         callbackData,
@@ -95,7 +237,13 @@ export async function POST(request) {
       throw new Error("Missing callback_query.id in Telegram update.");
     }
 
-    await answerCallbackQuery(callbackQueryId);
+    try {
+      await answerCallbackQuery(callbackQueryId);
+    } catch (error) {
+      console.warn(
+        `[telegram webhook] answerCallbackQuery warning: ${error?.message || "Unknown error."}`,
+      );
+    }
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {

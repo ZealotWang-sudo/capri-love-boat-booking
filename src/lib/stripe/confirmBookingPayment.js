@@ -1,10 +1,15 @@
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
 import {
+  CAPTAIN_MESSAGE_TYPES,
+  buildCaptainMessageByType,
+} from "@/lib/admin/captainMessages";
+import {
   ACTIVE_BOOKING_STATUSES,
   bookingOverlapsSelection,
 } from "@/lib/bookingAvailability";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/server";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 const BOOKING_EMAIL_SELECT =
   "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, is_shared_open, shared_status, shared_public_token";
@@ -47,8 +52,133 @@ function getMetadataBoolean(metadata, key) {
   return getMetadataText(metadata, key) === "true";
 }
 
+function getText(value, fallback = "") {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function getMessageId(value) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
+}
+
+function buildCaptainAvailabilityReplyMarkup(bookingId) {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Disponibile", callback_data: `booking:accept:${bookingId}` },
+        { text: "❌ Non disponibile", callback_data: `booking:decline:${bookingId}` },
+      ],
+    ],
+  };
+}
+
 function getCheckoutSiteUrl(checkoutSession) {
   return getMetadataText(checkoutSession?.metadata, "site_url") ?? getSiteUrl();
+}
+
+async function insertOutboundTelegramTracking({
+  bookingId,
+  telegramResponse,
+  supabase,
+}) {
+  const toPhone = getText(process.env.TELEGRAM_CAPTAIN_GROUP_CHAT_ID, null);
+  const { error: insertError } = await supabase.from("whatsapp_messages").insert({
+    booking_id: bookingId,
+    direction: "outbound",
+    message_type: "text",
+    meta_message_id: getMessageId(telegramResponse?.result?.message_id),
+    raw_payload: telegramResponse,
+    status: "sent",
+    template_name: null,
+    to_phone: toPhone,
+  });
+
+  if (!insertError || insertError.code === "23505") {
+    return;
+  }
+
+  console.error("[stripe authorization] Could not save captain telegram tracking", {
+    bookingId,
+    message: insertError.message,
+  });
+}
+
+async function markCaptainMessageSent({
+  booking,
+  messageType = CAPTAIN_MESSAGE_TYPES.timeConfirmation,
+  supabase,
+}) {
+  const shouldMarkCaptainMessageSent =
+    messageType === CAPTAIN_MESSAGE_TYPES.timeConfirmation &&
+    ["requested", "checking_with_captain"].includes(booking.booking_status) &&
+    booking.captain_status === "pending";
+  const sentAt = new Date().toISOString();
+  const updatePayload = {
+    ...(shouldMarkCaptainMessageSent ? { captain_status: "message_sent" } : {}),
+    ...(messageType ? { captain_message_copied_type: messageType } : {}),
+    captain_message_copied_at: sentAt,
+    captain_message_sent_at: sentAt,
+    updated_at: sentAt,
+  };
+  let { error: updateError } = await supabase
+    .from("bookings")
+    .update(updatePayload)
+    .eq("id", booking.id);
+
+  if (
+    updateError &&
+    (updateError.message?.includes("captain_message_sent_at") ||
+      updateError.message?.includes("column") ||
+      updateError.code === "PGRST204")
+  ) {
+    const updateWithoutTimestamp = await supabase
+      .from("bookings")
+      .update({
+        ...(shouldMarkCaptainMessageSent ? { captain_status: "message_sent" } : {}),
+        ...(messageType ? { captain_message_copied_type: messageType } : {}),
+        captain_message_copied_at: sentAt,
+        updated_at: sentAt,
+      })
+      .eq("id", booking.id);
+
+    updateError = updateWithoutTimestamp.error;
+  }
+
+  if (updateError) {
+    console.error("[stripe authorization] Could not mark captain message as sent", {
+      bookingId: booking.id,
+      message: updateError.message,
+    });
+  }
+}
+
+async function sendCaptainAutoTelegramRequest({ booking, supabase }) {
+  const captainMessage = buildCaptainMessageByType(
+    booking,
+    CAPTAIN_MESSAGE_TYPES.timeConfirmation,
+  );
+  const telegramResponse = await sendTelegramMessage({
+    text: captainMessage,
+    replyMarkup: buildCaptainAvailabilityReplyMarkup(booking.id),
+  });
+
+  await insertOutboundTelegramTracking({
+    bookingId: booking.id,
+    supabase,
+    telegramResponse,
+  });
+  await markCaptainMessageSent({
+    booking,
+    messageType: CAPTAIN_MESSAGE_TYPES.timeConfirmation,
+    supabase,
+  });
 }
 
 function getAuthorizedBookingFromMetadata({ checkoutSession, paymentIntent }) {
@@ -230,6 +360,17 @@ async function createAuthorizedBookingFromSession({
     siteUrl: getCheckoutSiteUrl(checkoutSession),
     supabase,
   });
+
+  try {
+    await sendCaptainAutoTelegramRequest({
+      booking: insertedBooking,
+      supabase,
+    });
+  } catch (error) {
+    console.warn(
+      `[stripe authorization] Captain Telegram auto-send warning: ${error?.message || "Unknown error."}`,
+    );
+  }
 
   return { authorized: true };
 }
@@ -424,6 +565,17 @@ export async function recordBookingAuthorizationFromSession({
     siteUrl,
     supabase,
   });
+
+  try {
+    await sendCaptainAutoTelegramRequest({
+      booking: updatedBooking,
+      supabase,
+    });
+  } catch (error) {
+    console.warn(
+      `[stripe authorization] Captain Telegram auto-send warning: ${error?.message || "Unknown error."}`,
+    );
+  }
 
   return { authorized: true };
 }

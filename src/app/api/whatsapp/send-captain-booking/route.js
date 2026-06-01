@@ -4,10 +4,33 @@ import {
   buildCaptainMessageByType,
 } from "@/lib/admin/captainMessages";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
-import { sendWhatsAppText } from "@/lib/whatsapp/sendWhatsAppText";
+import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
 function getText(value, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function getMessageId(value) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
+}
+
+function buildCaptainAvailabilityReplyMarkup(bookingId) {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Disponibile", callback_data: `booking:accept:${bookingId}` },
+        { text: "❌ Non disponibile", callback_data: `booking:decline:${bookingId}` },
+      ],
+    ],
+  };
 }
 
 async function insertOutboundWhatsAppTracking({
@@ -45,20 +68,7 @@ export async function POST(request) {
   const body = await request.json();
   const bookingId = getText(body?.booking_id, "");
   const messageType = getText(body?.message_type, "");
-  const toPhone =
-    getText(body?.to_phone) ||
-    process.env.WHATSAPP_CAPTAIN_PHONE ||
-    process.env.WHATSAPP_TEST_RECIPIENT_PHONE;
-
-  if (!toPhone) {
-    return NextResponse.json(
-      {
-        error:
-          "Missing to_phone, WHATSAPP_CAPTAIN_PHONE, and WHATSAPP_TEST_RECIPIENT_PHONE.",
-      },
-      { status: 400 },
-    );
-  }
+  const captainGroupChatId = getText(process.env.TELEGRAM_CAPTAIN_GROUP_CHAT_ID, null);
 
   if (!messageType || !CAPTAIN_MESSAGE_TYPE_VALUES.has(messageType)) {
     return NextResponse.json(
@@ -82,7 +92,7 @@ export async function POST(request) {
       .maybeSingle();
 
     if (bookingError) {
-      console.error("[whatsapp captain booking] Could not load booking", {
+      console.error("[captain telegram booking] Could not load booking", {
         bookingId,
         message: bookingError.message,
       });
@@ -94,40 +104,49 @@ export async function POST(request) {
     }
 
     const captainMessage = buildCaptainMessageByType(booking, messageType);
-    const metaResponse = await sendWhatsAppText({
-      to: toPhone,
-      body: captainMessage,
+    console.log("[captain telegram booking] Attempting Telegram send", {
+      bookingId,
+      messageType,
     });
-    const metaMessageId = getText(metaResponse?.messages?.[0]?.id, null);
+    const telegramResponse = await sendTelegramMessage({
+      text: captainMessage,
+      replyMarkup: buildCaptainAvailabilityReplyMarkup(bookingId),
+    });
+    const telegramMessageId = getMessageId(telegramResponse?.result?.message_id);
+    console.log("[captain telegram booking] Telegram sent", {
+      bookingId,
+      messageId: telegramMessageId,
+    });
     const trackingResult = await insertOutboundWhatsAppTracking({
       bookingId,
-      metaMessageId,
-      metaResponse,
-      toPhone,
+      metaMessageId: telegramMessageId,
+      metaResponse: telegramResponse,
+      toPhone: captainGroupChatId,
     });
 
     if (!trackingResult.inserted) {
       console.error(
-        "[whatsapp captain booking] Could not insert outbound message tracking",
+        "[captain telegram booking] Could not insert outbound message tracking",
         {
           bookingId,
           message: trackingResult.error,
-          metaMessageId,
+          metaMessageId: telegramMessageId,
         },
       );
     }
 
-    console.log("[whatsapp captain booking response]", metaResponse);
-
     return NextResponse.json(
       {
-        ...metaResponse,
+        ...telegramResponse,
         tracking: trackingResult,
       },
       { status: 200 },
     );
   } catch (error) {
-    console.error("[whatsapp captain booking] Request failed", error.message);
+    console.error("[captain telegram booking] Request failed", {
+      bookingId,
+      message: error.message,
+    });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

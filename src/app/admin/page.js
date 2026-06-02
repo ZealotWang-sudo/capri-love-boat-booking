@@ -300,7 +300,7 @@ function getCaptainMessageTintClass(booking) {
     return "bg-[#fbf8f3]";
   }
 
-  return captainMessageState.copied ? "bg-emerald-50/70" : "bg-amber-50/80";
+  return "bg-emerald-50/70";
 }
 
 function isConfirmedSharedBooking(booking) {
@@ -669,14 +669,6 @@ function CaptainMessageTintLegend() {
         <span className="h-2.5 w-2.5 rounded-full bg-stone-400" />
         Shared booking with no join request
       </span>
-      <span className="inline-flex items-center gap-2">
-        <span className="h-3 w-6 border border-amber-200 bg-amber-50" />
-        Captain message not copied
-      </span>
-      <span className="inline-flex items-center gap-2">
-        <span className="h-3 w-6 border border-emerald-200 bg-emerald-50" />
-        Captain message copied
-      </span>
     </div>
   );
 }
@@ -741,7 +733,7 @@ export default async function AdminPage({ searchParams }) {
   const bookingGroups = getGroupedBookings(bookings);
 
   return (
-    <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
+    <main className="min-h-screen bg-[#f3eee7] px-3 py-8 text-stone-950 sm:px-8 sm:py-10">
       <AdminRealtimeRefresh />
       <section className="mx-auto max-w-7xl">
         <AdminHeader

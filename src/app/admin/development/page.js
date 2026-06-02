@@ -1,34 +1,20 @@
 import Link from "next/link";
-import {
-  CreditCard,
-  Database,
-  Eye,
-  Rocket,
-  Send,
-} from "lucide-react";
+import { CreditCard, Database, Rocket, Send } from "lucide-react";
+import { EmailPreviewContent } from "../email-preview/page";
+import { MessagePreviewContent } from "../message/page";
 import AdminHeader from "../AdminHeader";
 import AdminSubmitButton from "../AdminSubmitButton";
 import WebsiteQrCard from "../WebsiteQrCard";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
+import DevelopmentTabs, { isDevelopmentTab } from "./DevelopmentTabs";
 import {
+  checkTelegramWebhook,
   sendTelegramSettingsTestMessage,
   setTelegramWebhook,
 } from "./actions";
 
 const DEVELOPMENT_LINKS = [
-  {
-    href: "/admin/email-preview",
-    icon: Eye,
-    isInternal: true,
-    label: "Email Preview",
-  },
-  {
-    href: "/admin/message",
-    icon: Eye,
-    isInternal: true,
-    label: "Message Preview",
-  },
   {
     href: "https://dashboard.stripe.com/acct_1TUI4bGni59g0iEs/dashboard",
     icon: CreditCard,
@@ -287,6 +273,44 @@ function getTelegramWebhookNotice(searchParams) {
   return null;
 }
 
+function getTelegramWebhookInfo(searchParams) {
+  const value = searchParams?.telegramWebhookInfo;
+
+  if (value === "missing") {
+    return {
+      tone: "error",
+      text: "Telegram bot token is missing.",
+    };
+  }
+
+  if (value === "failed") {
+    return {
+      tone: "error",
+      text: "Could not get Telegram webhook info. Check server logs for details.",
+    };
+  }
+
+  if (value !== "ok") {
+    return null;
+  }
+
+  return {
+    lastError:
+      typeof searchParams?.telegramWebhookLastError === "string"
+        ? searchParams.telegramWebhookLastError
+        : "",
+    pendingUpdates:
+      typeof searchParams?.telegramWebhookPending === "string"
+        ? searchParams.telegramWebhookPending
+        : "0",
+    tone: "success",
+    url:
+      typeof searchParams?.telegramWebhookUrl === "string"
+        ? searchParams.telegramWebhookUrl
+        : "",
+  };
+}
+
 function NoticeBox({ notice }) {
   if (!notice) {
     return null;
@@ -306,6 +330,63 @@ function NoticeBox({ notice }) {
   );
 }
 
+function TelegramWebhookInfoBox({ info }) {
+  if (!info) {
+    return null;
+  }
+
+  if (info.text) {
+    return <NoticeBox notice={info} />;
+  }
+
+  return (
+    <div className="mt-5 border border-stone-300 bg-[#f3eee7] p-4 text-sm leading-6 text-stone-700">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+        Current Telegram webhook
+      </p>
+      <p className="mt-3 break-all">
+        <span className="font-medium text-stone-950">URL:</span>{" "}
+        {info.url || "No webhook set"}
+      </p>
+      <p className="mt-2">
+        <span className="font-medium text-stone-950">Pending updates:</span>{" "}
+        {info.pendingUpdates}
+      </p>
+      {info.lastError ? (
+        <p className="mt-2 text-red-900">
+          <span className="font-medium">Last error:</span> {info.lastError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function getDevelopmentTab(searchParams) {
+  const tab = searchParams?.tab;
+
+  if (isDevelopmentTab(tab)) {
+    return tab;
+  }
+
+  if (tab === "emailpreview" || tab === "emailprivew" || tab === "email") {
+    return "email-preview";
+  }
+
+  if (tab === "messagepreview" || tab === "message") {
+    return "message-preview";
+  }
+
+  if (
+    searchParams?.telegramTest ||
+    searchParams?.telegramWebhook ||
+    searchParams?.telegramWebhookInfo
+  ) {
+    return "telegram";
+  }
+
+  return "tools";
+}
+
 export default async function AdminDevelopmentPage({ searchParams }) {
   const user = await getAdminUser("/admin/development");
 
@@ -316,6 +397,8 @@ export default async function AdminDevelopmentPage({ searchParams }) {
   const queryParams = await searchParams;
   const telegramTestNotice = getTelegramTestNotice(queryParams);
   const telegramWebhookNotice = getTelegramWebhookNotice(queryParams);
+  const telegramWebhookInfo = getTelegramWebhookInfo(queryParams);
+  const activeTab = getDevelopmentTab(queryParams);
   const hasProductionWebhookTarget = Boolean(
     process.env.TELEGRAM_WEBHOOK_PRODUCTION_URL || process.env.NEXT_PUBLIC_SITE_URL,
   );
@@ -330,7 +413,11 @@ export default async function AdminDevelopmentPage({ searchParams }) {
           userEmail={user.email}
         />
 
-        <section className="mt-8 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
+        <DevelopmentTabs activeTab={activeTab} />
+
+        {activeTab === "tools" ? (
+          <>
+        <section className="mt-6 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
             Developer tools
           </p>
@@ -367,7 +454,15 @@ export default async function AdminDevelopmentPage({ searchParams }) {
             )}
           </div>
         </section>
+            <WebsiteQrCard />
+          </>
+        ) : null}
 
+        {activeTab === "email-preview" ? <EmailPreviewContent /> : null}
+
+        {activeTab === "message-preview" ? <MessagePreviewContent /> : null}
+
+        {activeTab === "telegram" ? (
         <section className="mt-6 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
             Telegram settings
@@ -376,14 +471,14 @@ export default async function AdminDevelopmentPage({ searchParams }) {
             Telegram test message
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-stone-600">
-            Send a test message to the captain Telegram group with one inline
-            button. Clicking the button should create a webhook event in the
-            server logs.
+            Send a test message to the captain Telegram group with a dashboard
+            link button.
           </p>
           <NoticeBox notice={telegramTestNotice} />
           <NoticeBox notice={telegramWebhookNotice} />
+          <TelegramWebhookInfoBox info={telegramWebhookInfo} />
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <form
               action={sendTelegramSettingsTestMessage}
               className="border border-stone-300 p-4"
@@ -392,7 +487,7 @@ export default async function AdminDevelopmentPage({ searchParams }) {
                 Test message
               </p>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                Sends “hello here” with a “hello back” webhook test button.
+                Sends a Telegram message with an “Apri dashboard” button.
               </p>
               <AdminSubmitButton
                 pendingLabel="Sending Telegram test..."
@@ -441,9 +536,29 @@ export default async function AdminDevelopmentPage({ searchParams }) {
                 Set preview webhook
               </AdminSubmitButton>
             </form>
+
+            <form
+              action={checkTelegramWebhook}
+              className="border border-stone-300 p-4"
+            >
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+                Current webhook
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                Ask Telegram which webhook URL is currently active for this bot.
+              </p>
+              <AdminSubmitButton
+                pendingLabel="Checking webhook..."
+                className="mt-4 border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60"
+              >
+                Check current webhook
+              </AdminSubmitButton>
+            </form>
           </div>
         </section>
+        ) : null}
 
+        {activeTab === "design" ? (
         <section className="mt-6 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
             Brand house
@@ -467,8 +582,7 @@ export default async function AdminDevelopmentPage({ searchParams }) {
             <TokenTable rows={LAYOUT_TOKENS} title="Spacing & layout" />
           </div>
         </section>
-
-        <WebsiteQrCard />
+        ) : null}
       </section>
     </main>
   );

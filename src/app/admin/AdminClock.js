@@ -30,7 +30,7 @@ function ClockItem({ label, value }) {
   );
 }
 
-export default function AdminClock() {
+export default function AdminClock({ compact = false }) {
   const [now, setNow] = useState(null);
 
   useEffect(() => {
@@ -50,7 +50,25 @@ export default function AdminClock() {
 
   return (
     <div className="flex">
-      <ClockItem label="Capri time" value={capriTime} />
+      {compact ? (
+        <div className="px-2 py-1.5">
+          <p className="text-[0.55rem] font-medium uppercase tracking-[0.14em] text-stone-500">
+            Time
+          </p>
+          <p className="mt-0.5 font-mono text-xs font-medium text-stone-950">
+            {now
+              ? new Intl.DateTimeFormat("en", {
+                  hour: "2-digit",
+                  hour12: false,
+                  minute: "2-digit",
+                  timeZone: CAPRI_TIME_ZONE,
+                }).format(now)
+              : "--"}
+          </p>
+        </div>
+      ) : (
+        <ClockItem label="Capri time" value={capriTime} />
+      )}
     </div>
   );
 }

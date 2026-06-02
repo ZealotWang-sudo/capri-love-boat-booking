@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import BookingForm from "@/components/BookingForm";
@@ -198,28 +197,6 @@ export default async function BookingPage({ params }) {
           <p className="mt-6 text-lg font-light leading-8 text-stone-600">
             {t("subtitle")}
           </p>
-          <div className="mt-10 border border-stone-300 bg-[#fbf8f3]">
-            <div className="relative aspect-[16/10] overflow-hidden bg-stone-200">
-              <Image
-                src="/boat/boat-2.jpeg"
-                alt={t("boatPreviewAlt")}
-                fill
-                sizes="(max-width: 1024px) 100vw, 36vw"
-                className="object-cover"
-              />
-            </div>
-            <div className="p-5">
-              <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
-                {t("boatPreviewEyebrow")}
-              </p>
-              <h2 className="mt-3 text-2xl font-light tracking-[-0.03em]">
-                {t("boatPreviewTitle")}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-stone-600">
-                {t("boatPreviewText")}
-              </p>
-            </div>
-          </div>
         </div>
 
         <div className="bg-[#fbf8f3] p-6 shadow-sm sm:p-10">

@@ -1,11 +1,9 @@
+import { redirect } from "next/navigation";
 import {
   CAPTAIN_MESSAGE_TYPES,
   buildCaptainMessageByType,
 } from "@/lib/admin/captainMessages";
-import AdminHeader from "../AdminHeader";
 import CopyCaptainMessageButton from "../CopyCaptainMessageButton";
-import { getAdminUser, isAllowedAdmin } from "../auth";
-import UnauthorizedAdmin from "../UnauthorizedAdmin";
 
 const PREVIEW_BOOKING = {
   customer_name: "Kexin Wang",
@@ -79,33 +77,23 @@ function MessagePreviewCard({ preview }) {
   );
 }
 
-export default async function AdminMessagePage() {
-  const user = await getAdminUser("/admin/message");
-
-  if (!isAllowedAdmin(user)) {
-    return <UnauthorizedAdmin />;
-  }
-
+export function MessagePreviewContent() {
   return (
-    <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
-      <section className="mx-auto max-w-7xl">
-        <AdminHeader
-          active="development"
-          title="Message Preview"
-          userEmail={user.email}
-        />
-
-        <section className="mt-8 border border-stone-300 bg-[#fbf8f3] p-6 text-sm leading-6 text-stone-700">
-          These are the captain WhatsApp templates used in production. Preview,
-          copy message, and WhatsApp sending all use the same template source.
-        </section>
-
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
-          {MESSAGE_PREVIEWS.map((preview) => (
-            <MessagePreviewCard key={preview.title} preview={preview} />
-          ))}
-        </section>
+    <>
+      <section className="mt-6 border border-stone-300 bg-[#fbf8f3] p-6 text-sm leading-6 text-stone-700">
+        These are the captain WhatsApp templates used in production. Preview,
+        copy message, and WhatsApp sending all use the same template source.
       </section>
-    </main>
+
+      <section className="mt-8 grid gap-6 xl:grid-cols-2">
+        {MESSAGE_PREVIEWS.map((preview) => (
+          <MessagePreviewCard key={preview.title} preview={preview} />
+        ))}
+      </section>
+    </>
   );
+}
+
+export default function AdminMessagePage() {
+  redirect("/admin/development?tab=message-preview");
 }

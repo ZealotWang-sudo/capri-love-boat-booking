@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   CAPTAIN_MESSAGE_TYPE_VALUES,
+  CAPTAIN_MESSAGE_TYPES,
   buildCaptainMessageByType,
 } from "@/lib/admin/captainMessages";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
@@ -108,9 +109,13 @@ export async function POST(request) {
       bookingId,
       messageType,
     });
+    const replyMarkup =
+      messageType === CAPTAIN_MESSAGE_TYPES.timeConfirmation
+        ? buildCaptainAvailabilityReplyMarkup(bookingId)
+        : undefined;
     const telegramResponse = await sendTelegramMessage({
       text: captainMessage,
-      replyMarkup: buildCaptainAvailabilityReplyMarkup(bookingId),
+      replyMarkup,
     });
     const telegramMessageId = getMessageId(telegramResponse?.result?.message_id);
     console.log("[captain telegram booking] Telegram sent", {

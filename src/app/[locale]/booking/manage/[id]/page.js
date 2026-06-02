@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import CopySharedLinkButton from "@/components/CopySharedLinkButton";
@@ -217,6 +218,33 @@ function TourLogisticsItem({ href, label, value }) {
   );
 }
 
+function BoatPreviewCard({ labels }) {
+  return (
+    <div className="mt-10 border border-stone-300 bg-[#fbf8f3]">
+      <div className="relative aspect-[16/10] overflow-hidden bg-stone-200">
+        <Image
+          src="/boat/boat-2.jpeg"
+          alt={labels.alt}
+          fill
+          sizes="(max-width: 1024px) 100vw, 36vw"
+          className="object-cover"
+        />
+      </div>
+      <div className="p-5">
+        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+          {labels.eyebrow}
+        </p>
+        <h2 className="mt-3 text-2xl font-light tracking-[-0.03em]">
+          {labels.title}
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-stone-600">
+          {labels.text}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 async function getManagedBooking({ bookingId, token }) {
   if (!bookingId || !token || token.length < 32) {
     return null;
@@ -294,6 +322,7 @@ export default async function ManageBookingPage({ params, searchParams }) {
   setRequestLocale(locale);
 
   const t = await getTranslations("BookingManage");
+  const bookingT = await getTranslations("Booking");
   const common = await getTranslations("Common");
   if (paymentStatus === "success") {
     await confirmReturnedStripePayment({
@@ -389,6 +418,14 @@ export default async function ManageBookingPage({ params, searchParams }) {
           <p className="mt-6 text-lg font-light leading-8 text-stone-600">
             {t("subtitle")}
           </p>
+          <BoatPreviewCard
+            labels={{
+              alt: bookingT("boatPreviewAlt"),
+              eyebrow: bookingT("boatPreviewEyebrow"),
+              text: bookingT("boatPreviewText"),
+              title: bookingT("boatPreviewTitle"),
+            }}
+          />
         </div>
 
         <div className="bg-[#fbf8f3] p-6 shadow-sm sm:p-10">

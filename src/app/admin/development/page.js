@@ -1,29 +1,20 @@
 import Link from "next/link";
-import {
-  CreditCard,
-  Database,
-  Eye,
-  Rocket,
-  Send,
-} from "lucide-react";
+import { CreditCard, Database, Rocket, Send } from "lucide-react";
+import { EmailPreviewContent } from "../email-preview/page";
+import { MessagePreviewContent } from "../message/page";
 import AdminHeader from "../AdminHeader";
+import AdminSubmitButton from "../AdminSubmitButton";
 import WebsiteQrCard from "../WebsiteQrCard";
 import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
+import DevelopmentTabs, { isDevelopmentTab } from "./DevelopmentTabs";
+import {
+  checkTelegramWebhook,
+  sendTelegramSettingsTestMessage,
+  setTelegramWebhook,
+} from "./actions";
 
 const DEVELOPMENT_LINKS = [
-  {
-    href: "/admin/email-preview",
-    icon: Eye,
-    isInternal: true,
-    label: "Email Preview",
-  },
-  {
-    href: "/admin/message",
-    icon: Eye,
-    isInternal: true,
-    label: "Message Preview",
-  },
   {
     href: "https://dashboard.stripe.com/acct_1TUI4bGni59g0iEs/dashboard",
     icon: CreditCard,
@@ -221,12 +212,197 @@ function TokenTable({ rows, title }) {
   );
 }
 
-export default async function AdminDevelopmentPage() {
+function getTelegramTestNotice(searchParams) {
+  const value = searchParams?.telegramTest;
+
+  if (value === "sent") {
+    return {
+      tone: "success",
+      text: "Telegram test message sent.",
+    };
+  }
+
+  if (value === "failed") {
+    return {
+      tone: "error",
+      text: "Telegram test message failed. Check server logs for details.",
+    };
+  }
+
+  return null;
+}
+
+function getTelegramWebhookNotice(searchParams) {
+  const value = searchParams?.telegramWebhook;
+
+  if (value === "production-set") {
+    return {
+      tone: "success",
+      text: "Telegram production webhook set.",
+    };
+  }
+
+  if (value === "preview-set") {
+    return {
+      tone: "success",
+      text: "Telegram preview webhook set.",
+    };
+  }
+
+  if (value === "production-missing") {
+    return {
+      tone: "error",
+      text: "Production webhook target or Telegram bot token is missing.",
+    };
+  }
+
+  if (value === "preview-missing") {
+    return {
+      tone: "error",
+      text: "Preview webhook target or Telegram bot token is missing.",
+    };
+  }
+
+  if (value === "production-failed" || value === "preview-failed") {
+    return {
+      tone: "error",
+      text: "Could not set Telegram webhook. Check server logs for details.",
+    };
+  }
+
+  return null;
+}
+
+function getTelegramWebhookInfo(searchParams) {
+  const value = searchParams?.telegramWebhookInfo;
+
+  if (value === "missing") {
+    return {
+      tone: "error",
+      text: "Telegram bot token is missing.",
+    };
+  }
+
+  if (value === "failed") {
+    return {
+      tone: "error",
+      text: "Could not get Telegram webhook info. Check server logs for details.",
+    };
+  }
+
+  if (value !== "ok") {
+    return null;
+  }
+
+  return {
+    lastError:
+      typeof searchParams?.telegramWebhookLastError === "string"
+        ? searchParams.telegramWebhookLastError
+        : "",
+    pendingUpdates:
+      typeof searchParams?.telegramWebhookPending === "string"
+        ? searchParams.telegramWebhookPending
+        : "0",
+    tone: "success",
+    url:
+      typeof searchParams?.telegramWebhookUrl === "string"
+        ? searchParams.telegramWebhookUrl
+        : "",
+  };
+}
+
+function NoticeBox({ notice }) {
+  if (!notice) {
+    return null;
+  }
+
+  return (
+    <div
+      className={[
+        "mt-5 border p-4 text-sm leading-6",
+        notice.tone === "error"
+          ? "border-red-900/40 bg-red-50 text-red-900"
+          : "border-emerald-900/30 bg-emerald-50 text-emerald-900",
+      ].join(" ")}
+    >
+      {notice.text}
+    </div>
+  );
+}
+
+function TelegramWebhookInfoBox({ info }) {
+  if (!info) {
+    return null;
+  }
+
+  if (info.text) {
+    return <NoticeBox notice={info} />;
+  }
+
+  return (
+    <div className="mt-5 border border-stone-300 bg-[#f3eee7] p-4 text-sm leading-6 text-stone-700">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+        Current Telegram webhook
+      </p>
+      <p className="mt-3 break-all">
+        <span className="font-medium text-stone-950">URL:</span>{" "}
+        {info.url || "No webhook set"}
+      </p>
+      <p className="mt-2">
+        <span className="font-medium text-stone-950">Pending updates:</span>{" "}
+        {info.pendingUpdates}
+      </p>
+      {info.lastError ? (
+        <p className="mt-2 text-red-900">
+          <span className="font-medium">Last error:</span> {info.lastError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function getDevelopmentTab(searchParams) {
+  const tab = searchParams?.tab;
+
+  if (isDevelopmentTab(tab)) {
+    return tab;
+  }
+
+  if (tab === "emailpreview" || tab === "emailprivew" || tab === "email") {
+    return "email-preview";
+  }
+
+  if (tab === "messagepreview" || tab === "message") {
+    return "message-preview";
+  }
+
+  if (
+    searchParams?.telegramTest ||
+    searchParams?.telegramWebhook ||
+    searchParams?.telegramWebhookInfo
+  ) {
+    return "telegram";
+  }
+
+  return "tools";
+}
+
+export default async function AdminDevelopmentPage({ searchParams }) {
   const user = await getAdminUser("/admin/development");
 
   if (!isAllowedAdmin(user)) {
     return <UnauthorizedAdmin />;
   }
+
+  const queryParams = await searchParams;
+  const telegramTestNotice = getTelegramTestNotice(queryParams);
+  const telegramWebhookNotice = getTelegramWebhookNotice(queryParams);
+  const telegramWebhookInfo = getTelegramWebhookInfo(queryParams);
+  const activeTab = getDevelopmentTab(queryParams);
+  const hasProductionWebhookTarget = Boolean(
+    process.env.TELEGRAM_WEBHOOK_PRODUCTION_URL || process.env.NEXT_PUBLIC_SITE_URL,
+  );
+  const hasPreviewWebhookTarget = Boolean(process.env.TELEGRAM_WEBHOOK_PREVIEW_URL);
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
@@ -237,7 +413,11 @@ export default async function AdminDevelopmentPage() {
           userEmail={user.email}
         />
 
-        <section className="mt-8 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
+        <DevelopmentTabs activeTab={activeTab} />
+
+        {activeTab === "tools" ? (
+          <>
+        <section className="mt-6 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
             Developer tools
           </p>
@@ -274,7 +454,111 @@ export default async function AdminDevelopmentPage() {
             )}
           </div>
         </section>
+            <WebsiteQrCard />
+          </>
+        ) : null}
 
+        {activeTab === "email-preview" ? <EmailPreviewContent /> : null}
+
+        {activeTab === "message-preview" ? <MessagePreviewContent /> : null}
+
+        {activeTab === "telegram" ? (
+        <section className="mt-6 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
+          <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+            Telegram settings
+          </p>
+          <h2 className="mt-4 text-3xl font-light tracking-[-0.03em]">
+            Telegram test message
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-stone-600">
+            Send a test message to the captain Telegram group with a dashboard
+            link button.
+          </p>
+          <NoticeBox notice={telegramTestNotice} />
+          <NoticeBox notice={telegramWebhookNotice} />
+          <TelegramWebhookInfoBox info={telegramWebhookInfo} />
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            <form
+              action={sendTelegramSettingsTestMessage}
+              className="border border-stone-300 p-4"
+            >
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+                Test message
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                Sends a Telegram message with an “Apri dashboard” button.
+              </p>
+              <AdminSubmitButton
+                pendingLabel="Sending Telegram test..."
+                className="mt-4 border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60"
+              >
+                Send Telegram test
+              </AdminSubmitButton>
+            </form>
+
+            <form action={setTelegramWebhook} className="border border-stone-300 p-4">
+              <input type="hidden" name="target" value="production" />
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+                Production webhook
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                Uses the production webhook target from environment settings.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                {hasProductionWebhookTarget ? "Target configured" : "Target missing"}
+              </p>
+              <AdminSubmitButton
+                disabled={!hasProductionWebhookTarget}
+                pendingLabel="Setting production..."
+                className="mt-4 border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Set production webhook
+              </AdminSubmitButton>
+            </form>
+
+            <form action={setTelegramWebhook} className="border border-stone-300 p-4">
+              <input type="hidden" name="target" value="preview" />
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+                Preview webhook
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                Uses the preview webhook target from environment settings.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                {hasPreviewWebhookTarget ? "Target configured" : "Target missing"}
+              </p>
+              <AdminSubmitButton
+                disabled={!hasPreviewWebhookTarget}
+                pendingLabel="Setting preview..."
+                className="mt-4 border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Set preview webhook
+              </AdminSubmitButton>
+            </form>
+
+            <form
+              action={checkTelegramWebhook}
+              className="border border-stone-300 p-4"
+            >
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+                Current webhook
+              </p>
+              <p className="mt-3 text-sm leading-6 text-stone-600">
+                Ask Telegram which webhook URL is currently active for this bot.
+              </p>
+              <AdminSubmitButton
+                pendingLabel="Checking webhook..."
+                className="mt-4 border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60"
+              >
+                Check current webhook
+              </AdminSubmitButton>
+            </form>
+          </div>
+        </section>
+        ) : null}
+
+        {activeTab === "design" ? (
         <section className="mt-6 border border-stone-300 bg-[#fbf8f3] p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
             Brand house
@@ -298,8 +582,7 @@ export default async function AdminDevelopmentPage() {
             <TokenTable rows={LAYOUT_TOKENS} title="Spacing & layout" />
           </div>
         </section>
-
-        <WebsiteQrCard />
+        ) : null}
       </section>
     </main>
   );

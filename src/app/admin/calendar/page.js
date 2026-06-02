@@ -305,64 +305,6 @@ export default async function AdminCalendarPage({ searchParams }) {
           <AdminCalendarMonthNavigation month={month} />
         </div>
 
-        <form
-          action={markDateRangeUnavailable}
-          className="mt-4 border border-stone-300 bg-[#fbf8f3] p-5"
-        >
-          <input type="hidden" name="month" value={month} />
-          <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-            Quick block
-          </p>
-          <h3 className="mt-2 text-xl font-light tracking-[-0.02em]">
-            Mark multiple days unavailable
-          </h3>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
-            <label className="block">
-              <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
-                Start date
-              </span>
-              <input
-                type="date"
-                name="startDate"
-                defaultValue={rangeStartDate}
-                required
-                className="mt-2 w-full border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-950"
-              />
-            </label>
-            <label className="block">
-              <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
-                End date
-              </span>
-              <input
-                type="date"
-                name="endDate"
-                defaultValue={monthRange.endDate}
-                required
-                className="mt-2 w-full border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-950"
-              />
-            </label>
-            <label className="block sm:col-span-2">
-              <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
-                Reason (optional)
-              </span>
-              <input
-                type="text"
-                name="reason"
-                placeholder="Vacation / maintenance / private event"
-                className="mt-2 w-full border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-950"
-              />
-            </label>
-          </div>
-          <div className="mt-4">
-            <AdminSubmitButton
-              pendingLabel="Blocking days..."
-              className="border border-stone-950 bg-stone-950 px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60"
-            >
-              Mark range unavailable
-            </AdminSubmitButton>
-          </div>
-        </form>
-
         {bookingsError || unavailableError ? (
           <div className="mt-8 border border-red-900/30 bg-red-50 p-5 text-sm leading-7 text-red-900">
             {bookingsError ? (
@@ -409,6 +351,80 @@ export default async function AdminCalendarPage({ searchParams }) {
             </div>
           )}
         </div>
+
+        <details className="mt-8 border border-stone-300 bg-[#fbf8f3]">
+          <summary className="flex cursor-pointer list-none flex-col justify-between gap-3 px-5 py-5 marker:hidden sm:flex-row sm:items-center [&::-webkit-details-marker]:hidden">
+            <span>
+              <span className="block text-xs uppercase tracking-[0.2em] text-stone-500">
+                Quick block
+              </span>
+              <span className="mt-2 block text-xl font-light tracking-[-0.02em] text-stone-950">
+                Mark multiple days unavailable
+              </span>
+            </span>
+            <span className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
+              Open panel
+            </span>
+          </summary>
+          <form
+            action={markDateRangeUnavailable}
+            className="border-t border-stone-300 p-5 sm:p-6"
+          >
+            <input type="hidden" name="month" value={month} />
+            <p className="max-w-3xl text-sm leading-7 text-stone-600">
+              Use this for vacation days, maintenance, weather holds, or private
+              events. This blocks all schedule periods for every selected date.
+            </p>
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_2fr]">
+              <label className="block">
+                <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                  Start date
+                </span>
+                <input
+                  type="date"
+                  name="startDate"
+                  defaultValue={rangeStartDate}
+                  required
+                  className="mt-2 w-full border border-stone-300 bg-[#f3eee7] px-4 py-3 text-sm outline-none transition focus:border-stone-950"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                  End date
+                </span>
+                <input
+                  type="date"
+                  name="endDate"
+                  defaultValue={monthRange.endDate}
+                  required
+                  className="mt-2 w-full border border-stone-300 bg-[#f3eee7] px-4 py-3 text-sm outline-none transition focus:border-stone-950"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[0.65rem] uppercase tracking-[0.16em] text-stone-500">
+                  Reason (optional)
+                </span>
+                <input
+                  type="text"
+                  name="reason"
+                  placeholder="Vacation / maintenance / private event"
+                  className="mt-2 w-full border border-stone-300 bg-[#f3eee7] px-4 py-3 text-sm outline-none transition focus:border-stone-950"
+                />
+              </label>
+            </div>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-stone-500">
+                Existing bookings are not changed. This only blocks open slots.
+              </p>
+              <AdminSubmitButton
+                pendingLabel="Blocking days..."
+                className="border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950 disabled:cursor-wait disabled:opacity-60"
+              >
+                Mark range unavailable
+              </AdminSubmitButton>
+            </div>
+          </form>
+        </details>
       </section>
     </main>
   );

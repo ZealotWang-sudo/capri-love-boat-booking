@@ -19,11 +19,11 @@ function formatClockTime(date, timeZone) {
 
 function ClockItem({ label, value }) {
   return (
-    <div className="border border-stone-300 bg-[#fbf8f3] px-2.5 py-1.5 sm:px-3 sm:py-2">
-      <p className="text-[0.55rem] uppercase tracking-[0.14em] text-stone-500 sm:text-[0.6rem] sm:tracking-[0.16em]">
+    <div className="px-2.5 py-1.5 sm:px-3 sm:py-2">
+      <p className="text-[0.55rem] font-medium uppercase tracking-[0.14em] text-stone-500 sm:text-[0.6rem] sm:tracking-[0.16em]">
         {label}
       </p>
-      <p className="mt-0.5 font-mono text-[0.65rem] text-stone-950 sm:mt-1 sm:text-xs">
+      <p className="mt-0.5 font-mono text-[1rem] font-medium text-stone-950 sm:mt-1 sm:text-xs">
         {value}
       </p>
     </div>

@@ -35,6 +35,23 @@ function parseBookingCallbackData(callbackData) {
   return { action, bookingId };
 }
 
+function parseTelegramTestCallbackData(callbackData) {
+  const rawData = getText(callbackData, "");
+  const parts = rawData.split(":");
+
+  if (parts.length !== 3 || parts[0] !== "telegram" || parts[1] !== "test") {
+    return null;
+  }
+
+  const action = getText(parts[2], null);
+
+  if (!action) {
+    return null;
+  }
+
+  return { action };
+}
+
 async function answerCallbackQuery(callbackQueryId) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -154,6 +171,7 @@ export async function POST(request) {
     const chatId = callbackQuery?.message?.chat?.id ?? null;
     const messageId = callbackQuery?.message?.message_id ?? null;
     const parsed = parseBookingCallbackData(callbackData);
+    const parsedTest = parseTelegramTestCallbackData(callbackData);
 
     if (parsed) {
       console.log("[telegram callback booking]", {
@@ -223,6 +241,15 @@ export async function POST(request) {
           reason: decisionResult?.reason || "booking already processed",
         });
       }
+    } else if (parsedTest) {
+      console.log("[telegram callback test]", {
+        action: parsedTest.action,
+        callbackData,
+        telegramUserId,
+        telegramFirstName,
+        chatId,
+        messageId,
+      });
     } else {
       console.warn("[telegram callback booking] Invalid callback data format", {
         callbackData,

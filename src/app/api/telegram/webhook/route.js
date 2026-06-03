@@ -85,7 +85,7 @@ async function answerCallbackQuery(callbackQueryId) {
   }
 }
 
-async function editMessageReplyMarkup({ chatId, messageId }) {
+async function deleteTelegramMessage({ chatId, messageId }) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
   if (!botToken) {
@@ -93,7 +93,7 @@ async function editMessageReplyMarkup({ chatId, messageId }) {
   }
 
   const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`,
+    `https://api.telegram.org/bot${botToken}/deleteMessage`,
     {
       method: "POST",
       headers: {
@@ -102,7 +102,6 @@ async function editMessageReplyMarkup({ chatId, messageId }) {
       body: JSON.stringify({
         chat_id: chatId,
         message_id: messageId,
-        reply_markup: { inline_keyboard: [] },
       }),
     },
   );
@@ -115,7 +114,7 @@ async function editMessageReplyMarkup({ chatId, messageId }) {
       telegramResponse.description.trim()
         ? telegramResponse.description.trim()
         : "Unknown Telegram API error.";
-    throw new Error(`Telegram editMessageReplyMarkup failed: ${apiDescription}`);
+    throw new Error(`Telegram deleteMessage failed: ${apiDescription}`);
   }
 }
 
@@ -224,13 +223,13 @@ export async function POST(request) {
 
         if (chatId && messageId) {
           try {
-            await editMessageReplyMarkup({
+            await deleteTelegramMessage({
               chatId,
               messageId,
             });
           } catch (error) {
             console.warn(
-              `[telegram webhook] editMessageReplyMarkup warning: ${error?.message || "Unknown error."}`,
+              `[telegram webhook] deleteMessage warning: ${error?.message || "Unknown error."}`,
             );
           }
         }

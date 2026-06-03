@@ -618,11 +618,11 @@
           "key": "departurePoint",
           "label": "Abfahrtspunkt",
           "value": "Molo 21, Marina Grande / Haupthafen von Capri, etwa 5 Minuten vom Ankunftsbereich der öffentlichen Fähren und Tragflächenboote entfernt.",
-          "note": "Tippe auf die Adresse oben, um den Ort in Google Maps oder einer anderen Karten-App zu öffnen. Für eine Wegbeschreibung mit Fotos zum Treffpunkt nutze den Button oben in dieser E-Mail."
+          "note": "Tippe auf die Adresse oben, um den Ort in Google Maps oder einer anderen Karten-App zu öffnen. Für eine Wegbeschreibung mit Fotos zum Treffpunkt nutze den Button \"Buchungsdetails anzeigen\"."
         },
         {
           "key": "captainPhone",
-          "label": "Telefon des Kapitäns",
+          "label": "Handynummer und WhatsApp-Nummer des Kapitäns",
           "value": "+39 339 665 0836"
         },
         {

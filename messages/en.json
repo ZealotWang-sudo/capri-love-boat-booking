@@ -618,11 +618,11 @@
           "key": "departurePoint",
           "label": "Departure point",
           "value": "Molo 21, Marina Grande / Capri main port, about 5 minutes from the public ferry and hydrofoil arrival area.",
-          "note": "Tap the address above to open the location in Google Maps or another map app. For photo directions to the meeting point, use the button at the top of this email."
+          "note": "Tap the address above to open the location in Google Maps or another map app. For photo directions to the meeting point, use the \"View booking details\" button."
         },
         {
           "key": "captainPhone",
-          "label": "Captain's cell",
+          "label": "Captain's cell number & WhatsApp number",
           "value": "+39 339 665 0836"
         },
         {

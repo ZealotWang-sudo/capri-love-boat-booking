@@ -618,11 +618,11 @@
           "key": "departurePoint",
           "label": "出发地点",
           "value": "Molo 21，Marina Grande / 卡普里主港，距离公共渡轮和水翼船抵达区域步行约 5 分钟。",
-          "note": "点击上方地址可直接在 Google Maps 等地图中定位。需要带图片的集合点指引，请点击邮件上方的“查看预约详情”按钮查看。"
+          "note": "点击上方地址可直接在 Google Maps 或其他地图应用中打开位置。需要带图片的集合点指引，请点击“查看预约详情”按钮。"
         },
         {
           "key": "captainPhone",
-          "label": "船长电话",
+          "label": "船长手机号和 WhatsApp 号码",
           "value": "+39 339 665 0836"
         },
         {

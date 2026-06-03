@@ -114,7 +114,7 @@ export default function AvailabilityCalendar({
         readOnly
       />
       <div className="flex items-end justify-between gap-4">
-        <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+        <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
           {label}
         </label>
         <div className="text-right">

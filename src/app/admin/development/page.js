@@ -456,6 +456,20 @@ export default async function AdminDevelopmentPage({ searchParams }) {
                 </a>
               ),
             )}
+            {captainDashboardHref ? (
+              <a
+                href={captainDashboardHref}
+                target="_blank"
+                rel="noreferrer"
+                className={developmentLinkClassName}
+              >
+                View captain page
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-3 border border-stone-300 px-5 py-4 text-xs font-medium uppercase tracking-[0.18em] text-stone-400">
+                Captain token missing
+              </span>
+            )}
           </div>
         </section>
             <WebsiteQrCard />
@@ -482,30 +496,7 @@ export default async function AdminDevelopmentPage({ searchParams }) {
           <NoticeBox notice={telegramWebhookNotice} />
           <TelegramWebhookInfoBox info={telegramWebhookInfo} />
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
-            <div className="border border-stone-300 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
-                Captain page
-              </p>
-              <p className="mt-3 text-sm leading-6 text-stone-600">
-                Open the read-only booking dashboard that Renato sees.
-              </p>
-              {captainDashboardHref ? (
-                <a
-                  href={captainDashboardHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 inline-flex border border-stone-950 bg-stone-950 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950"
-                >
-                  View captain page
-                </a>
-              ) : (
-                <p className="mt-4 border border-stone-300 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-                  Token missing
-                </p>
-              )}
-            </div>
-
+          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <form
               action={sendTelegramSettingsTestMessage}
               className="border border-stone-300 p-4"

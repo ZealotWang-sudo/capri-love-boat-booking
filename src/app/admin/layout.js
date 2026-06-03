@@ -25,6 +25,10 @@ export const metadata = {
   },
 };
 
+export const viewport = {
+  themeColor: "#f3eee7",
+};
+
 export default async function RootLayout({ children }) {
   const supabase = await createSupabaseServerClient();
   const {

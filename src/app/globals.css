@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f3eee7;
   --foreground: #171717;
 }
 
@@ -14,13 +14,15 @@
 }
 
 html {
+  background: var(--background);
+  color-scheme: light;
   scroll-behavior: smooth;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #f3eee7;
+    --foreground: #171717;
   }
 }
 

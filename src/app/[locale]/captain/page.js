@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
+import { CalendarDaysIcon, ClockIcon,CheckIcon } from "lucide-react";
 import {
   ACTIVE_BOOKING_STATUSES,
   getDisplayTimeForTimeSlot,
@@ -8,7 +9,7 @@ import AdminClock from "@/app/admin/AdminClock";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 
 const CAPTAIN_BOOKING_SELECT =
-  "id, customer_name, phone, guest_count, requested_date, tour_type, time_slot, time_window, pay_on_board_eur, booking_status, message";
+  "id, customer_name, email, phone, guest_count, requested_date, tour_type, time_slot, time_window, pay_on_board_eur, booking_status, message";
 const CAPTAIN_TIME_ZONE = "Europe/Rome";
 const CAPRI_HOURLY_FORECAST_URL =
   "https://api.open-meteo.com/v1/forecast?latitude=40.5532&longitude=14.2222&hourly=weather_code,temperature_2m,wind_speed_10m&timezone=Europe%2FRome";
@@ -25,7 +26,7 @@ const TOUR_LABELS = {
 const BOOKING_STATUS_LABELS = {
   cancelled: "🚫 cancellata",
   canceled: "🚫 cancellata",
-  confirmed: "✅ confermata",
+  confirmed: <CheckIcon  className="text-white bg-green-500 rounded-sm p-1" />,
   declined: "❌ rifiutata",
   payment_pending: "⏳ pagamento in attesa",
   pending: "⏳ in attesa",
@@ -154,7 +155,7 @@ function formatWeatherForecast(forecast) {
     parts.push(`vento ${windSpeed} km/h`);
   }
 
-  return `Meteo tour: ${parts.join(" · ")}`;
+  return `${parts.join(" · ")}`;
 }
 
 function getDaysBetweenDateStrings(startDateString, endDateString) {
@@ -337,16 +338,20 @@ function BookingCard({ booking, weatherForecast }) {
     <article className="space-y-3 border border-stone-300 bg-[#fbf8f3] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
+         <div className="flex items-center gap-1">  
+          <CalendarDaysIcon className="w-4 h-4" />
           <p className="text-sm font-semibold text-stone-950">
             {formatDateForCaptain(booking.requested_date)}
           </p>
-          <p className="text-sm text-stone-700">{getTimeLabel(booking)}</p>
+          </div>
+          <div className="flex items-center gap-1">  
+          <ClockIcon className="w-4 h-4" />
+          <p className="text-sm  font-semibold text-stone-700">{getTimeLabel(booking)}</p>
+          </div>
         </div>
-        <div className="text-right text-xs text-stone-600">
-          <p>{formatStatus(booking.booking_status, BOOKING_STATUS_LABELS)}</p>
-        </div>
+     
       </div>
-      <p className="border-y border-stone-200 py-2 text-sm font-medium text-stone-800">
+      <p className="border-b border-stone-200 py-2 text-sm font-medium text-stone-800">
         {formatWeatherForecast(weatherForecast)}
       </p>
 
@@ -359,6 +364,16 @@ function BookingCard({ booking, weatherForecast }) {
         </p>
         <p>
           <span className="font-medium">Cliente:</span> {formatValue(booking.customer_name)}
+        </p>
+        <p>
+          <span className="font-medium">Email:</span>{" "}
+          {booking.email ? (
+            <a className="underline" href={`mailto:${booking.email}`}>
+              {booking.email}
+            </a>
+          ) : (
+            "—"
+          )}
         </p>
         <p>
           <span className="font-medium">Telefono:</span>{" "}
@@ -374,9 +389,9 @@ function BookingCard({ booking, weatherForecast }) {
           <span className="font-medium">Da pagare a bordo:</span>{" "}
           {formatEuro(booking.pay_on_board_eur)}
         </p>
-        <p>
+        {/* <p>
           <span className="font-medium">Punto d'incontro:</span> {MEETING_POINT}
-        </p>
+        </p> */}
       </div>
 
       <div className="border-t border-stone-200 pt-3">
@@ -396,7 +411,7 @@ function BookingSection({ bookings, title, weatherForecastsByBookingTime }) {
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-700">
           {title}
         </h2>
-        <span className="text-xs text-stone-500">{bookings.length}</span>
+        <span className="text-xs text-stone-500 bg-gray-500 text-white w-6 h-6 flex items-center justify-center rounded-xl">{bookings.length}</span>
       </div>
       {bookings.length > 0 ? (
         <div className="space-y-3">
@@ -455,22 +470,34 @@ export default async function CaptainBookingsPage({ params, searchParams }) {
   return (
     <main className="min-h-screen bg-[#f3eee7] px-4 py-6 text-stone-950 sm:px-6">
       <section className="mx-auto max-w-2xl space-y-6">
-        <header className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-2">
+        <header className="space-y-4 " >
+          <div className="flex  flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-2 w-full">
+
+              <div className="flex w= items-center justify-between gap-2">
               <p className="text-xs uppercase tracking-[0.16em] text-stone-500">
                 Capri Love Boat
               </p>
+             
+
+              <span className="block sm:hidden">
+                <AdminClock compact={true} />
+              </span>
+              <span className="hidden sm:block">
+                <AdminClock />
+              </span>
+         
+              </div>
               <h1 className="text-2xl font-semibold tracking-[-0.02em]">
-                Prenotazioni capitano
+                Prenotazioni capitano         
               </h1>
               <p className="text-sm text-stone-600">
                 Vista sola lettura delle prenotazioni confermate/attive.
               </p>
             </div>
-            <div className="w-fit border border-stone-300 bg-[#fbf8f3]">
-              <AdminClock />
-            </div>
+     
+      
+         
           </div>
         </header>
 

@@ -33,7 +33,7 @@ body {
 
 /* Montserrat reads thinner than Arial/Geist at the same nominal weight. */
 .font-light {
-  font-weight: 400;
+  font-weight: 300;
 }
 
 .font-extralight {

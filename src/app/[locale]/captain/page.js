@@ -10,8 +10,8 @@ import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 const CAPTAIN_BOOKING_SELECT =
   "id, customer_name, phone, guest_count, requested_date, tour_type, time_slot, time_window, pay_on_board_eur, booking_status, message";
 const CAPTAIN_TIME_ZONE = "Europe/Rome";
-const CAPRI_DAILY_FORECAST_URL =
-  "https://api.open-meteo.com/v1/forecast?latitude=40.5532&longitude=14.2222&daily=weather_code,temperature_2m_max,wind_speed_10m_max&timezone=Europe%2FRome";
+const CAPRI_HOURLY_FORECAST_URL =
+  "https://api.open-meteo.com/v1/forecast?latitude=40.5532&longitude=14.2222&hourly=weather_code,temperature_2m,wind_speed_10m&timezone=Europe%2FRome";
 const MAX_OPEN_METEO_FORECAST_DAYS = 16;
 const MEETING_POINT = "Molo 21, Marina Grande, Capri";
 const TOUR_LABELS = {
@@ -135,12 +135,16 @@ function formatRoundedNumber(value) {
 
 function formatWeatherForecast(forecast) {
   if (!forecast) {
-    return "Meteo previsto: non ancora disponibile";
+    return "Meteo tour: non ancora disponibile";
   }
 
-  const temperature = formatRoundedNumber(forecast.temperatureMax);
-  const windSpeed = formatRoundedNumber(forecast.windSpeedMax);
+  const temperature = formatRoundedNumber(forecast.temperature);
+  const windSpeed = formatRoundedNumber(forecast.windSpeed);
   const parts = [getWeatherSummary(forecast.weatherCode)];
+
+  if (forecast.forecastTime) {
+    parts.push(forecast.forecastTime);
+  }
 
   if (temperature !== null) {
     parts.push(`${temperature}°C`);
@@ -150,7 +154,7 @@ function formatWeatherForecast(forecast) {
     parts.push(`vento ${windSpeed} km/h`);
   }
 
-  return `Meteo previsto: ${parts.join(" · ")}`;
+  return `Meteo tour: ${parts.join(" · ")}`;
 }
 
 function getDaysBetweenDateStrings(startDateString, endDateString) {
@@ -180,7 +184,54 @@ function getForecastDays(bookings) {
   return Math.min(Math.max(maxDaysAhead + 1, 1), MAX_OPEN_METEO_FORECAST_DAYS);
 }
 
-async function fetchWeatherForecastsByDate(bookings) {
+function parseBookingStartMinutes(booking) {
+  const normalized = String(getTimeLabel(booking) || "")
+    .replace(/[–—]/g, "-")
+    .split("-")[0]
+    .trim();
+  const match = /^(\d{1,2}):(\d{2})$/.exec(normalized);
+
+  if (!match) {
+    return null;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  if (hours > 23 || minutes > 59) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+function getForecastHourForBooking(booking) {
+  const startMinutes = parseBookingStartMinutes(booking);
+
+  if (startMinutes === null) {
+    return null;
+  }
+
+  return Math.min(23, Math.round(startMinutes / 60));
+}
+
+function getForecastKeyForBooking(booking) {
+  const forecastHour = getForecastHourForBooking(booking);
+
+  if (!booking.requested_date || forecastHour === null) {
+    return "";
+  }
+
+  return `${booking.requested_date}T${String(forecastHour).padStart(2, "0")}:00`;
+}
+
+function formatForecastHour(forecastKey) {
+  const forecastHour = /^(\d{4}-\d{2}-\d{2})T(\d{2}):00$/.exec(forecastKey)?.[2];
+
+  return forecastHour ? `${forecastHour}:00` : "";
+}
+
+async function fetchWeatherForecastsByBookingTime(bookings) {
   if (bookings.length === 0) {
     return {};
   }
@@ -189,7 +240,7 @@ async function fetchWeatherForecastsByDate(bookings) {
 
   try {
     const response = await fetch(
-      `${CAPRI_DAILY_FORECAST_URL}&forecast_days=${forecastDays}`,
+      `${CAPRI_HOURLY_FORECAST_URL}&forecast_days=${forecastDays}`,
       { next: { revalidate: 60 * 60 } },
     );
 
@@ -198,17 +249,18 @@ async function fetchWeatherForecastsByDate(bookings) {
     }
 
     const payload = await response.json();
-    const daily = payload?.daily ?? {};
-    const dates = daily.time ?? [];
+    const hourly = payload?.hourly ?? {};
+    const forecastTimes = hourly.time ?? [];
 
-    return dates.reduce((forecastsByDate, date, index) => {
-      forecastsByDate[date] = {
-        temperatureMax: daily.temperature_2m_max?.[index],
-        weatherCode: daily.weather_code?.[index],
-        windSpeedMax: daily.wind_speed_10m_max?.[index],
+    return forecastTimes.reduce((forecastsByTime, forecastKey, index) => {
+      forecastsByTime[forecastKey] = {
+        forecastTime: formatForecastHour(forecastKey),
+        temperature: hourly.temperature_2m?.[index],
+        weatherCode: hourly.weather_code?.[index],
+        windSpeed: hourly.wind_speed_10m?.[index],
       };
 
-      return forecastsByDate;
+      return forecastsByTime;
     }, {});
   } catch (error) {
     console.warn(
@@ -337,7 +389,7 @@ function BookingCard({ booking, weatherForecast }) {
   );
 }
 
-function BookingSection({ bookings, title, weatherForecastsByDate }) {
+function BookingSection({ bookings, title, weatherForecastsByBookingTime }) {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between border-b border-stone-300 pb-2">
@@ -352,7 +404,9 @@ function BookingSection({ bookings, title, weatherForecastsByDate }) {
             <BookingCard
               key={booking.id}
               booking={booking}
-              weatherForecast={weatherForecastsByDate[booking.requested_date]}
+              weatherForecast={
+                weatherForecastsByBookingTime[getForecastKeyForBooking(booking)]
+              }
             />
           ))}
         </div>
@@ -395,7 +449,8 @@ export default async function CaptainBookingsPage({ params, searchParams }) {
 
   const sortedBookings = sortBookings(bookings ?? []);
   const groupedBookings = groupBookings(sortedBookings);
-  const weatherForecastsByDate = await fetchWeatherForecastsByDate(sortedBookings);
+  const weatherForecastsByBookingTime =
+    await fetchWeatherForecastsByBookingTime(sortedBookings);
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-4 py-6 text-stone-950 sm:px-6">
@@ -422,17 +477,17 @@ export default async function CaptainBookingsPage({ params, searchParams }) {
         <BookingSection
           bookings={groupedBookings.today}
           title="Today"
-          weatherForecastsByDate={weatherForecastsByDate}
+          weatherForecastsByBookingTime={weatherForecastsByBookingTime}
         />
         <BookingSection
           bookings={groupedBookings.tomorrow}
           title="Tomorrow"
-          weatherForecastsByDate={weatherForecastsByDate}
+          weatherForecastsByBookingTime={weatherForecastsByBookingTime}
         />
         <BookingSection
           bookings={groupedBookings.upcoming}
           title="Upcoming"
-          weatherForecastsByDate={weatherForecastsByDate}
+          weatherForecastsByBookingTime={weatherForecastsByBookingTime}
         />
       </section>
     </main>

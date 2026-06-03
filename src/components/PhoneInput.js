@@ -88,7 +88,7 @@ export default function PhoneInput({
 
   return (
     <div>
-      <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+      <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
         {label}
       </label>
       <input type="hidden" name={name} value={combinedPhone} />

@@ -114,12 +114,12 @@ const TYPOGRAPHY_TOKENS = [
   },
   {
     token: "Body text",
-    value: "Arial, Helvetica, sans-serif",
+    value: "Montserrat, Arial, Helvetica, sans-serif",
     usage: "Default body and general app text",
   },
   {
     token: "Admin title style",
-    value: "font-light · tracking-[-0.03em] · text-3xl/4xl",
+    value: "Montserrat 400 · tracking-[-0.03em] · text-3xl/4xl",
     usage: "Admin page and section titles",
   },
   {

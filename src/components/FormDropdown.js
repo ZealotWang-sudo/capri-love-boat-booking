@@ -43,7 +43,7 @@ export default function FormDropdown({ label, name, onChange, options, value }) 
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+      <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
         {label}
       </label>
       {name ? <input type="hidden" name={name} value={value ?? ""} /> : null}

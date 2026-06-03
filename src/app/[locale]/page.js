@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import AutoImageCarousel from "@/components/AutoImageCarousel";
 import HomeScrollReveal from "@/components/HomeScrollReveal";
@@ -277,8 +278,23 @@ export default async function HomePage({ params }) {
         </div>
       </section>
 
-      <section className="border-b border-stone-300/70 py-24 sm:py-32" id="tour">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <section
+        className="relative isolate overflow-hidden border-b border-stone-300/70 py-24 sm:py-32"
+        id="tour"
+      >
+        <div
+          className="pointer-events-none absolute right-[0px] top-0 z-0 h-60 w-[40vw] "
+          aria-hidden="true"
+        >
+          <Image
+            src="/section-graphics/section-graphics-1.png"
+            alt=""
+            fill
+            sizes="(max-width: 640px) 92vw, (max-width: 768px) 78vw, (max-width: 1024px) 52vw, (max-width: 1280px) 42vw, 36rem"
+            className="object-contain object-right-top"
+          />
+        </div>
+        <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8">
           <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
               {t("whyEyebrow")}
@@ -324,12 +340,25 @@ export default async function HomePage({ params }) {
       </section>
 
       <section
-        className="border-b border-stone-300/70 bg-[#f3eee7] pb-24 sm:pb-32"
+        className="relative isolate overflow-hidden border-b border-stone-300/70 bg-[#f3eee7] pb-24 sm:pb-32"
         id="highlights"
       >
         <AutoImageCarousel images={onBoardCarouselImages} />
 
-        <div className="mx-auto max-w-7xl px-5 pt-20 sm:px-8 sm:pt-28">
+        <div
+          className="pointer-events-none absolute right-[-100px] top-[250px] z-10 h-56 w-[92vw] sm:top-[350px] sm:right-[-100px] md:top-[350px] md:right-[-100px] lg:top-[400px] "
+          aria-hidden="true"
+        >
+          <Image
+            src="/section-graphics/section-graphics-2.png"
+            alt=""
+            fill
+            sizes="(max-width: 640px) 92vw, (max-width: 768px) 72vw, (max-width: 1024px) 52vw, (max-width: 1280px) 42vw, 34rem"
+            className="object-contain object-right-top"
+          />
+        </div>
+
+        <div className="relative z-0 mx-auto max-w-7xl px-5 pt-20 sm:px-8 sm:pt-28">
           <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
               {t("highlightsEyebrow")}

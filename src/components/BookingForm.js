@@ -49,6 +49,8 @@ const CURRENCY_OPTIONS = currencyData
 const CURRENCY_CACHE_KEY = "capriLoveBoatCurrencyRatesEur";
 const CURRENCY_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_BOAT_CAPACITY = 6;
+const REQUEST_FORM_LABEL_CLASS =
+  "block text-xs font-semibold uppercase tracking-[0.18em] text-stone-500";
 
 const FALLBACK_ALTERNATIVE_TOUR_COPY = {
   en: {
@@ -778,7 +780,7 @@ export default function BookingForm({ locale, labels }) {
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="mt-8 space-y-5">
       <div>
-        <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+        <label className={REQUEST_FORM_LABEL_CLASS}>
           {labels.name}
         </label>
         <input
@@ -790,7 +792,7 @@ export default function BookingForm({ locale, labels }) {
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+          <label className={REQUEST_FORM_LABEL_CLASS}>
             {labels.email}
           </label>
           <input
@@ -803,7 +805,7 @@ export default function BookingForm({ locale, labels }) {
           />
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+          <label className={REQUEST_FORM_LABEL_CLASS}>
             {labels.confirmEmail}
           </label>
           <input
@@ -829,7 +831,7 @@ export default function BookingForm({ locale, labels }) {
           locale={locale}
         />
         <div>
-          <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+          <label className={REQUEST_FORM_LABEL_CLASS}>
             {labels.guests}
           </label>
           <input
@@ -979,7 +981,7 @@ export default function BookingForm({ locale, labels }) {
       </section>
 
       <section className="border-t border-stone-300 pt-6">
-        <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+        <label className={REQUEST_FORM_LABEL_CLASS}>
           {labels.stepChooseTour}
         </label>
         <div className="mt-3 flex items-center justify-between gap-4">
@@ -1082,7 +1084,7 @@ export default function BookingForm({ locale, labels }) {
       ) : null}
 
       <section className="border-t border-stone-300 pt-6">
-        <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+        <label className={REQUEST_FORM_LABEL_CLASS}>
           {labels.stepChooseTime}
         </label>
         {selectedTourOption ? (
@@ -1154,7 +1156,7 @@ export default function BookingForm({ locale, labels }) {
 
       <section className="border-t border-stone-300 pt-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <p className="text-xs uppercase tracking-[0.18em] text-stone-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
             {labels.stepPrice}
           </p>
           <CurrencyDropdown
@@ -1248,7 +1250,7 @@ export default function BookingForm({ locale, labels }) {
               </>
             )}
             <div className="mt-4 border-t border-stone-300 pt-4">
-              <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+              <label className={REQUEST_FORM_LABEL_CLASS}>
                 {labels.promoCode}
               </label>
               <div className="mt-2 flex gap-2">
@@ -1287,7 +1289,7 @@ export default function BookingForm({ locale, labels }) {
       </section>
 
       <div>
-        <label className="block text-xs uppercase tracking-[0.18em] text-stone-500">
+        <label className={REQUEST_FORM_LABEL_CLASS}>
           {labels.message}
         </label>
         <textarea

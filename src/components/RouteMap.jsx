@@ -168,7 +168,8 @@ export default function RouteMap({
         });
 
         const popupContent = document.createElement("div");
-        popupContent.style.fontFamily = "Arial, Helvetica, sans-serif";
+        popupContent.style.fontFamily =
+          "var(--font-montserrat), Arial, Helvetica, sans-serif";
         popupContent.style.color = "#1c1917";
 
         const popupLabel = document.createElement("p");

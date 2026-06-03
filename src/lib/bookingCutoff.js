@@ -1,5 +1,5 @@
 export const BOOKING_CUTOFF_TIME_ZONE = "Europe/Rome";
-export const ONLINE_BOOKING_CUTOFF_HOUR = 18;
+export const ONLINE_BOOKING_CUTOFF_HOUR = 16;
 export const ONLINE_BOOKING_CUTOFF_ERROR_MESSAGE =
   "Online booking is not available for this date because it is too close to the tour time. Please contact us directly for last-minute availability.";
 

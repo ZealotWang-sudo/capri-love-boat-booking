@@ -299,7 +299,7 @@ export default async function HomePage({ params }) {
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
               {t("whyEyebrow")}
             </p>
-            <h2 className="mt-6 max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-6xl">
+            <h2 className="mt-6 max-w-3xl text-4xl font-light leading-tight tracking-[-0.03em] sm:text-4xl">
               {t("whyTitle")}
             </h2>
             <p className="mt-8 max-w-2xl text-lg font-light leading-8 text-stone-600">

@@ -28,6 +28,10 @@ export const metadata = {
   },
 };
 
+export const viewport = {
+  themeColor: "#f3eee7",
+};
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }

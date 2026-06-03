@@ -403,6 +403,10 @@ export default async function AdminDevelopmentPage({ searchParams }) {
     process.env.TELEGRAM_WEBHOOK_PRODUCTION_URL || process.env.NEXT_PUBLIC_SITE_URL,
   );
   const hasPreviewWebhookTarget = Boolean(process.env.TELEGRAM_WEBHOOK_PREVIEW_URL);
+  const captainDashboardToken = process.env.CAPTAIN_DASHBOARD_TOKEN || "";
+  const captainDashboardHref = captainDashboardToken
+    ? `/it/captain?token=${encodeURIComponent(captainDashboardToken)}`
+    : "";
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-5 py-10 text-stone-950 sm:px-8">
@@ -451,6 +455,20 @@ export default async function AdminDevelopmentPage({ searchParams }) {
                   />
                 </a>
               ),
+            )}
+            {captainDashboardHref ? (
+              <a
+                href={captainDashboardHref}
+                target="_blank"
+                rel="noreferrer"
+                className={developmentLinkClassName}
+              >
+                View captain page
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-3 border border-stone-300 px-5 py-4 text-xs font-medium uppercase tracking-[0.18em] text-stone-400">
+                Captain token missing
+              </span>
             )}
           </div>
         </section>

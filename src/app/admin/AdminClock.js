@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { ClockIcon } from "lucide-react";
 const CAPRI_TIME_ZONE = "Europe/Rome";
 
 function formatClockTime(date, timeZone) {
@@ -20,10 +20,10 @@ function formatClockTime(date, timeZone) {
 function ClockItem({ label, value }) {
   return (
     <div className="px-2.5 py-1.5 sm:px-3 sm:py-2">
-      <p className="text-[0.55rem] font-medium uppercase tracking-[0.14em] text-stone-500 sm:text-[0.6rem] sm:tracking-[0.16em]">
+      <p className="text-[0.55rem] uppercase tracking-[0.14em] text-stone-500 sm:text-[0.6rem] sm:tracking-[0.16em]">
         {label}
       </p>
-      <p className="mt-0.5 font-mono text-[1rem] font-medium text-stone-950 sm:mt-1 sm:text-xs">
+      <p className="mt-0.5 font-mono text-[1rem]  text-stone-950 sm:mt-1 sm:text-xs">
         {value}
       </p>
     </div>
@@ -52,10 +52,9 @@ export default function AdminClock({ compact = false }) {
     <div className="flex">
       {compact ? (
         <div className="px-2 py-1.5">
-          <p className="text-[0.55rem] font-medium uppercase tracking-[0.14em] text-stone-500">
-            Time
-          </p>
-          <p className="mt-0.5 font-mono text-xs font-medium text-stone-950">
+      
+          <p className="flex items-center gap-1 mt-0.5 font-mono text-xs font-medium text-stone-950">
+            <ClockIcon className="w-2 h-2" />
             {now
               ? new Intl.DateTimeFormat("en", {
                   hour: "2-digit",

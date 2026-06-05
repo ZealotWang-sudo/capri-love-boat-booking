@@ -6,6 +6,75 @@
     "home": "Back to home",
     "policy": "Policy"
   },
+  "CapriIslandGuide": {
+    "eyebrow": "CAPRI ISLAND GUIDE",
+    "title": "A One-Day Capri Island Guide",
+    "subtitle": "A relaxed day route from Naples Beverello to a private Capri boat tour, Anacapri, and Capri Town. Times can be adjusted around ferry tickets, weather, and island crowds.",
+    "mapAriaLabel": "Capri island itinerary map",
+    "mapLoading": "Loading the Mapbox map...",
+    "mapUnavailable": "The Mapbox map could not load. Please confirm NEXT_PUBLIC_MAPBOX_TOKEN is set, the token is valid, and localhost:3000 is allowed.",
+    "bookingCta": "Check private boat availability",
+    "stops": {
+      "ferryToCapri": {
+        "time": "08:35 - 09:25",
+        "body": "Take the ferry from Naples Beverello to Capri."
+      },
+      "walkToBoat": {
+        "time": "09:25 - 09:40",
+        "body": "Walk from Marina Grande to the private boat meeting point.\nIf you booked a boat tour, arrive early and do not cut it too close."
+      },
+      "privateBoat": {
+        "time": "10:00 - 13:00",
+        "body": "Private boat tour around Capri."
+      },
+      "marinaGrandeLunch": {
+        "time": "13:00 - 13:30",
+        "body": "Have a quick bite around Marina Grande."
+      },
+      "busToAnacapri": {
+        "time": "13:30 - 13:50",
+        "body": "Take the bus from Marina Grande to Anacapri.\nGet off at Piazza Vittoria."
+      },
+      "monteSolaro": {
+        "time": "14:00 - 15:00",
+        "body": "Take the Monte Solaro chairlift to the top.\nThis stop is not about hiking; it is about the full island and coastline view from above."
+      },
+      "villaSanMichele": {
+        "time": "15:00 - 16:00",
+        "body": "Villa San Michele\nThis is not a large museum. It is a former home with gardens and beautiful views, best enjoyed slowly in the afternoon."
+      },
+      "taxiToCapriTown": {
+        "time": "16:00 - 16:15",
+        "body": "Take a taxi from Anacapri to Capri Town.\nSharing a taxi from the stand is usually more affordable, and buses can have long lines at this time."
+      },
+      "capriTownWalk": {
+        "time": "16:15 - 17:10",
+        "body": "Stroll through Capri Town, the Piazzetta, and Via Camerelle.\nIf you still have energy, continue to the Gardens of Augustus."
+      },
+      "funicularToPort": {
+        "time": "17:10 - 17:30",
+        "body": "Take the regular funicular from Capri Town down to Marina Grande.\nIt works like public transport and can have a queue, so try not to start heading to the port later than 17:30."
+      },
+      "ferryToNaples": {
+        "time": "18:10 - 19:00",
+        "body": "Take the ferry back to Naples Beverello."
+      }
+    },
+    "mapMarkers": {
+      "marinaGrandeTitle": "MARINA GRANDE",
+      "marinaGrandeDescription": "Capri's main port, and the usual place to meet your private boat and return ashore.",
+      "piazzaVittoriaTitle": "PIAZZA VITTORIA",
+      "piazzaVittoriaDescription": "The main Anacapri drop-off point, convenient for the chairlift and nearby walks.",
+      "monteSolaroTitle": "MONTE SOLARO",
+      "monteSolaroDescription": "Ride the chairlift up for views over Capri, the coastline, and the open sea.",
+      "villaSanMicheleTitle": "Villa San Michele",
+      "villaSanMicheleDescription": "A former home, garden, and viewpoint that is ideal for a slow afternoon visit.",
+      "viaCamerelleTitle": "VIA CAMERELLE",
+      "viaCamerelleDescription": "One of Capri Town's best streets for an easy walk.",
+      "gardensTitle": "GARDENS OF AUGUSTUS",
+      "gardensDescription": "A classic viewpoint to add if you still have time and energy."
+    }
+  },
   "Home": {
     "eyebrow": "PRIVATE · LOCAL CAPTAIN · TRANSPARENT PRICING",
     "title": "Capri Private Boat Experience",
@@ -57,6 +126,7 @@
     "routeEyebrow": "Route highlights",
     "routeTitle": "A scenic circle around Capri",
     "routeSubtitle": "An interactive view of Capri’s coastline and the places the captain may include as conditions and tour duration allow.",
+    "routeGuideButton": "View island guide",
     "routeListLabel": "Possible route stops",
     "routeStopLabel": "Stop",
     "routeMapUnavailable": "Add NEXT_PUBLIC_MAPBOX_TOKEN to show the interactive Capri route map.",

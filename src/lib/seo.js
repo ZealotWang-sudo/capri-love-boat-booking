@@ -203,6 +203,38 @@ const PAGE_SEO = {
       path: "/zh/faq",
     },
   },
+  capriIslandGuide: {
+    de: {
+      title: "Tagesguide fur Capri | Capri Love Boat",
+      description:
+        "Ein Tagesguide fur Capri mit Fahrzeiten, privater Bootstour, Anacapri, Capri Town und interaktiver Karte.",
+      path: "/de/guides/capri-one-day-travel-guide",
+    },
+    en: {
+      title: "Capri Island Guide | Capri Love Boat",
+      description:
+        "A one-day Capri island guide with ferry timing, private boat tour notes, Anacapri, Capri Town, and an interactive map.",
+      path: "/en/guides/capri-one-day-travel-guide",
+    },
+    fr: {
+      title: "Guide pour une journée à Capri | Capri Love Boat",
+      description:
+        "Un guide d'une journée à Capri avec horaires de ferry, tour privé en bateau, Anacapri, Capri Town et carte interactive.",
+      path: "/fr/guides/capri-one-day-travel-guide",
+    },
+    it: {
+      title: "Guida per una giornata a Capri | Capri Love Boat",
+      description:
+        "Una guida per una giornata a Capri con orari dei traghetti, tour privato in barca, Anacapri, Capri Town e mappa interattiva.",
+      path: "/it/guides/capri-one-day-travel-guide",
+    },
+    zh: {
+      title: "卡普里岛一日路线参考 | Capri Love Boat",
+      description:
+        "中文卡普里岛一日路线参考，包含那不勒斯船票时间、私人船游、Anacapri、Capri Town 和地图路线。",
+      path: "/zh/guides/capri-one-day-travel-guide",
+    },
+  },
 };
 
 function getPageSeo(pageKey, locale) {
@@ -305,6 +337,11 @@ export function getSitemapEntries() {
     "/it/faq",
     "/de/faq",
     "/fr/faq",
+    "/en/guides/capri-one-day-travel-guide",
+    "/zh/guides/capri-one-day-travel-guide",
+    "/it/guides/capri-one-day-travel-guide",
+    "/de/guides/capri-one-day-travel-guide",
+    "/fr/guides/capri-one-day-travel-guide",
     "/en/contact",
     "/zh/contact",
     "/it/contact",

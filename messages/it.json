@@ -6,6 +6,75 @@
     "home": "Torna alla home",
     "policy": "Policy"
   },
+  "CapriIslandGuide": {
+    "eyebrow": "GUIDA DI CAPRI",
+    "title": "Guida per una giornata a Capri",
+    "subtitle": "Un itinerario rilassato da Napoli Beverello a un tour privato in barca a Capri, Anacapri e Capri Town. Gli orari possono cambiare in base ai traghetti, al meteo e all'affluenza sull'isola.",
+    "mapAriaLabel": "Mappa dell'itinerario di Capri",
+    "mapLoading": "Caricamento della mappa Mapbox...",
+    "mapUnavailable": "La mappa Mapbox non si e caricata. Verifica che NEXT_PUBLIC_MAPBOX_TOKEN sia impostato, che il token sia valido e che localhost:3000 sia autorizzato.",
+    "bookingCta": "Verifica disponibilita barca privata",
+    "stops": {
+      "ferryToCapri": {
+        "time": "08:35 - 09:25",
+        "body": "Prendi il traghetto da Napoli Beverello a Capri."
+      },
+      "walkToBoat": {
+        "time": "09:25 - 09:40",
+        "body": "Cammina da Marina Grande al punto d'incontro della barca privata.\nSe hai prenotato il tour in barca, arriva in anticipo e non all'ultimo minuto."
+      },
+      "privateBoat": {
+        "time": "10:00 - 13:00",
+        "body": "Tour privato in barca intorno a Capri."
+      },
+      "marinaGrandeLunch": {
+        "time": "13:00 - 13:30",
+        "body": "Mangia qualcosa di veloce a Marina Grande."
+      },
+      "busToAnacapri": {
+        "time": "13:30 - 13:50",
+        "body": "Prendi l'autobus da Marina Grande ad Anacapri.\nScendi a Piazza Vittoria."
+      },
+      "monteSolaro": {
+        "time": "14:00 - 15:00",
+        "body": "Prendi la seggiovia del Monte Solaro fino in cima.\nQuesta tappa non e per fare trekking: e per vedere l'isola e la costa dall'alto."
+      },
+      "villaSanMichele": {
+        "time": "15:00 - 16:00",
+        "body": "Villa San Michele\nNon e un grande museo: e una casa storica con giardini e viste bellissime, perfetta da visitare con calma nel pomeriggio."
+      },
+      "taxiToCapriTown": {
+        "time": "16:00 - 16:15",
+        "body": "Prendi un taxi da Anacapri a Capri Town.\nCondividere un taxi dal parcheggio e di solito piu conveniente, e a quest'ora gli autobus possono avere molta coda."
+      },
+      "capriTownWalk": {
+        "time": "16:15 - 17:10",
+        "body": "Passeggia a Capri Town, tra la Piazzetta e Via Camerelle.\nSe hai ancora energia, continua fino ai Gardens of Augustus."
+      },
+      "funicularToPort": {
+        "time": "17:10 - 17:30",
+        "body": "Prendi la funicolare normale da Capri Town fino a Marina Grande.\nFunziona come un mezzo pubblico e puo esserci coda, quindi meglio non iniziare a scendere verso il porto dopo le 17:30."
+      },
+      "ferryToNaples": {
+        "time": "18:10 - 19:00",
+        "body": "Prendi il traghetto di ritorno per Napoli Beverello."
+      }
+    },
+    "mapMarkers": {
+      "marinaGrandeTitle": "MARINA GRANDE",
+      "marinaGrandeDescription": "Il porto principale di Capri, di solito il punto d'incontro per la barca privata e il rientro a terra.",
+      "piazzaVittoriaTitle": "PIAZZA VITTORIA",
+      "piazzaVittoriaDescription": "Il principale punto di arrivo ad Anacapri, comodo per la seggiovia e le passeggiate vicine.",
+      "monteSolaroTitle": "MONTE SOLARO",
+      "monteSolaroDescription": "Sali in seggiovia per vedere Capri, la costa e il mare aperto dall'alto.",
+      "villaSanMicheleTitle": "Villa San Michele",
+      "villaSanMicheleDescription": "Una casa storica con giardino e belvedere, ideale per una visita lenta nel pomeriggio.",
+      "viaCamerelleTitle": "VIA CAMERELLE",
+      "viaCamerelleDescription": "Una delle strade piu piacevoli di Capri Town per una passeggiata leggera.",
+      "gardensTitle": "GARDENS OF AUGUSTUS",
+      "gardensDescription": "Un belvedere classico da aggiungere se hai ancora tempo ed energia."
+    }
+  },
   "Home": {
     "eyebrow": "PRIVATO · CAPITANO LOCALE · PREZZI TRASPARENTI",
     "title": "Esperienza privata in barca a Capri",
@@ -57,6 +126,7 @@
     "routeEyebrow": "Punti del percorso",
     "routeTitle": "Un giro panoramico intorno a Capri",
     "routeSubtitle": "Una mappa interattiva della costa di Capri e dei luoghi che il capitano puo includere in base alle condizioni e alla durata del tour.",
+    "routeGuideButton": "Vedi la guida dell'isola",
     "routeListLabel": "Possibili tappe",
     "routeStopLabel": "Tappa",
     "routeMapUnavailable": "Aggiungi NEXT_PUBLIC_MAPBOX_TOKEN per mostrare la mappa interattiva del percorso di Capri.",

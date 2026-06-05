@@ -282,7 +282,7 @@ export default async function HomePage({ params }) {
         className="relative isolate overflow-hidden border-b border-stone-300/70 py-24 sm:py-32"
         id="tour"
       >
-        <div
+        {/* <div
           className="pointer-events-none absolute right-[0px] top-0 z-0 h-60 w-[40vw] "
           aria-hidden="true"
         >
@@ -293,7 +293,7 @@ export default async function HomePage({ params }) {
             sizes="(max-width: 640px) 92vw, (max-width: 768px) 78vw, (max-width: 1024px) 52vw, (max-width: 1280px) 42vw, 36rem"
             className="object-contain object-right-top"
           />
-        </div>
+        </div> */}
         <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8">
           <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-[0.35em] text-stone-500">
@@ -345,7 +345,7 @@ export default async function HomePage({ params }) {
       >
         <AutoImageCarousel images={onBoardCarouselImages} />
 
-        <div
+        {/* <div
           className="pointer-events-none absolute right-[-100px] top-[250px] z-10 h-56 w-[92vw] sm:top-[350px] sm:right-[-100px] md:top-[350px] md:right-[-100px] lg:top-[400px] "
           aria-hidden="true"
         >
@@ -356,7 +356,7 @@ export default async function HomePage({ params }) {
             sizes="(max-width: 640px) 92vw, (max-width: 768px) 72vw, (max-width: 1024px) 52vw, (max-width: 1280px) 42vw, 34rem"
             className="object-contain object-right-top"
           />
-        </div>
+        </div> */}
 
         <div className="relative z-0 mx-auto max-w-7xl px-5 pt-20 sm:px-8 sm:pt-28">
           <div data-scroll-reveal>
@@ -375,10 +375,10 @@ export default async function HomePage({ params }) {
                 data-scroll-reveal
                 style={{ "--reveal-delay": `${index * 90}ms` }}
               >
-                <p className="text-xs uppercase tracking-[0.26em] text-stone-500">
+                <p className="text-xs  uppercase tracking-[0.26em] text-stone-500">
                   0{index + 1}
                 </p>
-                <h3 className="mt-4 text-2xl font-normal">{t(titleKey)}</h3>
+                <h3 className="mt-4 text-lg">{t(titleKey)}</h3>
                 <p className="mt-4 leading-7 text-stone-600">{t(textKey)}</p>
               </article>
             ))}
@@ -386,6 +386,8 @@ export default async function HomePage({ params }) {
 
           <div data-scroll-reveal>
             <RouteMap
+              ctaHref={`/${locale}/guides/capri-one-day-travel-guide`}
+              ctaLabel={t("routeGuideButton")}
               eyebrow={t("routeEyebrow")}
               listLabel={t("routeListLabel")}
               mapUnavailable={t("routeMapUnavailable")}

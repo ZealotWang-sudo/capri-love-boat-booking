@@ -6,6 +6,75 @@
     "home": "返回首页",
     "policy": "预约政策"
   },
+  "CapriIslandGuide": {
+    "eyebrow": "CAPRI ISLAND GUIDE",
+    "title": "卡普里岛一日路线参考",
+    "subtitle": "从那不勒斯 Beverello 码头出发，到卡普里私人船游、Anacapri 和 Capri Town 的轻松路线。时间可根据船票、天气和当天人流调整。",
+    "mapAriaLabel": "卡普里岛行程地图",
+    "mapLoading": "Mapbox 地图载入中...",
+    "mapUnavailable": "Mapbox 地图无法载入。请确认 NEXT_PUBLIC_MAPBOX_TOKEN 已设置、token 有效，并允许 localhost:3000 使用。",
+    "bookingCta": "查看私人船可预约时间",
+    "stops": {
+      "ferryToCapri": {
+        "time": "08:35 - 09:25",
+        "body": "那不勒斯 BEVERELLO 码头坐船到 CAPRI"
+      },
+      "walkToBoat": {
+        "time": "09:25 - 09:40",
+        "body": "从 MARINA GRANDE 走到私人船集合点\n如果预约了船游，真的建议提前到，不要卡点"
+      },
+      "privateBoat": {
+        "time": "10:00 - 13:00",
+        "body": "卡普里私人船环岛"
+      },
+      "marinaGrandeLunch": {
+        "time": "13:00 - 13:30",
+        "body": "MARINA GRANDE 简单吃点东西"
+      },
+      "busToAnacapri": {
+        "time": "13:30 - 13:50",
+        "body": "从 MARINA GRANDE 坐公交去 ANACAPRI\n下车点：PIAZZA VITTORIA"
+      },
+      "monteSolaro": {
+        "time": "14:00 - 15:00",
+        "body": "MONTE SOLARO CHAIRLIFT 坐缆车上山顶\n这个项目重点不是“爬山”，而是山顶俯瞰全貌和海岸线"
+      },
+      "villaSanMichele": {
+        "time": "15:00 - 16:00",
+        "body": "VILLA SAN MICHELE\n这里不是那种大博物馆，而是旧居、庭院和视野结合在一起，很适合下午慢慢看"
+      },
+      "taxiToCapriTown": {
+        "time": "16:00 - 16:15",
+        "body": "从 ANACAPRI 打车去 CAPRI TOWN\n在打车点随便叫人拼车会比较便宜，这时候公交容易排队"
+      },
+      "capriTownWalk": {
+        "time": "16:15 - 17:10",
+        "body": "CAPRI TOWN 轻逛散步 PIAZZETTA、VIA CAMERELLE 随便走走\n如果体力还可以，可以顺路去 GARDENS OF AUGUSTUS"
+      },
+      "funicularToPort": {
+        "time": "17:10 - 17:30",
+        "body": "从 CAPRI TOWN 下楼到 MARINA GRANDE 坐普通 FUNICULAR，排队大众性公交\n建议不要晚于 17:30 才开始往港口走"
+      },
+      "ferryToNaples": {
+        "time": "18:10 - 19:00",
+        "body": "坐船回 NAPLES BEVERELLO"
+      }
+    },
+    "mapMarkers": {
+      "marinaGrandeTitle": "MARINA GRANDE",
+      "marinaGrandeDescription": "卡普里的主要港口，也是私人船集合和返回上岸的位置。",
+      "piazzaVittoriaTitle": "PIAZZA VITTORIA",
+      "piazzaVittoriaDescription": "Anacapri 的主要下车点，适合衔接缆车和周边散步。",
+      "monteSolaroTitle": "MONTE SOLARO",
+      "monteSolaroDescription": "坐缆车上山后可以俯瞰卡普里岛、海岸线和远处海面。",
+      "villaSanMicheleTitle": "Villa San Michele",
+      "villaSanMicheleDescription": "旧居、庭院和观景视野结合在一起，适合下午慢慢看。",
+      "viaCamerelleTitle": "VIA CAMERELLE",
+      "viaCamerelleDescription": "Capri Town 适合轻逛散步的街区之一。",
+      "gardensTitle": "GARDENS OF AUGUSTUS",
+      "gardensDescription": "体力允许时可以顺路去看的经典观景点。"
+    }
+  },
   "Home": {
     "eyebrow": "私享 · 本地船长 · 价格透明",
     "title": "卡普里私人船体验",
@@ -57,6 +126,7 @@
     "routeEyebrow": "路线亮点",
     "routeTitle": "环绕卡普里的海上路线",
     "routeSubtitle": "这是一张卡普里海岸线互动路线图，展示船长可能根据海况和行程时长安排的亮点。",
+    "routeGuideButton": "查看卡普里岛路线指南",
     "routeListLabel": "可能经过的路线点",
     "routeStopLabel": "路线点",
     "routeMapUnavailable": "添加 NEXT_PUBLIC_MAPBOX_TOKEN 后即可显示卡普里互动路线图。",

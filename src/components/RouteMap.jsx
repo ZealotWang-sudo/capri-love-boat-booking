@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 
@@ -92,6 +93,8 @@ function createMarkerElement(order, title) {
 }
 
 export default function RouteMap({
+  ctaHref,
+  ctaLabel,
   eyebrow,
   listLabel,
   markerContent,
@@ -242,6 +245,14 @@ export default function RouteMap({
           <p className="mt-6 max-w-2xl text-base leading-8 text-stone-600">
             {subtitle}
           </p>
+          {ctaHref && ctaLabel ? (
+            <Link
+              href={ctaHref}
+              className="mt-7 inline-block border border-stone-950 bg-stone-950 px-7 py-3 text-xs font-medium uppercase tracking-[0.22em] text-[#f3eee7] transition hover:bg-transparent hover:text-stone-950"
+            >
+              {ctaLabel}
+            </Link>
+          ) : null}
         </div>
       </div>
 

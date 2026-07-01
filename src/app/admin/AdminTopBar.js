@@ -49,9 +49,9 @@ export default function AdminTopBar({ userEmail }) {
         <div className="flex min-w-0 items-center justify-between gap-3">
           <Link
             href="/admin"
-            className="brand-logo max-w-[5.5rem] text-[0.58rem] leading-4 text-stone-500 sm:max-w-none sm:text-xs"
+            className="brand-logo max-w-[3.5rem] !text-[0.58rem] leading-4 text-stone-500 sm:max-w-none sm:text-xs"
           >
-            Capri Love Boat Admin
+            Capri Love Boat
           </Link>
           <div className="flex min-w-0 shrink-0 items-center gap-1 lg:hidden">
             <AdminClock compact />

@@ -277,6 +277,7 @@
     "tourInfoButton": "Tour style details",
     "tourInfoTitle": "Tour style details",
     "tourInfoClose": "Close",
+    "tourTwoHalfHourBlueGrottoNotice": "Blue Cave / Blue Grotto visit is not possible with this 2.5-hour tour option.",
     "time": "Time",
     "timePlaceholder": "Choose a tour to see available time slots.",
     "timeConfirmationNote": "Exact availability will be confirmed with the captain.",
@@ -309,6 +310,10 @@
     "promoInactive": "This promo code is no longer active.",
     "currencyLabel": "Display currency",
     "currencyOriginalEur": "Original EUR",
+    "tourTwoHalfHour": "2.5 hours",
+    "tourTwoHalfHourPrice": "€270",
+    "tourTwoHalfHourReserveToday": "€70",
+    "tourTwoHalfHourPayOnBoard": "€200",
     "tourThreeHour": "3 hours",
     "tourThreeHourPrice": "€350",
     "tourThreeHourReserveToday": "€70",
@@ -489,6 +494,7 @@
     "statusExpired": "Request expired",
     "confirmedMessage": "Your booking is confirmed. To cancel or request a refund, contact us at info@capriloveboat.com. Refund requests must be made at least 3 days before the tour date.",
     "cannotCancelMessage": "This booking request can no longer be cancelled from this link. To cancel or request a refund, contact us by email at least 3 days before the tour date.",
+    "tourTwoHalfHour": "2.5 hours",
     "tourTwoHour": "2 hours",
     "tourThreeHour": "3 hours",
     "tourFourHour": "4 hours",
@@ -591,6 +597,7 @@
       "male_only": "Main group preference: male guests only"
     },
     "tourLabels": {
+      "two_half_hours": "2.5 hours",
       "two_hours": "2 hours",
       "three_hours": "3 hours",
       "four_hours": "4 hours",
@@ -618,6 +625,7 @@
       "tour": "Tour"
     },
     "tourLabels": {
+      "two_half_hours": "2.5 hours",
       "two_hours": "2 hours",
       "three_hours": "3 hours",
       "four_hours": "4 hours",

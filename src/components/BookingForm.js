@@ -1015,6 +1015,11 @@ export default function BookingForm({ locale, labels }) {
             />
           ))}
         </div>
+        {selectedTourOption?.notice ? (
+          <p className="mt-3 border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+            {selectedTourOption.notice}
+          </p>
+        ) : null}
         {tourInfoOpen ? (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 px-5 py-8"
@@ -1050,6 +1055,11 @@ export default function BookingForm({ locale, labels }) {
                         {option.price}
                       </p>
                     </div>
+                    {option.notice ? (
+                      <p className="mt-2 text-sm leading-6 text-amber-900">
+                        {option.notice}
+                      </p>
+                    ) : null}
                   </article>
                 ))}
               </div>

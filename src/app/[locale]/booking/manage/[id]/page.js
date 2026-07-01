@@ -23,6 +23,7 @@ const TOUR_LABEL_KEYS = {
   special_request: "tourSpecialRequest",
   sunset_three_hours: "tourSunsetThreeHour",
   three_hours: "tourThreeHour",
+  two_half_hours: "tourTwoHalfHour",
   two_hours: "tourTwoHour",
 };
 const NEXT_STEP_KEYS = {

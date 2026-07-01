@@ -21,6 +21,7 @@ const TOUR_LABEL_KEYS = {
   special_request: "tourLabels.special_request",
   sunset_three_hours: "tourLabels.sunset_three_hours",
   three_hours: "tourLabels.three_hours",
+  two_half_hours: "tourLabels.two_half_hours",
   two_hours: "tourLabels.two_hours",
 };
 const GENDER_PREFERENCE_LABEL_KEYS = {

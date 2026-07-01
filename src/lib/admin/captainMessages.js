@@ -1,4 +1,5 @@
 const CAPTAIN_TOUR_LABELS = {
+  two_half_hours: "2,5 ore",
   three_hours: "3 ore",
   four_hours: "4 ore",
   sunset_three_hours: "Sunset 3 ore",

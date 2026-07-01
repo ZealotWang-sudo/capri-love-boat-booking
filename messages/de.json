@@ -277,6 +277,7 @@
     "tourInfoButton": "Details zur Tourart",
     "tourInfoTitle": "Details zur Tourart",
     "tourInfoClose": "Schließen",
+    "tourTwoHalfHourBlueGrottoNotice": "Mit dieser 2,5-Stunden-Tour ist ein Besuch der Blauen Grotte nicht möglich.",
     "time": "Uhrzeit",
     "timePlaceholder": "Wählen Sie eine Tour, um verfügbare Zeiten zu sehen.",
     "timeConfirmationNote": "Die genaue Verfügbarkeit wird mit dem Kapitän bestätigt.",
@@ -309,6 +310,10 @@
     "promoInactive": "This promo code is no longer active.",
     "currencyLabel": "Anzeigewährung",
     "currencyOriginalEur": "Original EUR",
+    "tourTwoHalfHour": "2,5 Stunden",
+    "tourTwoHalfHourPrice": "€270",
+    "tourTwoHalfHourReserveToday": "€70",
+    "tourTwoHalfHourPayOnBoard": "€200",
     "tourThreeHour": "3 Stunden",
     "tourThreeHourPrice": "€350",
     "tourThreeHourReserveToday": "€70",
@@ -489,6 +494,7 @@
     "statusExpired": "Anfrage abgelaufen",
     "confirmedMessage": "Ihre Buchung ist bestätigt. Wenn Sie stornieren oder eine Erstattung anfragen möchten, kontaktieren Sie uns unter info@capriloveboat.com. Erstattungsanfragen müssen mindestens 3 Tage vor dem Tourdatum gestellt werden.",
     "cannotCancelMessage": "Diese Buchungsanfrage kann über diesen Link nicht mehr storniert werden. Wenn Sie stornieren oder eine Erstattung anfragen möchten, kontaktieren Sie uns bitte mindestens 3 Tage vor dem Tourdatum per E-Mail.",
+    "tourTwoHalfHour": "2,5 Stunden",
     "tourTwoHour": "2 Stunden",
     "tourThreeHour": "3 Stunden",
     "tourFourHour": "4 Stunden",
@@ -591,6 +597,7 @@
       "male_only": "Präferenz der Hauptgruppe: nur männliche Gäste"
     },
     "tourLabels": {
+      "two_half_hours": "2,5 Stunden",
       "two_hours": "2 Stunden",
       "three_hours": "3 Stunden",
       "four_hours": "4 Stunden",
@@ -618,6 +625,7 @@
       "tour": "Tour"
     },
     "tourLabels": {
+      "two_half_hours": "2,5 Stunden",
       "two_hours": "2 Stunden",
       "three_hours": "3 Stunden",
       "four_hours": "4 Stunden",

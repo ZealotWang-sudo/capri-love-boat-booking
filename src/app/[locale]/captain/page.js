@@ -16,6 +16,7 @@ const CAPRI_HOURLY_FORECAST_URL =
 const MAX_OPEN_METEO_FORECAST_DAYS = 16;
 const MEETING_POINT = "Molo 21, Marina Grande, Capri";
 const TOUR_LABELS = {
+  two_half_hours: "2,5 ore",
   three_hours: "3 ore",
   four_hours: "4 ore",
   sunset_three_hours: "Sunset 3 ore",

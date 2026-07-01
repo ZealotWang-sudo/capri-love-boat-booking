@@ -11,6 +11,7 @@ const NON_BLOCKING_PAYMENT_STATUSES = new Set([
 ]);
 
 export const TOUR_DURATIONS_MINUTES = {
+  two_half_hours: 150,
   two_hours: 120,
   three_hours: 180,
   four_hours: 240,
@@ -59,6 +60,12 @@ export const BOOKING_SCHEDULE_PERIODS = [
 ];
 
 export const TOUR_TIME_SLOTS = {
+  two_half_hours: [
+    "morning_0930",
+    "morning_1000",
+    "afternoon_1330",
+    "afternoon_1400",
+  ],
   two_hours: [
     "morning_0930",
     "morning_1000",

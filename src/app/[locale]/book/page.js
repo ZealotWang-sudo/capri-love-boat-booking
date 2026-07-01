@@ -23,6 +23,9 @@ const TIME_SLOT_LABEL_KEYS = {
   morning_1000: "timeMorning1000",
   sunset_1800: "timeSunset1800",
 };
+const TOUR_NOTICE_LABEL_KEYS = {
+  two_half_hours: "tourTwoHalfHourBlueGrottoNotice",
+};
 
 function buildTimeSlots(t, tourType) {
   return getValidTimeSlotsForTour(tourType).map((timeSlot) => ({
@@ -34,17 +37,22 @@ function buildTimeSlots(t, tourType) {
 
 function buildTourOptions(tourPrices, locale, t) {
   return tourPrices
-    .map((tourPrice) => ({
-      label: getTourPriceDisplayName(tourPrice, locale),
-      payOnBoard: formatEuro(tourPrice.pay_on_board_eur),
-      payOnBoardEur: tourPrice.pay_on_board_eur,
-      price: formatEuro(tourPrice.total_price_eur),
-      reservationFeeEur: tourPrice.reservation_fee_eur,
-      reserveToday: formatEuro(tourPrice.reservation_fee_eur),
-      timeSlots: buildTimeSlots(t, tourPrice.tour_type),
-      totalPriceEur: tourPrice.total_price_eur,
-      value: tourPrice.tour_type,
-    }))
+    .map((tourPrice) => {
+      const noticeLabelKey = TOUR_NOTICE_LABEL_KEYS[tourPrice.tour_type];
+
+      return {
+        label: getTourPriceDisplayName(tourPrice, locale),
+        notice: noticeLabelKey ? t(noticeLabelKey) : "",
+        payOnBoard: formatEuro(tourPrice.pay_on_board_eur),
+        payOnBoardEur: tourPrice.pay_on_board_eur,
+        price: formatEuro(tourPrice.total_price_eur),
+        reservationFeeEur: tourPrice.reservation_fee_eur,
+        reserveToday: formatEuro(tourPrice.reservation_fee_eur),
+        timeSlots: buildTimeSlots(t, tourPrice.tour_type),
+        totalPriceEur: tourPrice.total_price_eur,
+        value: tourPrice.tour_type,
+      };
+    })
     .filter((option) => option.timeSlots.length > 0);
 }
 

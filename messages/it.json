@@ -277,6 +277,7 @@
     "tourInfoButton": "Dettagli tour",
     "tourInfoTitle": "Dettagli tour",
     "tourInfoClose": "Chiudi",
+    "tourTwoHalfHourBlueGrottoNotice": "Con questa opzione da 2,5 ore non è possibile visitare la Grotta Azzurra.",
     "time": "Orario",
     "timePlaceholder": "Scegli un tour per vedere gli orari disponibili.",
     "timeConfirmationNote": "La disponibilità precisa verrà confermata con il capitano.",
@@ -309,6 +310,10 @@
     "promoInactive": "This promo code is no longer active.",
     "currencyLabel": "Valuta visualizzata",
     "currencyOriginalEur": "EUR originale",
+    "tourTwoHalfHour": "2,5 ore",
+    "tourTwoHalfHourPrice": "€270",
+    "tourTwoHalfHourReserveToday": "€70",
+    "tourTwoHalfHourPayOnBoard": "€200",
     "tourThreeHour": "3 ore",
     "tourThreeHourPrice": "€350",
     "tourThreeHourReserveToday": "€70",
@@ -489,6 +494,7 @@
     "statusExpired": "Richiesta scaduta",
     "confirmedMessage": "La tua prenotazione è confermata. Per cancellare o richiedere un rimborso, contattaci a info@capriloveboat.com. Le richieste di rimborso devono essere inviate almeno 3 giorni prima della data del tour.",
     "cannotCancelMessage": "Questa richiesta di prenotazione non puo piu essere cancellata da questo link. Per cancellare o richiedere un rimborso, contattaci via email almeno 3 giorni prima della data del tour.",
+    "tourTwoHalfHour": "2,5 ore",
     "tourTwoHour": "2 ore",
     "tourThreeHour": "3 ore",
     "tourFourHour": "4 ore",
@@ -591,6 +597,7 @@
       "male_only": "Preferenza del gruppo principale: solo uomini"
     },
     "tourLabels": {
+      "two_half_hours": "2,5 ore",
       "two_hours": "2 ore",
       "three_hours": "3 ore",
       "four_hours": "4 ore",
@@ -618,6 +625,7 @@
       "tour": "Tour"
     },
     "tourLabels": {
+      "two_half_hours": "2,5 ore",
       "two_hours": "2 ore",
       "three_hours": "3 ore",
       "four_hours": "4 ore",

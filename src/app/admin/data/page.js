@@ -6,6 +6,7 @@ import { getAdminUser, isAllowedAdmin } from "../auth";
 import UnauthorizedAdmin from "../UnauthorizedAdmin";
 
 const TOUR_TYPES = [
+  "two_half_hours",
   "three_hours",
   "four_hours",
   "sunset_three_hours",
@@ -14,6 +15,7 @@ const TOUR_TYPES = [
   "special_request",
 ];
 const TOUR_LABELS = {
+  two_half_hours: "2.5 hours",
   three_hours: "3 hours",
   four_hours: "4 hours",
   sunset_three_hours: "Sunset 3 hours",

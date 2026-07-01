@@ -94,11 +94,37 @@ insert into public.tour_prices (
   reservation_fee_eur,
   pay_on_board_eur,
   captain_price_eur,
-  sort_order
+  sort_order,
+  notes
 )
 values
-  ('three_hours', '3 hours', '3小时', '3 ore', 3, 350, 70, 280, 280, 1),
-  ('four_hours', '4 hours', '4小时', '4 ore', 4, 450, 90, 360, 360, 2),
-  ('sunset_three_hours', 'Sunset 3 hours', '日落3小时', 'Sunset 3 ore', 3, 370, 120, 250, 250, 3),
-  ('five_hours', '5 hours', '5小时', '5 ore', 5, 570, 120, 450, 450, 4)
+  (
+    'two_half_hours',
+    '2.5 hours',
+    '2.5小时',
+    '2,5 ore',
+    2.5,
+    270,
+    70,
+    200,
+    200,
+    0,
+    'Blue Cave / Blue Grotto visit is not possible with this option.'
+  ),
+  ('three_hours', '3 hours', '3小时', '3 ore', 3, 350, 70, 280, 280, 1, null),
+  ('four_hours', '4 hours', '4小时', '4 ore', 4, 450, 90, 360, 360, 2, null),
+  (
+    'sunset_three_hours',
+    'Sunset 3 hours',
+    '日落3小时',
+    'Sunset 3 ore',
+    3,
+    370,
+    120,
+    250,
+    250,
+    3,
+    null
+  ),
+  ('five_hours', '5 hours', '5小时', '5 ore', 5, 570, 120, 450, 450, 4, null)
 on conflict (tour_type) do nothing;

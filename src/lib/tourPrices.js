@@ -3,6 +3,7 @@ export const TOUR_PRICE_SELECT =
 
 const TOUR_PRICE_DISPLAY_NAMES = {
   de: {
+    two_half_hours: "2,5 Stunden",
     five_hours: "5 Stunden",
     four_hours: "4 Stunden",
     sunset_three_hours: "Sonnenuntergang 3 Stunden",
@@ -10,6 +11,7 @@ const TOUR_PRICE_DISPLAY_NAMES = {
     two_hours: "2 Stunden",
   },
   fr: {
+    two_half_hours: "2,5 heures",
     five_hours: "5 heures",
     four_hours: "4 heures",
     sunset_three_hours: "Coucher de soleil 3 heures",

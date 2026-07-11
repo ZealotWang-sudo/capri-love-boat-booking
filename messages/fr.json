@@ -685,7 +685,8 @@
       },
       "completed": {
         "cta": "Voir les détails du tour",
-        "intro": "Merci d'avoir passé la journée avec nous à Capri. Nous espérons que vous avez passé un très beau moment sur l'eau. Si le tour vous a plu, nous serions ravis de recevoir votre avis.",
+        "intro": "Merci d'avoir passé la journée avec nous à Capri. Nous espérons que vous avez passé un très beau moment sur l'eau. Si le tour vous a plu, nous serions ravis de recevoir votre avis sur Google.",
+        "reviewCta": "Laisser un avis sur Google",
         "subject": "Merci d'avoir navigué avec nous"
       }
     },

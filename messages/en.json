@@ -685,7 +685,8 @@
       },
       "completed": {
         "cta": "View trip details",
-        "intro": "Thank you for spending the day with us in Capri. We hope you had a beautiful time on the water. If you enjoyed the tour, we would be grateful for a review.",
+        "intro": "Thank you for spending the day with us in Capri. We hope you had a beautiful time on the water. If you enjoyed the tour, we would be grateful for a review on Google.",
+        "reviewCta": "Leave a Google review",
         "subject": "Thank you for joining us"
       }
     },

@@ -685,7 +685,8 @@
       },
       "completed": {
         "cta": "Tourdetails ansehen",
-        "intro": "Vielen Dank, dass Sie den Tag mit uns auf Capri verbracht haben. Wir hoffen, Sie hatten eine wunderschöne Zeit auf dem Wasser. Wenn Ihnen die Tour gefallen hat, freuen wir uns sehr über eine Bewertung.",
+        "intro": "Vielen Dank, dass Sie den Tag mit uns auf Capri verbracht haben. Wir hoffen, Sie hatten eine wunderschöne Zeit auf dem Wasser. Wenn Ihnen die Tour gefallen hat, freuen wir uns sehr über eine Bewertung auf Google.",
+        "reviewCta": "Bewertung auf Google hinterlassen",
         "subject": "Danke, dass Sie mit uns gefahren sind"
       }
     },

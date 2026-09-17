@@ -81,6 +81,7 @@ export async function setTelegramWebhook(formData) {
     typeof formData.get("target") === "string" ? formData.get("target").trim() : "";
   const webhookUrl = getTelegramWebhookUrl(target);
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
 
   if (!["production", "preview"].includes(target) || !webhookUrl || !botToken) {
     redirect(`/admin/development?telegramWebhook=${target || "unknown"}-missing`);
@@ -93,6 +94,11 @@ export async function setTelegramWebhook(formData) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        // Telegram returns this as x-telegram-bot-api-secret-token on every
+        // delivery, which is what /api/telegram/webhook verifies. It has to be
+        // resent on every setWebhook call, because parameters left out are
+        // reset to their defaults.
+        ...(webhookSecret ? { secret_token: webhookSecret } : {}),
         url: webhookUrl,
       }),
     });

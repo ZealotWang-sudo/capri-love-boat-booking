@@ -193,6 +193,28 @@ export function getBookingInterval(booking) {
   };
 }
 
+// Half-open [start, end) minute range persisted on every booking so Postgres can
+// enforce overlap without re-implementing tour durations.
+export function getBookingMinutesRange(booking) {
+  const interval = getBookingInterval(booking);
+
+  if (!interval) {
+    return null;
+  }
+
+  return {
+    tour_end_minutes: interval.endMinutes,
+    tour_start_minutes: interval.startMinutes,
+  };
+}
+
+export function minuteRangesOverlap(firstRange, secondRange) {
+  return (
+    firstRange.tour_start_minutes < secondRange.tour_end_minutes &&
+    secondRange.tour_start_minutes < firstRange.tour_end_minutes
+  );
+}
+
 export function intervalsOverlap(firstInterval, secondInterval) {
   return (
     firstInterval.startMinutes < secondInterval.endMinutes &&

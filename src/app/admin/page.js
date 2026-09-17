@@ -732,6 +732,10 @@ export default async function AdminPage({ searchParams }) {
     bookingMatchesSearch(booking, searchQuery),
   );
   const bookingGroups = getGroupedBookings(bookings);
+  const { count: unsettledAttemptCount } = await createSupabaseServiceRoleServerClient()
+    .from("booking_checkout_attempts")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["failed", "conflict"]);
 
   return (
     <main className="min-h-screen bg-[#f3eee7] px-3 py-8 text-stone-950 sm:px-8 sm:py-10">
@@ -744,6 +748,18 @@ export default async function AdminPage({ searchParams }) {
         />
 
         {successNotice ? <AdminNotice>{successNotice}</AdminNotice> : null}
+
+        {unsettledAttemptCount ? (
+          <div className="mt-8 border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950">
+            {unsettledAttemptCount} checkout attempt
+            {unsettledAttemptCount === 1 ? "" : "s"} did not settle into a
+            booking.{" "}
+            <Link className="underline" href="/admin/recovery">
+              Open payment recovery
+            </Link>
+            .
+          </div>
+        ) : null}
 
         {error ? (
           <div className="mt-8 border border-red-900/30 bg-red-50 p-5 text-sm text-red-900">

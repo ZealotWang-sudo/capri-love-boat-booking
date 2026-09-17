@@ -290,6 +290,13 @@ async function getSharedJoinRequests(bookingId) {
   return data ?? [];
 }
 
+/**
+ * Best-effort reconciliation on the customer's return from Stripe.
+ *
+ * This is a latency optimisation only. Correctness does not depend on the
+ * customer coming back: the webhook and the reconciler both create the booking
+ * on their own.
+ */
 async function confirmReturnedStripePayment({ bookingId, sessionId, token }) {
   if (!bookingId || !sessionId || !token) {
     return;
@@ -307,6 +314,27 @@ async function confirmReturnedStripePayment({ bookingId, sessionId, token }) {
       message: error.message,
     });
   }
+}
+
+function PaymentPendingNotice({ labels }) {
+  return (
+    <main className="min-h-screen bg-[#f3eee7] text-stone-950">
+      <section className="mx-auto max-w-2xl px-5 py-24 sm:px-8">
+        <p className="text-xs uppercase tracking-[0.22em] text-stone-500">
+          {labels.eyebrow}
+        </p>
+        <h1 className="mt-4 text-4xl font-light leading-tight tracking-[-0.03em]">
+          {labels.title}
+        </h1>
+        <p className="mt-6 text-lg font-light leading-8 text-stone-600">
+          {labels.body}
+        </p>
+        <p className="mt-6 border border-stone-300 px-4 py-3 text-sm uppercase tracking-[0.18em] text-stone-700">
+          {labels.reference}
+        </p>
+      </section>
+    </main>
+  );
 }
 
 export default async function ManageBookingPage({ params, searchParams }) {
@@ -335,6 +363,23 @@ export default async function ManageBookingPage({ params, searchParams }) {
 
   const booking = await getManagedBooking({ bookingId: id, token });
   const managePath = `/booking/manage/${id}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+
+  if (!booking && paymentStatus === "success") {
+    // The payment went through but the booking row is not visible yet. Never
+    // send a paying customer back to an empty booking form.
+    return (
+      <PaymentPendingNotice
+        labels={{
+          body: t("pendingPaymentBody"),
+          eyebrow: t("eyebrow"),
+          reference: t("pendingPaymentReference", {
+            reference: `CAPRI-${id.slice(0, 8).toUpperCase()}`,
+          }),
+          title: t("pendingPaymentTitle"),
+        }}
+      />
+    );
+  }
 
   if (!booking) {
     redirect(`/${locale}/book`);

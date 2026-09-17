@@ -403,6 +403,7 @@ export default async function AdminDevelopmentPage({ searchParams }) {
     process.env.TELEGRAM_WEBHOOK_PRODUCTION_URL || process.env.NEXT_PUBLIC_SITE_URL,
   );
   const hasPreviewWebhookTarget = Boolean(process.env.TELEGRAM_WEBHOOK_PREVIEW_URL);
+  const hasWebhookSecret = Boolean(process.env.TELEGRAM_WEBHOOK_SECRET);
   const captainDashboardToken = process.env.CAPTAIN_DASHBOARD_TOKEN || "";
   const captainDashboardHref = captainDashboardToken
     ? `/it/captain?token=${encodeURIComponent(captainDashboardToken)}`
@@ -496,6 +497,15 @@ export default async function AdminDevelopmentPage({ searchParams }) {
           <NoticeBox notice={telegramWebhookNotice} />
           <TelegramWebhookInfoBox info={telegramWebhookInfo} />
 
+          {hasWebhookSecret ? null : (
+            <div className="mt-6 border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+              TELEGRAM_WEBHOOK_SECRET is not set, so captain accept and decline
+              callbacks are unauthenticated. Add the variable, redeploy, then
+              press &ldquo;Set production webhook&rdquo; below to register it
+              with Telegram.
+            </div>
+          )}
+
           <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <form
               action={sendTelegramSettingsTestMessage}
@@ -525,6 +535,8 @@ export default async function AdminDevelopmentPage({ searchParams }) {
               </p>
               <p className="mt-2 text-xs text-stone-500">
                 {hasProductionWebhookTarget ? "Target configured" : "Target missing"}
+                {" · "}
+                {hasWebhookSecret ? "Secret will be sent" : "No secret set"}
               </p>
               <AdminSubmitButton
                 disabled={!hasProductionWebhookTarget}

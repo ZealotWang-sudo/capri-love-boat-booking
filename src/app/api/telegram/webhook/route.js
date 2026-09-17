@@ -141,6 +141,50 @@ async function loadBookingForFollowUpMessage(bookingId) {
   return booking;
 }
 
+/**
+ * Telegram signs webhook deliveries with the secret supplied to `setWebhook`.
+ *
+ * Without it, anyone who learns a booking UUID can forge captain accept/decline
+ * callbacks, which capture or release real money. The secret is enforced as
+ * soon as TELEGRAM_WEBHOOK_SECRET is configured; until then a loud warning is
+ * logged so enabling it cannot silently break the live captain buttons.
+ */
+function getWebhookAuthError(request) {
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.warn(
+      "[telegram webhook] TELEGRAM_WEBHOOK_SECRET is not configured; callbacks are unauthenticated.",
+    );
+    return null;
+  }
+
+  const providedSecret = request.headers.get(
+    "x-telegram-bot-api-secret-token",
+  );
+
+  if (providedSecret !== webhookSecret) {
+    return "Invalid Telegram webhook secret token.";
+  }
+
+  return null;
+}
+
+// Defence in depth: captain decisions may only arrive from the captain chat.
+function isAllowedCallbackChat(callbackQuery) {
+  const allowedChatId = process.env.TELEGRAM_CAPTAIN_GROUP_CHAT_ID;
+
+  if (!allowedChatId) {
+    return true;
+  }
+
+  const chatId = callbackQuery?.message?.chat?.id;
+
+  return chatId === undefined || chatId === null
+    ? false
+    : String(chatId) === String(allowedChatId);
+}
+
 function getSiteUrlFromRequest(request) {
   const forwardedHost = request.headers.get("x-forwarded-host");
   const host = forwardedHost || request.headers.get("host");
@@ -155,12 +199,26 @@ function getSiteUrlFromRequest(request) {
 }
 
 export async function POST(request) {
+  const authError = getWebhookAuthError(request);
+
+  if (authError) {
+    console.error("[telegram webhook] Rejected unauthenticated callback");
+
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
   try {
     const update = await request.json();
     const callbackQuery = update?.callback_query;
 
     if (!callbackQuery) {
       return NextResponse.json({ ok: true, ignored: true }, { status: 200 });
+    }
+
+    if (!isAllowedCallbackChat(callbackQuery)) {
+      console.error("[telegram webhook] Rejected callback from unknown chat");
+
+      return NextResponse.json({ ok: false }, { status: 403 });
     }
 
     const callbackQueryId = getText(callbackQuery.id, null);

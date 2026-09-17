@@ -9,9 +9,21 @@ import {
 import {
   ACTIVE_BOOKING_STATUSES,
   bookingOverlapsSelection,
+  getBookingMinutesRange,
   getDisplayTimeForTimeSlot,
   isValidTimeSlotForTour,
 } from "@/lib/bookingAvailability";
+import {
+  ATTEMPT_STATUSES,
+  attachCheckoutSession,
+  attemptBlocksSelection,
+  buildAttemptRow,
+  createCheckoutAttempt,
+  expireStaleAttempts,
+  getCheckoutIdempotencyKey,
+  getPendingAttemptsForDateRange,
+  resolveAttempt,
+} from "@/lib/bookings/checkoutAttempts";
 import { validatePromoCodeForReservation } from "@/lib/promoCodes";
 import { createReservationCheckoutSession } from "@/lib/stripe/createReservationCheckoutSession";
 import { getActiveTourPriceByType } from "@/lib/tourPrices";
@@ -234,6 +246,16 @@ export async function POST(request) {
     shared_max_join_groups: SHARED_MAX_JOIN_GROUPS,
     shared_public_token: isSharedOpen ? createSharedPublicToken() : null,
   };
+  const scheduleRange = getBookingMinutesRange(bookingRequest);
+
+  if (!scheduleRange) {
+    return jsonError("Could not resolve the schedule for this tour.");
+  }
+
+  Object.assign(bookingRequest, scheduleRange);
+
+  // Release slot holds from abandoned checkouts before judging availability.
+  await expireStaleAttempts({ supabase });
 
   const { data: existingBookings, error: availabilityError } = await supabase
     .from("bookings")
@@ -274,22 +296,69 @@ export async function POST(request) {
     return jsonError(TIME_NO_LONGER_AVAILABLE_MESSAGE, 409);
   }
 
+  const pendingAttempts = await getPendingAttemptsForDateRange({
+    endDate: requestedDate,
+    startDate: requestedDate,
+    supabase,
+  });
+
+  if (
+    pendingAttempts.some((attempt) =>
+      attemptBlocksSelection(attempt, bookingRequest),
+    )
+  ) {
+    return jsonError(TIME_NO_LONGER_AVAILABLE_MESSAGE, 409);
+  }
+
+  // The attempt is written *before* Stripe is called. From here on, an
+  // authorization can never exist without a local record pointing at it.
+  const { attempt, reason: attemptReason } = await createCheckoutAttempt({
+    attempt: buildAttemptRow({
+      booking: bookingRequest,
+      reservationFeeEur: promoResult.finalReservationFeeEur,
+    }),
+    supabase,
+  });
+
+  if (!attempt) {
+    if (attemptReason === "slot_taken") {
+      return jsonError(TIME_NO_LONGER_AVAILABLE_MESSAGE, 409);
+    }
+
+    return jsonError("Could not start the checkout. Please try again.", 503);
+  }
+
   let checkoutSession;
 
   try {
     checkoutSession = await createReservationCheckoutSession({
       booking: bookingRequest,
       captureMethod: "manual",
+      expiresAt: new Date(attempt.expires_at),
+      idempotencyKey: getCheckoutIdempotencyKey(attempt.id),
       siteUrl: new URL(request.url).origin,
       token: customerManageToken,
     });
   } catch (error) {
     console.error("[bookings API] Could not create Stripe checkout", error.message);
 
+    await resolveAttempt({
+      attemptId: attempt.id,
+      error: error.message,
+      status: ATTEMPT_STATUSES.failed,
+      supabase,
+    });
+
     return jsonError("Could not create checkout session.", 500, {
       message: error.message,
     });
   }
+
+  await attachCheckoutSession({
+    attemptId: attempt.id,
+    sessionId: checkoutSession.id,
+    supabase,
+  });
 
   return NextResponse.json(
     {

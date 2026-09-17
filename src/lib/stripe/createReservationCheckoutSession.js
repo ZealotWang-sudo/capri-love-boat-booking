@@ -62,6 +62,8 @@ function getBookingMetadata(booking) {
 export async function createReservationCheckoutSession({
   booking,
   captureMethod = "manual",
+  expiresAt,
+  idempotencyKey,
   siteUrl,
   token,
 }) {
@@ -90,31 +92,41 @@ export async function createReservationCheckoutSession({
     site_url: checkoutSiteUrl,
   };
 
-  return stripe.checkout.sessions.create({
-    cancel_url: cancelUrl,
-    client_reference_id: referenceCode,
-    customer_email: booking.email,
-    line_items: [
-      {
-        price_data: {
-          currency: "eur",
-          product_data: {
-            description: paymentDescription,
-            metadata: stripeMetadata,
-            name: `${referenceCode} reservation fee`,
+  return stripe.checkout.sessions.create(
+    {
+      cancel_url: cancelUrl,
+      client_reference_id: referenceCode,
+      customer_email: booking.email,
+      // Only the attempt-backed flow pins expiry, so it lines up with the local
+      // slot hold. The legacy retry link keeps Stripe's 24 hour default.
+      ...(expiresAt
+        ? { expires_at: Math.floor(expiresAt.getTime() / 1000) }
+        : {}),
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            product_data: {
+              description: paymentDescription,
+              metadata: stripeMetadata,
+              name: `${referenceCode} reservation fee`,
+            },
+            unit_amount: checkoutReservationFeeEur * 100,
           },
-          unit_amount: checkoutReservationFeeEur * 100,
+          quantity: 1,
         },
-        quantity: 1,
-      },
-    ],
-    metadata: stripeMetadata,
-    mode: "payment",
-    payment_intent_data: {
-      capture_method: captureMethod,
-      description: paymentDescription,
+      ],
       metadata: stripeMetadata,
+      mode: "payment",
+      payment_intent_data: {
+        capture_method: captureMethod,
+        description: paymentDescription,
+        metadata: stripeMetadata,
+      },
+      success_url: successUrl,
     },
-    success_url: successUrl,
-  });
+    // Retrying a booking submission must reuse the same Checkout Session
+    // instead of leaving an orphaned one behind.
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
 }

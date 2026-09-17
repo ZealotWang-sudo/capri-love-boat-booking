@@ -500,7 +500,10 @@
     "tourFourHour": "4 heures",
     "tourSunsetThreeHour": "Coucher de soleil 3 heures",
     "tourFiveHour": "5 heures",
-    "tourSpecialRequest": "Demande spéciale"
+    "tourSpecialRequest": "Demande spéciale",
+    "pendingPaymentTitle": "Nous confirmons votre paiement",
+    "pendingPaymentBody": "Votre paiement a bien été reçu et votre réservation est en cours de finalisation. Cette page affichera bientôt votre réservation complète. Si elle n'apparaît pas dans l'heure, répondez à votre e-mail de confirmation ou contactez-nous en indiquant la référence ci-dessous.",
+    "pendingPaymentReference": "Référence {reference}"
   },
   "Shared": {
     "eyebrow": "Bateau partagé",

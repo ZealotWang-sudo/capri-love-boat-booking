@@ -8,7 +8,8 @@
     "dev:watch": "nodemon --watch src --watch messages --watch public --watch next.config.mjs --watch package.json --ext js,json,mjs,css,jpg,jpeg,png,webp,mp4 --ignore .next --delay 500ms --exec \"next dev --webpack\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/register-alias.mjs --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

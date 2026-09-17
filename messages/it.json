@@ -500,7 +500,10 @@
     "tourFourHour": "4 ore",
     "tourSunsetThreeHour": "Tramonto 3 ore",
     "tourFiveHour": "5 ore",
-    "tourSpecialRequest": "Richiesta speciale"
+    "tourSpecialRequest": "Richiesta speciale",
+    "pendingPaymentTitle": "Stiamo confermando il pagamento",
+    "pendingPaymentBody": "Il pagamento è stato ricevuto e la prenotazione è in fase di completamento. Questa pagina mostrerà a breve la prenotazione completa. Se non compare entro un'ora, rispondi all'email di conferma o contattaci indicando il riferimento qui sotto.",
+    "pendingPaymentReference": "Riferimento {reference}"
   },
   "Shared": {
     "eyebrow": "Barca condivisa",
@@ -685,7 +688,8 @@
       },
       "completed": {
         "cta": "Vedi dettagli tour",
-        "intro": "Grazie per aver trascorso la giornata con noi a Capri. Speriamo sia stata una splendida esperienza in mare. Se il tour ti è piaciuto, ci farebbe molto piacere ricevere una recensione.",
+        "intro": "Grazie per aver trascorso la giornata con noi a Capri. Speriamo sia stata una splendida esperienza in mare. Se il tour ti è piaciuto, ci farebbe molto piacere ricevere una recensione su Google.",
+        "reviewCta": "Lascia una recensione su Google",
         "subject": "Grazie per essere stati con noi"
       }
     },

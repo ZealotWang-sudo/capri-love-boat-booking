@@ -165,6 +165,26 @@ function getSharedBoatNoteText({ booking, copy }) {
   return `\n\n${copy.sharedBoatNote}`;
 }
 
+const DEFAULT_GOOGLE_REVIEW_URL = "https://g.page/r/CYoe8htzljUNEBM/review";
+
+function getReviewLink(copy) {
+  const reviewUrl = (
+    process.env.GOOGLE_REVIEW_URL || DEFAULT_GOOGLE_REVIEW_URL
+  ).trim();
+
+  if (!reviewUrl || !copy.reviewCta) {
+    return null;
+  }
+
+  return { label: copy.reviewCta, url: reviewUrl };
+}
+
+function getReviewLinkText(copy) {
+  const reviewLink = getReviewLink(copy);
+
+  return reviewLink ? `\n\n${reviewLink.label}: ${reviewLink.url}` : "";
+}
+
 function getAdminNotificationRecipients({ recipientEmail }) {
   if (recipientEmail?.toLowerCase() === PUBLIC_CONTACT_EMAIL.toLowerCase()) {
     return undefined;
@@ -179,6 +199,7 @@ function buildTextEmail({ booking, copy, locale }) {
     .join("\n");
   const cancellationReasonText = getCancellationReasonText(booking, locale);
   const manageLinkText = getManageLinkText(booking, copy, locale);
+  const reviewLinkText = getReviewLinkText(copy);
   const sharedBoatNoteText = getSharedBoatNoteText({ booking, copy });
   const labels = getEmailLabels(locale);
   const tourLogistics = copy.showTourLogistics ? getTourLogistics(locale) : null;
@@ -194,7 +215,7 @@ function buildTextEmail({ booking, copy, locale }) {
         .join("\n")}`
     : "";
 
-  return `${labels.greeting} ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}${sharedBoatNoteText}\n\n${details}${tourLogisticsText}\n\nCapri Love Boat`;
+  return `${labels.greeting} ${formatValue(booking.customer_name)},\n\n${copy.intro}${cancellationReasonText}${manageLinkText}${reviewLinkText}${sharedBoatNoteText}\n\n${details}${tourLogisticsText}\n\nCapri Love Boat`;
 }
 
 function buildHtmlEmail({ booking, copy, locale }) {
@@ -228,6 +249,18 @@ function buildHtmlEmail({ booking, copy, locale }) {
           <tr>
             <td align="center">
               <a href="${escapeHtml(booking.manage_url)}" style="background-color:#313131;border:1px solid #313131;border-radius:2px;color:#f3efe6;display:inline-block;font-family:'Times New Roman',Georgia,serif;font-size:14px;line-height:30px;text-align:center;text-decoration:none;padding:0 14px;">${escapeHtml(getManageLinkLabel(copy, locale))} <span style="font-family:Arial,Helvetica,sans-serif;font-size:13px;">&#8599;</span></a>
+            </td>
+          </tr>
+        </table>
+      `
+    : "";
+  const reviewLink = getReviewLink(copy);
+  const reviewLinkHtml = reviewLink
+    ? `
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:12px;">
+          <tr>
+            <td align="center">
+              <a href="${escapeHtml(reviewLink.url)}" style="background-color:#f3efe6;border:1px solid #313131;border-radius:2px;color:#313131;display:inline-block;font-family:'Times New Roman',Georgia,serif;font-size:14px;line-height:30px;text-align:center;text-decoration:none;padding:0 14px;">&#9733; ${escapeHtml(reviewLink.label)}</a>
             </td>
           </tr>
         </table>
@@ -306,6 +339,7 @@ function buildHtmlEmail({ booking, copy, locale }) {
                   <p style="margin:0;color:#313131;font-family:'Times New Roman',Georgia,serif;font-size:16px;line-height:24px;">${escapeHtml(copy.intro)}</p>
                   ${cancellationReasonHtml}
                   ${manageLinkHtml}
+                  ${reviewLinkHtml}
                   ${sharedBoatNoteHtml}
                 </td>
               </tr>

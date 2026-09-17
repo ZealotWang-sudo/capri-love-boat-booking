@@ -500,7 +500,10 @@
     "tourFourHour": "4 hours",
     "tourSunsetThreeHour": "Sunset 3 hours",
     "tourFiveHour": "5 hours",
-    "tourSpecialRequest": "Special request"
+    "tourSpecialRequest": "Special request",
+    "pendingPaymentTitle": "We are confirming your payment",
+    "pendingPaymentBody": "Your payment was received and your reservation is being finalised. This page will show your full booking shortly. If you do not see it within an hour, reply to your confirmation email or contact us and quote the reference below.",
+    "pendingPaymentReference": "Reference {reference}"
   },
   "Shared": {
     "eyebrow": "Shared boat",
@@ -685,7 +688,8 @@
       },
       "completed": {
         "cta": "View trip details",
-        "intro": "Thank you for spending the day with us in Capri. We hope you had a beautiful time on the water. If you enjoyed the tour, we would be grateful for a review.",
+        "intro": "Thank you for spending the day with us in Capri. We hope you had a beautiful time on the water. If you enjoyed the tour, we would be grateful for a review on Google.",
+        "reviewCta": "Leave a Google review",
         "subject": "Thank you for joining us"
       }
     },

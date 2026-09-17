@@ -500,7 +500,10 @@
     "tourFourHour": "4 小时",
     "tourSunsetThreeHour": "日落 3 小时",
     "tourFiveHour": "5 小时",
-    "tourSpecialRequest": "特殊请求"
+    "tourSpecialRequest": "特殊请求",
+    "pendingPaymentTitle": "我们正在确认您的付款",
+    "pendingPaymentBody": "我们已收到您的付款，预订正在最后确认中。此页面稍后将显示您的完整预订信息。如果一小时内仍未显示，请回复确认邮件或联系我们，并提供下方的预订编号。",
+    "pendingPaymentReference": "预订编号 {reference}"
   },
   "Shared": {
     "eyebrow": "拼船",
@@ -685,7 +688,8 @@
       },
       "completed": {
         "cta": "查看行程详情",
-        "intro": "感谢您与我们一起在卡普里度过这一天。希望您享受了这次海上体验。如果您喜欢这次行程，我们会非常感谢您留下评价。",
+        "intro": "感谢您与我们一起在卡普里度过这一天。希望您享受了这次海上体验。如果您喜欢这次行程，我们会非常感谢您在 Google 上留下评价。",
+        "reviewCta": "在 Google 上留下评价",
         "subject": "感谢您的加入"
       }
     },

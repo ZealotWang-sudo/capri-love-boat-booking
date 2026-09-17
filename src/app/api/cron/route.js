@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { completeElapsedBookings } from "@/lib/bookings/completeElapsedBookings";
+import { runPaymentReconciliation } from "@/lib/stripe/runPaymentReconciliation";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function getCronAuthError(request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -38,11 +40,27 @@ export async function GET(request) {
     );
   }
 
+  // Reconciliation runs first: an unrecovered authorization is more urgent than
+  // closing yesterday's trips, and it must happen even if completion fails.
+  let reconciliation = null;
+  let reconciliationError = null;
+
+  try {
+    reconciliation = await runPaymentReconciliation();
+  } catch (error) {
+    reconciliationError = error?.message ?? "Reconciliation failed.";
+    console.error("[cron] Payment reconciliation failed", {
+      message: reconciliationError,
+    });
+  }
+
   try {
     const summary = await completeElapsedBookings();
 
     return NextResponse.json({
       ok: true,
+      reconciliation,
+      reconciliationError,
       ...summary,
     });
   } catch (error) {
@@ -54,6 +72,8 @@ export async function GET(request) {
       {
         ok: false,
         error: "Could not complete elapsed bookings.",
+        reconciliation,
+        reconciliationError,
       },
       { status: 500 },
     );

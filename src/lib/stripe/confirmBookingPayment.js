@@ -1,18 +1,21 @@
 import { sendBookingEmail } from "@/lib/email/sendBookingEmail";
 import {
-  CAPTAIN_MESSAGE_TYPES,
-  buildCaptainMessageByType,
-} from "@/lib/admin/captainMessages";
+  AUTHORIZE_OUTCOMES,
+  AUTHORIZED_BOOKING_SELECT,
+  TERMINAL_AUTHORIZE_OUTCOMES,
+  authorizeCheckoutSession,
+} from "@/lib/bookings/authorizeCheckout";
 import {
-  ACTIVE_BOOKING_STATUSES,
-  bookingOverlapsSelection,
-} from "@/lib/bookingAvailability";
+  ATTEMPT_STATUSES,
+  getAttemptBySessionId,
+  resolveAttempt,
+} from "@/lib/bookings/checkoutAttempts";
+import { sendCaptainBookingRequest } from "@/lib/notifications/captainBookingRequest";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
 import { getSiteUrl, getStripe } from "@/lib/stripe/server";
 import { sendTelegramMessage } from "@/lib/telegram/sendTelegramMessage";
 
-const BOOKING_EMAIL_SELECT =
-  "id, locale, customer_name, email, requested_date, tour_type, time_slot, time_window, guest_count, total_price_eur, reservation_fee_eur, pay_on_board_eur, promo_code, promo_discount_eur, original_reservation_fee_eur, final_reservation_fee_eur, booking_status, payment_status, captain_status, customer_manage_token, stripe_checkout_session_id, stripe_payment_intent_id, is_shared_open, shared_status, shared_public_token";
+export { AUTHORIZE_OUTCOMES, TERMINAL_AUTHORIZE_OUTCOMES };
 
 function getPaymentIntentId(paymentIntent) {
   if (!paymentIntent) {
@@ -36,355 +39,74 @@ function getMetadataText(metadata, key) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function getMetadataInteger(metadata, key) {
-  const value = getMetadataText(metadata, key);
-
-  if (!value) {
-    return null;
-  }
-
-  const numberValue = Number(value);
-
-  return Number.isInteger(numberValue) ? numberValue : null;
-}
-
-function getMetadataBoolean(metadata, key) {
-  return getMetadataText(metadata, key) === "true";
-}
-
-function getText(value, fallback = "") {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
-}
-
-function getMessageId(value) {
-  if (typeof value === "string" && value.trim()) {
-    return value.trim();
-  }
-
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return String(value);
-  }
-
-  return null;
-}
-
-function buildCaptainAvailabilityReplyMarkup(bookingId) {
-  return {
-    inline_keyboard: [
-      [
-        { text: "✅ Disponibile", callback_data: `booking:accept:${bookingId}` },
-        { text: "❌ Non disponibile", callback_data: `booking:decline:${bookingId}` },
-      ],
-    ],
-  };
-}
-
-function getCheckoutSiteUrl(checkoutSession) {
+export function getCheckoutSiteUrl(checkoutSession) {
   return getMetadataText(checkoutSession?.metadata, "site_url") ?? getSiteUrl();
 }
 
-async function insertOutboundTelegramTracking({
-  bookingId,
-  telegramResponse,
-  supabase,
-}) {
-  const toPhone = getText(process.env.TELEGRAM_CAPTAIN_GROUP_CHAT_ID, null);
-  const { error: insertError } = await supabase.from("whatsapp_messages").insert({
-    booking_id: bookingId,
-    direction: "outbound",
-    message_type: "text",
-    meta_message_id: getMessageId(telegramResponse?.result?.message_id),
-    raw_payload: telegramResponse,
-    status: "sent",
-    template_name: null,
-    to_phone: toPhone,
-  });
-
-  if (!insertError || insertError.code === "23505") {
-    return;
-  }
-
-  console.error("[stripe authorization] Could not save captain telegram tracking", {
-    bookingId,
-    message: insertError.message,
-  });
-}
-
-async function markCaptainMessageSent({
+async function sendBookingEmailWithManageUrl({
   booking,
-  messageType = CAPTAIN_MESSAGE_TYPES.timeConfirmation,
-  supabase,
-}) {
-  const shouldMarkCaptainMessageSent =
-    messageType === CAPTAIN_MESSAGE_TYPES.timeConfirmation &&
-    ["requested", "checking_with_captain"].includes(booking.booking_status) &&
-    booking.captain_status === "pending";
-  const sentAt = new Date().toISOString();
-  const updatePayload = {
-    ...(shouldMarkCaptainMessageSent ? { captain_status: "message_sent" } : {}),
-    ...(messageType ? { captain_message_copied_type: messageType } : {}),
-    captain_message_copied_at: sentAt,
-    captain_message_sent_at: sentAt,
-    updated_at: sentAt,
-  };
-  let { error: updateError } = await supabase
-    .from("bookings")
-    .update(updatePayload)
-    .eq("id", booking.id);
-
-  if (
-    updateError &&
-    (updateError.message?.includes("captain_message_sent_at") ||
-      updateError.message?.includes("column") ||
-      updateError.code === "PGRST204")
-  ) {
-    const updateWithoutTimestamp = await supabase
-      .from("bookings")
-      .update({
-        ...(shouldMarkCaptainMessageSent ? { captain_status: "message_sent" } : {}),
-        ...(messageType ? { captain_message_copied_type: messageType } : {}),
-        captain_message_copied_at: sentAt,
-        updated_at: sentAt,
-      })
-      .eq("id", booking.id);
-
-    updateError = updateWithoutTimestamp.error;
-  }
-
-  if (updateError) {
-    console.error("[stripe authorization] Could not mark captain message as sent", {
-      bookingId: booking.id,
-      message: updateError.message,
-    });
-  }
-}
-
-async function sendCaptainAutoTelegramRequest({ booking, supabase }) {
-  const captainMessage = buildCaptainMessageByType(
-    booking,
-    CAPTAIN_MESSAGE_TYPES.timeConfirmation,
-  );
-  const telegramResponse = await sendTelegramMessage({
-    text: captainMessage,
-    replyMarkup: buildCaptainAvailabilityReplyMarkup(booking.id),
-  });
-
-  await insertOutboundTelegramTracking({
-    bookingId: booking.id,
-    supabase,
-    telegramResponse,
-  });
-  await markCaptainMessageSent({
-    booking,
-    messageType: CAPTAIN_MESSAGE_TYPES.timeConfirmation,
-    supabase,
-  });
-}
-
-function getAuthorizedBookingFromMetadata({ checkoutSession, paymentIntent }) {
-  const metadata = checkoutSession.metadata ?? {};
-  const isSharedOpen = getMetadataBoolean(metadata, "is_shared_open");
-  const bookingId = getMetadataText(metadata, "booking_id");
-  const customerManageToken = getMetadataText(metadata, "customer_manage_token");
-
-  if (!bookingId || !customerManageToken) {
-    return null;
-  }
-
-  return {
-    booking_status: "checking_with_captain",
-    captain_status: "pending",
-    contact_method: getMetadataText(metadata, "contact_method"),
-    customer_manage_token: customerManageToken,
-    customer_name: getMetadataText(metadata, "customer_name"),
-    email: getMetadataText(metadata, "email"),
-    final_reservation_fee_eur: getMetadataInteger(
-      metadata,
-      "final_reservation_fee_eur",
-    ),
-    guest_count: getMetadataInteger(metadata, "guest_count"),
-    id: bookingId,
-    is_shared_open: isSharedOpen,
-    locale: getMetadataText(metadata, "locale") ?? "en",
-    message: getMetadataText(metadata, "message"),
-    original_reservation_fee_eur: getMetadataInteger(
-      metadata,
-      "original_reservation_fee_eur",
-    ),
-    pay_on_board_eur: getMetadataInteger(metadata, "pay_on_board_eur"),
-    payment_status: "authorized",
-    phone: getMetadataText(metadata, "phone"),
-    promo_code: getMetadataText(metadata, "promo_code"),
-    promo_discount_eur: getMetadataInteger(metadata, "promo_discount_eur") ?? 0,
-    requested_date: getMetadataText(metadata, "requested_date"),
-    reservation_fee_eur: getMetadataInteger(metadata, "reservation_fee_eur"),
-    shared_gender_preference:
-      getMetadataText(metadata, "shared_gender_preference") ?? "any",
-    shared_max_join_groups: getMetadataInteger(metadata, "shared_max_join_groups"),
-    shared_open_seats: isSharedOpen
-      ? getMetadataInteger(metadata, "shared_open_seats")
-      : null,
-    shared_public_token: isSharedOpen
-      ? getMetadataText(metadata, "shared_public_token")
-      : null,
-    shared_status: isSharedOpen ? "pending_captain_confirmation" : "none",
-    stripe_checkout_session_id: checkoutSession.id,
-    stripe_payment_intent_id: paymentIntent.id,
-    time_slot: getMetadataText(metadata, "time_slot"),
-    time_window: getMetadataText(metadata, "time_window"),
-    total_price_eur: getMetadataInteger(metadata, "total_price_eur"),
-    tour_type: getMetadataText(metadata, "tour_type"),
-    updated_at: new Date().toISOString(),
-  };
-}
-
-async function hasActiveBookingOverlap({ booking, supabase }) {
-  const { data, error } = await supabase
-    .from("bookings")
-    .select(
-      "id, requested_date, tour_type, time_slot, time_window, booking_status, payment_status",
-    )
-    .in("booking_status", Array.from(ACTIVE_BOOKING_STATUSES))
-    .eq("requested_date", booking.requested_date);
-
-  if (error) {
-    console.error("[stripe authorization] Could not recheck availability", {
-      bookingId: booking.id,
-      message: error.message,
-    });
-    throw new Error("Could not recheck booking availability.");
-  }
-
-  return (data ?? []).some(
-    (existingBooking) =>
-      existingBooking.id !== booking.id &&
-      bookingOverlapsSelection(existingBooking, booking),
-  );
-}
-
-async function releaseUnavailableAuthorization({
-  booking,
-  paymentIntent,
+  eventType,
   siteUrl,
   supabase,
 }) {
-  await getStripe().paymentIntents.cancel(paymentIntent.id);
-
-  const closedBooking = {
-    ...booking,
-    booking_status: "not_available",
-    cancellation_reason:
-      "This time was no longer available when checkout authorization completed.",
-    cancellation_type: "admin_decision",
-    captain_status: "not_available",
-    payment_status: "released",
-    shared_status: booking.is_shared_open ? "cancelled" : booking.shared_status,
-    updated_at: new Date().toISOString(),
-  };
-  const { data: insertedBooking, error } = await supabase
-    .from("bookings")
-    .insert(closedBooking)
-    .select(BOOKING_EMAIL_SELECT)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[stripe authorization] Could not save unavailable booking", {
-      bookingId: booking.id,
-      message: error.message,
-    });
-    throw new Error("Could not save unavailable booking.");
-  }
-
-  if (insertedBooking) {
-    await sendBookingEmailWithManageUrl({
-      booking: insertedBooking,
-      eventType: "not_available",
-      logPrefix: "[stripe authorization]",
-      siteUrl,
-      supabase,
-    });
-  }
-
-  return { authorized: false, reason: "time no longer available", released: true };
-}
-
-async function createAuthorizedBookingFromSession({
-  checkoutSession,
-  paymentIntent,
-  supabase,
-}) {
-  const booking = getAuthorizedBookingFromMetadata({
-    checkoutSession,
-    paymentIntent,
-  });
-
-  if (!booking) {
-    return { authorized: false, reason: "checkout metadata missing booking" };
-  }
-
-  if (await hasActiveBookingOverlap({ booking, supabase })) {
-    return releaseUnavailableAuthorization({
-      booking,
-      paymentIntent,
-      siteUrl: getCheckoutSiteUrl(checkoutSession),
-      supabase,
-    });
-  }
-
-  const { data: insertedBooking, error } = await supabase
-    .from("bookings")
-    .insert(booking)
-    .select(BOOKING_EMAIL_SELECT)
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === "23505") {
-      return { authorized: false, reason: "booking already created" };
-    }
-
-    console.error("[stripe authorization] Could not create authorized booking", {
-      bookingId: booking.id,
-      message: error.message,
-    });
-    throw new Error("Could not create authorized booking.");
-  }
-
-  if (!insertedBooking) {
-    return { authorized: false, reason: "booking already processed" };
-  }
-
-  await sendBookingEmailWithManageUrl({
-    booking: insertedBooking,
-    eventType: "booking_authorized",
-    logPrefix: "[stripe authorization]",
-    siteUrl: getCheckoutSiteUrl(checkoutSession),
+  const emailResult = await sendBookingEmail({
+    booking: {
+      ...booking,
+      manage_url: getCustomerManageUrl(booking, siteUrl),
+    },
+    eventType,
     supabase,
   });
 
-  try {
-    await sendCaptainAutoTelegramRequest({
-      booking: insertedBooking,
-      supabase,
+  if (!emailResult.sent && emailResult.reason !== "duplicate email event") {
+    console.error("[stripe authorization] Email was not sent", {
+      bookingId: booking.id,
+      eventType,
+      reason: emailResult.reason,
     });
-  } catch (error) {
-    console.warn(
-      `[stripe authorization] Captain Telegram auto-send warning: ${error?.message || "Unknown error."}`,
-    );
   }
 
-  return { authorized: true };
+  return emailResult;
 }
 
-async function getCheckoutSession({ session, sessionId }) {
-  return (
-    session ??
-    (sessionId
-      ? await getStripe().checkout.sessions.retrieve(sessionId)
-      : null)
-  );
+/**
+ * Real implementations of every side effect the authorization flow performs.
+ * Reconciliation and tests swap these out.
+ */
+export function buildAuthorizationDeps({ supabase } = {}) {
+  const client = supabase ?? createSupabaseServiceRoleServerClient();
+
+  return {
+    cancelPaymentIntent: (paymentIntentId) =>
+      getStripe().paymentIntents.cancel(
+        paymentIntentId,
+        {},
+        { idempotencyKey: `booking-authorization-release-${paymentIntentId}` },
+      ),
+    notifyCaptain: ({ booking }) =>
+      sendCaptainBookingRequest({
+        booking,
+        sendTelegram: sendTelegramMessage,
+        supabase: client,
+      }),
+    sendEmail: sendBookingEmailWithManageUrl,
+    supabase: client,
+  };
 }
 
-async function getPaymentIntent(paymentIntent) {
+export async function getCheckoutSession({ session, sessionId }) {
+  if (session) {
+    return session;
+  }
+
+  if (!sessionId) {
+    return null;
+  }
+
+  return getStripe().checkout.sessions.retrieve(sessionId);
+}
+
+export async function getPaymentIntent(paymentIntent) {
   const paymentIntentId = getPaymentIntentId(paymentIntent);
 
   if (!paymentIntentId) {
@@ -398,215 +120,32 @@ async function getPaymentIntent(paymentIntent) {
   return getStripe().paymentIntents.retrieve(paymentIntentId);
 }
 
-async function getBookingForCheckoutSession({
-  bookingId,
-  checkoutSession,
-  supabase,
-  token,
-}) {
-  let query = supabase
-    .from("bookings")
-    .select(BOOKING_EMAIL_SELECT)
-    .eq("stripe_checkout_session_id", checkoutSession.id);
+// The manage page passes a session id straight from the query string, so a
+// caller-supplied booking id and token must match the session before we act.
+function isSessionOwnedByCaller({ bookingId, checkoutSession, token }) {
+  const sessionBookingId = getMetadataText(
+    checkoutSession?.metadata,
+    "booking_id",
+  );
+  const sessionToken = getMetadataText(
+    checkoutSession?.metadata,
+    "customer_manage_token",
+  );
 
-  if (bookingId) {
-    query = query.eq("id", bookingId);
+  if (bookingId && sessionBookingId && sessionBookingId !== bookingId) {
+    return false;
   }
 
-  if (token) {
-    query = query.eq("customer_manage_token", token);
+  if (token && sessionToken && sessionToken !== token) {
+    return false;
   }
 
-  const { data: booking, error } = await query.maybeSingle();
-
-  if (error) {
-    console.error("[stripe checkout] Could not load booking", error.message);
-    throw new Error("Could not load booking for checkout session.");
-  }
-
-  if (booking) {
-    return booking;
-  }
-
-  if (!checkoutSession.metadata?.booking_id) {
-    return null;
-  }
-
-  if (bookingId && checkoutSession.metadata.booking_id !== bookingId) {
-    return null;
-  }
-
-  let metadataQuery = supabase
-    .from("bookings")
-    .select(BOOKING_EMAIL_SELECT)
-    .eq("id", checkoutSession.metadata.booking_id);
-
-  if (token) {
-    metadataQuery = metadataQuery.eq("customer_manage_token", token);
-  }
-
-  const { data: metadataBooking, error: metadataError } =
-    await metadataQuery.maybeSingle();
-
-  if (metadataError) {
-    console.error(
-      "[stripe checkout] Could not load booking from metadata",
-      metadataError.message,
-    );
-    throw new Error("Could not load booking from checkout metadata.");
-  }
-
-  return metadataBooking;
-}
-
-async function sendBookingEmailWithManageUrl({
-  booking,
-  eventType,
-  logPrefix,
-  siteUrl,
-  supabase,
-}) {
-  const emailResult = await sendBookingEmail({
-    booking: {
-      ...booking,
-      manage_url: getCustomerManageUrl(booking, siteUrl),
-    },
-    eventType,
-    supabase,
-  });
-
-  if (!emailResult.sent) {
-    console.error(`${logPrefix} Email was not sent`, {
-      bookingId: booking.id,
-      eventType,
-      reason: emailResult.reason,
-    });
-  }
-}
-
-export async function recordBookingAuthorizationFromSession({
-  bookingId,
-  session,
-  sessionId,
-  token,
-}) {
-  const checkoutSession = await getCheckoutSession({ session, sessionId });
-
-  if (!checkoutSession?.id) {
-    return { authorized: false, reason: "checkout session not found" };
-  }
-
-  const supabase = createSupabaseServiceRoleServerClient();
-  const siteUrl = getCheckoutSiteUrl(checkoutSession);
-  const booking = await getBookingForCheckoutSession({
-    bookingId,
-    checkoutSession,
-    supabase,
-    token,
-  });
-
-  const paymentIntent = await getPaymentIntent(checkoutSession.payment_intent);
-
-  if (
-    !paymentIntent ||
-    (paymentIntent.status !== "requires_capture" &&
-      (paymentIntent.amount_capturable ?? 0) <= 0)
-  ) {
-    return { authorized: false, reason: "payment intent is not authorized" };
-  }
-
-  if (!booking) {
-    return createAuthorizedBookingFromSession({
-      checkoutSession,
-      paymentIntent,
-      supabase,
-    });
-  }
-
-  if (booking.payment_status === "authorized") {
-    return { authorized: false, reason: "booking already authorized" };
-  }
-
-  if (["captured", "released", "refunded"].includes(booking.payment_status)) {
-    return { authorized: false, reason: "booking payment already closed" };
-  }
-
-  const { data: updatedBooking, error: updateError } = await supabase
-    .from("bookings")
-    .update({
-      booking_status: "checking_with_captain",
-      captain_status: "pending",
-      payment_status: "authorized",
-      stripe_payment_intent_id: paymentIntent.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", booking.id)
-    .eq("booking_status", "requested")
-    .eq("payment_status", "authorization_pending")
-    .select(BOOKING_EMAIL_SELECT)
-    .maybeSingle();
-
-  if (updateError) {
-    console.error(
-      "[stripe authorization] Could not authorize booking",
-      updateError.message,
-    );
-    throw new Error("Could not mark booking as authorized.");
-  }
-
-  if (!updatedBooking) {
-    return { authorized: false, reason: "booking already processed" };
-  }
-
-  await sendBookingEmailWithManageUrl({
-    booking: updatedBooking,
-    eventType: "booking_authorized",
-    logPrefix: "[stripe authorization]",
-    siteUrl,
-    supabase,
-  });
-
-  try {
-    await sendCaptainAutoTelegramRequest({
-      booking: updatedBooking,
-      supabase,
-    });
-  } catch (error) {
-    console.warn(
-      `[stripe authorization] Captain Telegram auto-send warning: ${error?.message || "Unknown error."}`,
-    );
-  }
-
-  return { authorized: true };
-}
-
-export async function expireCheckoutSession({ session }) {
-  if (!session?.id) {
-    return { expired: false, reason: "checkout session not found" };
-  }
-
-  const supabase = createSupabaseServiceRoleServerClient();
-  const { data: updatedBooking, error } = await supabase
-    .from("bookings")
-    .delete()
-    .eq("stripe_checkout_session_id", session.id)
-    .eq("booking_status", "requested")
-    .eq("payment_status", "authorization_pending")
-    .select("id")
-    .maybeSingle();
-
-  if (error) {
-    console.error("[stripe checkout expired] Could not expire booking", error.message);
-    throw new Error("Could not expire incomplete checkout.");
-  }
-
-  return updatedBooking
-    ? { expired: true }
-    : { expired: false, reason: "checkout already processed" };
+  return true;
 }
 
 export async function handleCheckoutSessionCompleted({
   bookingId,
+  deps,
   session,
   sessionId,
   token,
@@ -614,7 +153,15 @@ export async function handleCheckoutSessionCompleted({
   const checkoutSession = await getCheckoutSession({ session, sessionId });
 
   if (!checkoutSession?.id) {
-    return { handled: false, reason: "checkout session not found" };
+    return {
+      handled: false,
+      outcome: "checkout_session_not_found",
+      terminal: true,
+    };
+  }
+
+  if (isSessionOwnedByCaller({ bookingId, checkoutSession, token }) === false) {
+    return { handled: false, outcome: "session_owner_mismatch", terminal: true };
   }
 
   const paymentIntent = await getPaymentIntent(checkoutSession.payment_intent);
@@ -630,16 +177,142 @@ export async function handleCheckoutSessionCompleted({
       token,
     });
 
-    return { ...result, handled: result.confirmed };
+    return { ...result, handled: result.confirmed, terminal: true };
   }
 
-  const result = await recordBookingAuthorizationFromSession({
-    bookingId,
-    session: checkoutSession,
-    token,
+  const authorizationDeps = deps ?? buildAuthorizationDeps();
+  const result = await authorizeCheckoutSession({
+    ...authorizationDeps,
+    checkoutSession,
+    paymentIntent,
+    siteUrl: getCheckoutSiteUrl(checkoutSession),
   });
 
-  return { ...result, handled: result.authorized };
+  return {
+    ...result,
+    handled:
+      result.outcome === AUTHORIZE_OUTCOMES.authorized ||
+      result.outcome === AUTHORIZE_OUTCOMES.alreadyAuthorized,
+    terminal: TERMINAL_AUTHORIZE_OUTCOMES.has(result.outcome),
+  };
+}
+
+export async function expireCheckoutSession({ session, supabase }) {
+  if (!session?.id) {
+    return { expired: false, reason: "checkout session not found" };
+  }
+
+  const client = supabase ?? createSupabaseServiceRoleServerClient();
+  const attempt = await getAttemptBySessionId({
+    sessionId: session.id,
+    supabase: client,
+  });
+
+  if (attempt && attempt.status === ATTEMPT_STATUSES.pending) {
+    await resolveAttempt({
+      attemptId: attempt.id,
+      status: ATTEMPT_STATUSES.expired,
+      supabase: client,
+    });
+  }
+
+  // Legacy rows: the retry-checkout route still pre-creates bookings.
+  const { data: removedBooking, error } = await client
+    .from("bookings")
+    .delete()
+    .eq("stripe_checkout_session_id", session.id)
+    .eq("booking_status", "requested")
+    .eq("payment_status", "authorization_pending")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "[stripe checkout expired] Could not expire booking",
+      error.message,
+    );
+    throw new Error("Could not expire incomplete checkout.");
+  }
+
+  return {
+    expired: Boolean(attempt) || Boolean(removedBooking),
+  };
+}
+
+/**
+ * Keeps the booking in step when an authorization is cancelled outside the app
+ * (Stripe Dashboard, authorization expiry, or our own release path).
+ */
+export async function syncCancelledPaymentIntent({ paymentIntent, supabase }) {
+  const paymentIntentId = getPaymentIntentId(paymentIntent);
+
+  if (!paymentIntentId) {
+    return { synced: false, reason: "missing payment intent" };
+  }
+
+  const client = supabase ?? createSupabaseServiceRoleServerClient();
+  const now = new Date().toISOString();
+  const { data: updatedBooking, error } = await client
+    .from("bookings")
+    .update({
+      booking_status: "cancelled",
+      cancellation_reason:
+        "The Stripe authorization was cancelled, so the reservation was released.",
+      cancellation_type: "other",
+      cancelled_at: now,
+      cancelled_by: "system",
+      payment_status: "released",
+      updated_at: now,
+    })
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .in("payment_status", ["authorized", "authorization_pending"])
+    .select(AUTHORIZED_BOOKING_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Could not sync cancelled payment intent: ${error.message}`,
+    );
+  }
+
+  await client
+    .from("booking_checkout_attempts")
+    .update({
+      resolved_at: now,
+      status: ATTEMPT_STATUSES.cancelled,
+      updated_at: now,
+    })
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .eq("status", ATTEMPT_STATUSES.pending);
+
+  return { booking: updatedBooking ?? null, synced: Boolean(updatedBooking) };
+}
+
+export async function syncRefundedCharge({ charge, supabase }) {
+  const paymentIntentId = getPaymentIntentId(charge?.payment_intent);
+
+  if (!paymentIntentId) {
+    return { synced: false, reason: "missing payment intent" };
+  }
+
+  const client = supabase ?? createSupabaseServiceRoleServerClient();
+  const now = new Date().toISOString();
+  const { data: updatedBooking, error } = await client
+    .from("bookings")
+    .update({
+      payment_status: "refunded",
+      updated_at: now,
+    })
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .eq("payment_status", "captured")
+    .select(AUTHORIZED_BOOKING_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not sync refunded charge: ${error.message}`);
+  }
+
+  return { booking: updatedBooking ?? null, synced: Boolean(updatedBooking) };
 }
 
 export async function confirmBookingPaymentFromSession({
@@ -654,14 +327,21 @@ export async function confirmBookingPaymentFromSession({
     return { confirmed: false, reason: "checkout session is not paid" };
   }
 
+  if (isSessionOwnedByCaller({ bookingId, checkoutSession, token }) === false) {
+    return { confirmed: false, reason: "session owner mismatch" };
+  }
+
   const supabase = createSupabaseServiceRoleServerClient();
   const siteUrl = getCheckoutSiteUrl(checkoutSession);
-  const bookingToConfirm = await getBookingForCheckoutSession({
-    bookingId,
-    checkoutSession,
-    supabase,
-    token,
-  });
+  const { data: bookingToConfirm, error: loadError } = await supabase
+    .from("bookings")
+    .select(AUTHORIZED_BOOKING_SELECT)
+    .eq("stripe_checkout_session_id", checkoutSession.id)
+    .maybeSingle();
+
+  if (loadError) {
+    throw new Error(`Could not load booking: ${loadError.message}`);
+  }
 
   if (!bookingToConfirm) {
     return { confirmed: false, reason: "booking not found" };
@@ -679,17 +359,18 @@ export async function confirmBookingPaymentFromSession({
     .update({
       booking_status: "confirmed",
       payment_status: "captured",
-      stripe_payment_intent_id: getPaymentIntentId(checkoutSession.payment_intent),
+      stripe_payment_intent_id: getPaymentIntentId(
+        checkoutSession.payment_intent,
+      ),
       updated_at: new Date().toISOString(),
     })
     .eq("id", bookingToConfirm.id)
     .neq("booking_status", "confirmed")
-    .select(BOOKING_EMAIL_SELECT)
+    .select(AUTHORIZED_BOOKING_SELECT)
     .maybeSingle();
 
   if (updateError) {
-    console.error("[stripe payment confirm] Could not confirm booking", updateError.message);
-    throw new Error("Could not confirm booking.");
+    throw new Error(`Could not confirm booking: ${updateError.message}`);
   }
 
   if (!updatedBooking) {
@@ -699,7 +380,6 @@ export async function confirmBookingPaymentFromSession({
   await sendBookingEmailWithManageUrl({
     booking: updatedBooking,
     eventType: "booking_confirmed",
-    logPrefix: "[stripe payment confirm]",
     siteUrl,
     supabase,
   });

@@ -1,5 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createSupabaseServiceRoleServerClient } from "@/lib/supabase/server";
+import {
+  expireStaleAttempts,
+  getPendingAttemptsForDateRange,
+} from "@/lib/bookings/checkoutAttempts";
+import { runThrottledPaymentReconciliation } from "@/lib/stripe/runPaymentReconciliation";
 import {
   getManualBlockedTimeSlots,
   groupUnavailableSlotsByDate,
@@ -160,6 +165,13 @@ export async function GET(request) {
   }
 
   const supabase = createSupabaseServiceRoleServerClient();
+
+  // The booking calendar is the most frequently hit server route, so it doubles
+  // as the heartbeat that keeps payment reconciliation running between crons.
+  after(() => runThrottledPaymentReconciliation());
+
+  await expireStaleAttempts({ supabase });
+
   const { data: activeTourPrices, error: activeTourPricesError } =
     await getActiveTourPrices(supabase);
 
@@ -204,6 +216,22 @@ export async function GET(request) {
     });
   }
 
+  // Checkout in progress holds the slot until the attempt expires, so a second
+  // customer cannot start paying for a boat that is already being paid for.
+  const pendingAttempts = await getPendingAttemptsForDateRange({
+    endDate: range.endDate,
+    startDate: range.startDate,
+    supabase,
+  });
+  const heldSlots = pendingAttempts.map((attempt) => ({
+    booking_status: "requested",
+    payment_status: "authorization_pending",
+    requested_date: attempt.requested_date,
+    time_slot: attempt.time_slot,
+    time_window: null,
+    tour_type: attempt.tour_type,
+  }));
+
   const dates = date
     ? [date]
     : Array.from(
@@ -214,7 +242,10 @@ export async function GET(request) {
   const availability = buildAvailability({
     activeTourTypes,
     dates,
-    existingBookings: (existingBookings ?? []).filter(isActiveBlockingBooking),
+    existingBookings: [
+      ...(existingBookings ?? []).filter(isActiveBlockingBooking),
+      ...heldSlots,
+    ],
     tourType,
     unavailableSlots: unavailableSlotsError ? [] : unavailableSlots,
   });
